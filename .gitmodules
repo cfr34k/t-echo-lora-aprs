@@ -1,0 +1,3 @@
+[submodule "nrf5-sdk"]
+	path = nrf5-sdk
+	url = ../nrf5-sdk.git
