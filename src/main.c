@@ -64,6 +64,7 @@
 #include "ble_advdata.h"
 #include "ble_advertising.h"
 #include "ble_conn_params.h"
+#include "nrf_gpio.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_soc.h"
 #include "nrf_sdh_ble.h"
@@ -82,6 +83,7 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
+#include "pinout.h"
 #include "epaper.h"
 
 
@@ -382,6 +384,23 @@ static void application_timers_start(void)
 }
 
 
+/**@brief Switch off external peripheral power.
+ */
+static void periph_pwr_off(void)
+{
+    nrf_gpio_cfg_default(PIN_PWR_EN);
+}
+
+
+/**@brief Switch off external peripheral power.
+ */
+static void periph_pwr_on(void)
+{
+    nrf_gpio_pin_set(PIN_PWR_EN);
+    nrf_gpio_cfg_output(PIN_PWR_EN);
+}
+
+
 /**@brief Function for putting the chip into sleep mode.
  *
  * @note This function will not return.
@@ -389,6 +408,9 @@ static void application_timers_start(void)
 static void sleep_mode_enter(void)
 {
     ret_code_t err_code;
+
+    // switch off all external peripherals
+    periph_pwr_off();
 
     err_code = bsp_indication_set(BSP_INDICATE_IDLE);
     APP_ERROR_CHECK(err_code);
@@ -721,6 +743,8 @@ int main(void)
     services_init();
     conn_params_init();
     peer_manager_init();
+
+    periph_pwr_on();
 
     epaper_init();
     epaper_update();
