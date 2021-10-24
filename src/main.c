@@ -82,9 +82,11 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
+#include "epaper.h"
 
-#define DEVICE_NAME                     "Nordic_Template"                       /**< Name of device. Will be included in the advertising data. */
-#define MANUFACTURER_NAME               "NordicSemiconductor"                   /**< Manufacturer. Will be passed to Device Information Service. */
+
+#define DEVICE_NAME                     "T-Echo"                                /**< Name of device. Will be included in the advertising data. */
+#define MANUFACTURER_NAME               "HW: Lilygo / FW: cfr34k"               /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
 
 #define APP_ADV_DURATION                18000                                   /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
@@ -719,6 +721,9 @@ int main(void)
     services_init();
     conn_params_init();
     peer_manager_init();
+
+    epaper_init();
+    epaper_update();
 
     // Start execution.
     NRF_LOG_INFO("Template example started.");
