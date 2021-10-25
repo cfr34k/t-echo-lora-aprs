@@ -237,7 +237,7 @@ ret_code_t epaper_update(void)
 	}
 
 	nrfx_spim_config_t spi_config = NRFX_SPIM_DEFAULT_CONFIG;
-	spi_config.frequency      = NRF_SPIM_FREQ_1M;
+	spi_config.frequency      = NRF_SPIM_FREQ_8M;
 	spi_config.ss_pin         = PIN_EPD_CS;
 	spi_config.miso_pin       = PIN_EPD_MISO;
 	spi_config.mosi_pin       = PIN_EPD_MOSI;
