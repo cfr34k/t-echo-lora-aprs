@@ -3,77 +3,65 @@
 // Controller: SSD1681
 
 #include <stdint.h>
+#include <string.h>
 
 #include <nrfx_spim.h>
 #include <nrf_gpio.h>
 #include <sdk_macros.h>
 #include <app_timer.h>
+#include <nrf_log.h>
 
 #include "pinout.h"
 
 #include "epaper.h"
 
 
+#define EPD_MAX_COMMAND_LEN 5
+
 typedef struct
 {
 	uint8_t config;
-	uint8_t word;
+	uint8_t data[EPD_MAX_COMMAND_LEN];
 } epd_ctrl_entry_t;
 
-#define CFG_CMD        0x80
-#define CFG_DATA       0x00
-#define WAIT_BUSY      0x40  // wait until the busy signal is released after this command
-#define SEND_FRAMEBUF  0x20  // send the framebuffer after this command
-#define DELAY_10MS     0x08 // wait for 10 milliseconds after sending this command
+#define WAIT_BUSY      0x80  // wait until the busy signal is released after this command
+#define SEND_FRAMEBUF  0x40  // send the framebuffer after this command
+#define DELAY_10MS     0x20  // wait for 10 milliseconds after sending this command
+#define LEN(x)         ((x) & 0x1F)
 
 // Sequence for a full update. The display will be in deep sleep afterwards and
 // will require a hardware reset.
 const epd_ctrl_entry_t FULL_UPDATE_SEQUENCE[] = {
-	{CFG_CMD | DELAY_10MS, 0x12}, // soft reset + startup delay
-	{CFG_CMD,  0x01}, // Driver output control
-	{CFG_DATA, 0xC7},
-	{CFG_DATA, 0x00},
-	{CFG_DATA, 0x00},
-	{CFG_CMD,  0x3C}, // Border Waveform
-	{CFG_DATA, 0x05},
-	{CFG_CMD,  0x18}, // Set temp sensor to built-in
-	{CFG_DATA, 0x80},
+	{LEN(1) | DELAY_10MS, {0x12}}, // soft reset + startup delay
+	{LEN(4),              {0x01, 0xC7, 0x00, 0x00}}, // Driver output control
+	{LEN(2),              {0x3C, 0x05}}, // Border Waveform
+	{LEN(2),              {0x18, 0x80}}, // Set temp sensor to built-in
 
 	// set RAM area for 200x200 px at offset (0,0)
-	{CFG_CMD,  0x11}, // Set RAM entry mode:
-	{CFG_DATA, 0x03}, // x and y increment, update x after RAM data write
-	{CFG_CMD,  0x44}, // Set RAM x address, start and end
-	{CFG_DATA, 0 / 8},
-	{CFG_DATA, (0 + 200 - 1) / 8},
-	{CFG_CMD,  0x45}, // Set RAM y address, start and end
-	{CFG_DATA, 0 % 256},
-	{CFG_DATA, 0 / 256},
-	{CFG_DATA, (0 + 200 - 1) % 256},
-	{CFG_DATA, (0 + 200 - 1) / 256},
-	{CFG_CMD,  0x4e}, // Set RAM x address counter initial value
-	{CFG_DATA, 0 / 8},
-	{CFG_CMD,  0x4f}, // Set RAM y address counter initial value
-	{CFG_DATA, 0 % 256},
-	{CFG_DATA, 0 / 256},
+	{LEN(2),              {0x11, 0x03}}, // Set RAM entry mode: x and y increment, update x after RAM data write
+	{LEN(3),              {0x44, 0 / 8, (0 + 200 - 1) / 8}}, // Set RAM x address, start and end
+	{LEN(5),              {0x45, 0 % 256, 0 / 256, (0 + 200 - 1) % 256, (0 + 200 - 1) / 256}}, // Set RAM y address, start and end
+	{LEN(2),              {0x4e, 0 / 8}}, // Set RAM x address counter initial value
+	{LEN(3),              {0x4f, 0 % 256, 0 / 256}}, // Set RAM y address counter initial value
 
 	// power on
-	{CFG_CMD,  0x22},
-	{CFG_DATA, 0xF8},
-	{CFG_CMD | WAIT_BUSY, 0x20},
+	{LEN(2),              {0x22, 0xF8}},
+	{LEN(1) | WAIT_BUSY,  {0x20}},
 
-	// send the new data
-	{CFG_CMD | SEND_FRAMEBUF, 0x24},
+	// send the new data, twice for full refresh. Due to the size of the image
+	// buffer, the data field is not used regularily here and therefore LEN =
+	// 0. However, the first data byte specifies the command to use.
+	{LEN(0) | SEND_FRAMEBUF, {0x26}},  // previous image
+	{LEN(0) | SEND_FRAMEBUF, {0x24}},  // current image
 
-	{CFG_CMD,  0x22},
-	{CFG_DATA, 0xF4},
-	{CFG_CMD | WAIT_BUSY, 0x20},
+	{LEN(2),              {0x22, 0xF4}},
+	{LEN(1) | WAIT_BUSY,  {0x20}},
 
 	// power off and enter deep sleep
-	{CFG_CMD,  0x22},
-	{CFG_DATA, 0x83},
-	{CFG_CMD | WAIT_BUSY, 0x20},
-	{CFG_CMD,  0x10},   // enter deep sleep mode
-	{CFG_DATA, 0x01},
+	{LEN(2),              {0x22, 0x83}},
+	{LEN(1) | WAIT_BUSY,  {0x20}},
+
+	{LEN(2),              {0x10, 0x01}},   // enter deep sleep mode
 };
 
 
@@ -86,10 +74,10 @@ typedef enum
 
 
 
-static nrfx_spim_t m_spim = NRFX_SPIM_INSTANCE(0);
+static nrfx_spim_t m_spim = NRFX_SPIM_INSTANCE(3);
 
-static uint8_t m_frame_buffer[200*200/8];
-static bool m_framebuf_sent = false;
+static uint8_t  m_frame_command[200*200/8 + 1];
+static uint8_t *m_frame_buffer = m_frame_command+1;
 
 static const epd_ctrl_entry_t *m_seq_ptr;
 static const epd_ctrl_entry_t *m_seq_end; // points to the first location beyond the end of the sequence
@@ -104,74 +92,77 @@ static timer_state_t m_timer_state;
 static bool m_busy;
 
 
-static ret_code_t send_control(void)
+static ret_code_t send_command(void)
 {
-	static uint8_t byte2transfer;
+	// EasyDMA transfer buffer must reside in RAM, so we copy the constant
+	// flash data partially into this buffer.
+	static uint8_t bytes2transfer[EPD_MAX_COMMAND_LEN];
 
 	if(m_seq_ptr == m_seq_end) {
+		NRF_LOG_INFO("epd: end of sequence.");
+
 		nrfx_spim_uninit(&m_spim); // to save power
 		m_busy = false;
 
 		return NRF_SUCCESS;
 	}
 
-	// set the D/C pin
-	if(m_seq_ptr->config & CFG_CMD) {
-		nrf_gpio_pin_set(PIN_EPD_DC);
-	} else {
-		nrf_gpio_pin_clear(PIN_EPD_DC);
-	}
-
 	// set up and start SPI transfer from m_seq_ptr
-	byte2transfer = m_seq_ptr->word; // must reside in RAM
-	nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
-			&byte2transfer, 1);
-			
+	if(m_seq_ptr->config & SEND_FRAMEBUF) {
+		// the framebuffer handled specially, because it is very large and
+		// resides in RAM anyway.
 
-	return nrfx_spim_xfer(&m_spim, &xfer_desc, 0);
+		// set the command byte from the sequence entry.
+		m_frame_command[0] = m_seq_ptr->data[0];
+
+		// send the complete memory write command
+		nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
+				m_frame_command, sizeof(m_frame_command));
+
+		NRF_LOG_INFO("epd: sending framebuffer (cmd: 0x%02x, length: %d).", m_frame_command[0], xfer_desc.tx_length);
+
+		return nrfx_spim_xfer_dcx(&m_spim, &xfer_desc, 0, 1);
+	} else {
+		uint8_t length = m_seq_ptr->config & 0x1F;
+
+		// make sure the data bytes are in RAM for EasyDMA
+		memcpy(bytes2transfer, m_seq_ptr->data, length);
+		nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
+				&bytes2transfer, length);
+
+		NRF_LOG_INFO("epd: sending command (cmd: 0x%02x, length: %d).", bytes2transfer[0], xfer_desc.tx_length);
+
+		return nrfx_spim_xfer_dcx(&m_spim, &xfer_desc, 0, 1); // always one command byte
+	}
 }
 
 
 static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 {
-	if(m_seq_ptr->config & 0x7F) {
-		// special post-processing operations are requested for this command
-		if(m_seq_ptr->config & DELAY_10MS) {
-			m_timer_state = TIM_SEQ_DELAY;
-			APP_ERROR_CHECK(app_timer_start(m_sequence_timer, RESET_DELAY_TICKS, NULL));
-		} else if(m_seq_ptr->config & WAIT_BUSY) {
-			m_timer_state = TIM_WAIT_BUSY;
-			APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
-		} else if(m_seq_ptr->config & SEND_FRAMEBUF) {
-			if(m_framebuf_sent) {
-				// returning from the framebuffer transmission
-				m_framebuf_sent = false;
+	const epd_ctrl_entry_t *cur_command = m_seq_ptr;
+	m_seq_ptr++;
 
-				// continue with the sequence
-				m_seq_ptr++;
-				APP_ERROR_CHECK(send_control());
-				return;
-			} else {
-				// the framebuffer shall be sent now
-				m_framebuf_sent = true;
+	NRF_LOG_INFO("epd: SPIM transfer finished.");
 
-				// send the complete framebuffer as data
-				nrf_gpio_pin_clear(PIN_EPD_DC);
-
-				nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
-						m_frame_buffer, sizeof(m_frame_buffer));
-						
-
-				APP_ERROR_CHECK(nrfx_spim_xfer(&m_spim, &xfer_desc, 0));
-			}
-		}
-
-		m_seq_ptr++;
+	// check special post-processing flags
+	if(cur_command->config & DELAY_10MS) {
+		NRF_LOG_INFO("epd: starting delay.");
+		m_timer_state = TIM_SEQ_DELAY;
+		APP_ERROR_CHECK(app_timer_start(m_sequence_timer, RESET_DELAY_TICKS, NULL));
+	} else if(cur_command->config & WAIT_BUSY) {
+		NRF_LOG_INFO("epd: starting wait for BUSY.");
+		m_timer_state = TIM_WAIT_BUSY;
+		APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
 	} else {
-		// no special processing necessary => directly continue with the next command
-		m_seq_ptr++;
-		APP_ERROR_CHECK(send_control());
+		NRF_LOG_INFO("epd: directly starting next transfer.");
+		// directly execute the next command
+
+		// note: direct start seems to be too fast, so we add 10 ms delay before sending the next command
+		m_timer_state = TIM_SEQ_DELAY;
+		APP_ERROR_CHECK(app_timer_start(m_sequence_timer, APP_TIMER_TICKS(10), NULL));
+		//send_command();
 	}
+
 }
 
 
@@ -180,6 +171,8 @@ static void cb_sequence_timer(void *p_context)
 	switch(m_timer_state)
 	{
 		case TIM_RESET:
+			NRF_LOG_INFO("epd: reset finished.");
+
 			// reset has been asserted before this timer interval
 			nrf_gpio_cfg_input(PIN_EPD_RST, NRF_GPIO_PIN_PULLUP); // clear the reset
 
@@ -189,17 +182,20 @@ static void cb_sequence_timer(void *p_context)
 			break;
 
 		case TIM_SEQ_DELAY:
-			// a delay in the sequence has finished => send the next control byte
-			APP_ERROR_CHECK(send_control());
+			// a delay in the sequence has finished => send the next command
+			NRF_LOG_INFO("epd: delay timer finished.");
+			APP_ERROR_CHECK(send_command());
 			break;
 
 		case TIM_WAIT_BUSY:
 			if(nrf_gpio_pin_read(PIN_EPD_BUSY)) {
 				// still busy, restart the timer
+				NRF_LOG_INFO("epd: still busy, retrying.");
 				APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
 			} else {
-				// not busy anymore => send the next control byte
-				APP_ERROR_CHECK(send_control());
+				// not busy anymore => send the next command
+				NRF_LOG_INFO("epd: busy flag released.");
+				APP_ERROR_CHECK(send_command());
 			}
 			break;
 	}
@@ -211,20 +207,24 @@ ret_code_t epaper_init(void)
 	// initialize the GPIOs.
 	nrf_gpio_cfg_input(PIN_EPD_RST, NRF_GPIO_PIN_PULLUP);
 
-	nrf_gpio_pin_clear(PIN_EPD_DC);
-	nrf_gpio_cfg_output(PIN_EPD_DC);
-
 	nrf_gpio_cfg_input(PIN_EPD_BUSY, NRF_GPIO_PIN_NOPULL);
+
+	//nrf_gpio_pin_set(PIN_EPD_BL);
+	//nrf_gpio_cfg_output(PIN_EPD_BL);
 
 	// SPI will be initialized on demand. To prevent spurious driver
 	// activation, apply a pullup on the CS pin.
 	nrf_gpio_cfg_input(PIN_EPD_CS, NRF_GPIO_PIN_PULLUP);
 
+	m_frame_command[0] = 0x24; // write B/W RAM command
+
 	// FIXME: remove this.
 	// Initial framebuffer pattern for testing.
-	for(size_t i = 0; i < sizeof(m_frame_buffer); i++) {
+	for(size_t i = 0; i < 200*200/8; i++) {
 		m_frame_buffer[i] = i % (200 / 8);
 	}
+
+	NRF_LOG_INFO("epd: init.");
 
 	return app_timer_create(&m_sequence_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_sequence_timer);
 }
@@ -242,6 +242,7 @@ ret_code_t epaper_update(void)
 	spi_config.miso_pin       = PIN_EPD_MISO;
 	spi_config.mosi_pin       = PIN_EPD_MOSI;
 	spi_config.sck_pin        = PIN_EPD_SCK;
+	spi_config.dcx_pin        = PIN_EPD_DC;
 
 	VERIFY_SUCCESS(nrfx_spim_init(&m_spim, &spi_config, cb_spim, NULL));
 
@@ -252,6 +253,8 @@ ret_code_t epaper_update(void)
 	// assert the hardware reset
 	nrf_gpio_pin_clear(PIN_EPD_RST);
 	nrf_gpio_cfg_output(PIN_EPD_RST);
+
+	NRF_LOG_INFO("epd: starting update sequence.");
 
 	m_timer_state = TIM_RESET;
 	VERIFY_SUCCESS(app_timer_start(m_sequence_timer, RESET_ASSERT_TICKS, NULL));
