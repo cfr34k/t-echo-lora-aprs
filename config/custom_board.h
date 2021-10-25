@@ -15,7 +15,7 @@ extern "C" {
 #define LED_3          NRF_GPIO_PIN_MAP(0,14)
 
 #define LED_START      LED_1
-#define LED_STOP       LED_4
+#define LED_STOP       LED_3
 
 #define LEDS_ACTIVE_STATE 0
 
@@ -27,10 +27,10 @@ extern "C" {
 #define BSP_LED_1      LED_2
 #define BSP_LED_2      LED_3
 
-#define BUTTONS_NUMBER 2
+#define BUTTONS_NUMBER 1
 
 #define BUTTON_1       (32+10)
-#define BUTTON_2       (11)
+//#define BUTTON_2       (11)
 #define BUTTON_PULL    NRF_GPIO_PIN_NOPULL
 
 #define BUTTONS_ACTIVE_STATE 0
