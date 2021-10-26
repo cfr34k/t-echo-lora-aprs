@@ -725,6 +725,19 @@ static void advertising_start(bool erase_bonds)
 }
 
 
+/**@brief Initialize GPIOs not controlled by any module, but used by the bootloader.
+ */
+static void gpio_init(void)
+{
+    nrf_gpio_cfg_default(PIN_LED_RED);
+    nrf_gpio_cfg_default(PIN_LED_GREEN);
+    nrf_gpio_cfg_default(PIN_LED_BLUE);
+    nrf_gpio_cfg_default(PIN_BUTTON_1);
+    //nrf_gpio_cfg_default(PIN_BUTTON_2); // not sure about this, because it is the reset pin
+    nrf_gpio_cfg_default(PIN_BUTTON_3);
+}
+
+
 /**@brief Function for application main entry.
  */
 int main(void)
@@ -733,6 +746,7 @@ int main(void)
 
     // Initialize.
     log_init();
+    gpio_init();
     timers_init();
     buttons_leds_init(&erase_bonds);
     power_management_init();

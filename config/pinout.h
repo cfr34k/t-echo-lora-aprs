@@ -15,4 +15,12 @@
 // peripheral power enable. Must be set to enable LoRa, GPS, LEDs and Flash
 #define PIN_PWR_EN     NRF_GPIO_PIN_MAP(0, 12)
 
+#define PIN_LED_RED    NRF_GPIO_PIN_MAP(1,  3)
+#define PIN_LED_GREEN  NRF_GPIO_PIN_MAP(1,  1)
+#define PIN_LED_BLUE   NRF_GPIO_PIN_MAP(0, 14)
+
+#define PIN_BUTTON_1   NRF_GPIO_PIN_MAP(1, 10)
+#define PIN_BUTTON_2   NRF_GPIO_PIN_MAP(0, 18)   // beware: this is the reset pin!
+#define PIN_BUTTON_3   NRF_GPIO_PIN_MAP(0, 11)   // touch button
+
 #endif // PINOUT_H
