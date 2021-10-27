@@ -55,11 +55,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ble_types.h"
 #include "nordic_common.h"
 #include "nrf.h"
 #include "app_error.h"
 #include "ble.h"
 #include "ble_hci.h"
+#include "ble_bas.h"
 #include "ble_srv_common.h"
 #include "ble_advdata.h"
 #include "ble_advertising.h"
@@ -85,6 +87,7 @@
 
 #include "pinout.h"
 #include "epaper.h"
+#include "voltage_monitor.h"
 
 
 #define DEVICE_NAME                     "T-Echo"                                /**< Name of device. Will be included in the advertising data. */
@@ -115,6 +118,9 @@
 
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
+#define VOLTAGE_MONITOR_INTERVAL_IDLE        3600   // seconds
+#define VOLTAGE_MONITOR_INTERVAL_CONNECTED     60   // seconds
+
 
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
@@ -122,9 +128,7 @@ BLE_ADVERTISING_DEF(m_advertising);                                             
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
-/* YOUR_JOB: Declare all services structure your application is using
- *  BLE_XYZ_DEF(m_xyz);
- */
+BLE_BAS_DEF(m_ble_bas); // battery service
 
 // YOUR_JOB: Use UUIDs for service(s) used in your application.
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
@@ -314,6 +318,22 @@ static void services_init(void)
        err_code = ble_yy_service_init(&yys_init, &yy_init);
        APP_ERROR_CHECK(err_code);
      */
+
+    ble_bas_init_t bas_init;
+
+    memset(&bas_init, 0, sizeof(bas_init));
+
+    bas_init.evt_handler          = NULL;
+    bas_init.support_notification = true;
+    bas_init.p_report_ref         = NULL;
+    bas_init.initial_batt_level   = 0;
+
+    bas_init.bl_rd_sec            = SEC_OPEN;
+    bas_init.bl_cccd_wr_sec       = SEC_OPEN;
+    bas_init.bl_report_rd_sec     = SEC_OPEN;
+
+    err_code = ble_bas_init(&m_ble_bas, &bas_init);
+    APP_ERROR_CHECK(err_code);
 }
 
 
@@ -467,6 +487,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         case BLE_GAP_EVT_DISCONNECTED:
             NRF_LOG_INFO("Disconnected.");
             // LED indication will be changed when advertising starts.
+
+            voltage_monitor_stop();
+            voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
             break;
 
         case BLE_GAP_EVT_CONNECTED:
@@ -476,6 +499,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
             err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
             APP_ERROR_CHECK(err_code);
+
+            voltage_monitor_stop();
+            voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_CONNECTED);
             break;
 
         case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -508,6 +534,31 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
         default:
             // No implementation needed.
+            break;
+    }
+}
+
+
+/**@brief Callback function for the voltage monitor. */
+static void cb_voltage_monitor(int16_t *meas_millivolt, uint8_t bat_percent)
+{
+    ret_code_t err_code;
+
+    NRF_LOG_INFO("VBAT measured: %d mV (-> %d %%)", meas_millivolt[0], bat_percent);
+
+    err_code = ble_bas_battery_level_update(&m_ble_bas, bat_percent, BLE_CONN_HANDLE_ALL);
+
+    switch(err_code)
+    {
+        case NRF_ERROR_INVALID_STATE:
+        case NRF_ERROR_RESOURCES:
+        case NRF_ERROR_BUSY:
+        case BLE_ERROR_GATTS_SYS_ATTR_MISSING:
+            /* these may happen during normal operation */
+            break;
+
+        default:
+            APP_ERROR_CHECK(err_code);
             break;
     }
 }
@@ -761,13 +812,17 @@ int main(void)
     periph_pwr_on();
 
     epaper_init();
-    epaper_update();
+
+    voltage_monitor_init(cb_voltage_monitor);
 
     // Start execution.
     NRF_LOG_INFO("Template example started.");
     application_timers_start();
 
     advertising_start(erase_bonds);
+
+    voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
+    epaper_update();
 
     // Enter main loop.
     for (;;)

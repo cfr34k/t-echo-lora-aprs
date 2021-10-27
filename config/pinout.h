@@ -23,4 +23,6 @@
 #define PIN_BUTTON_2   NRF_GPIO_PIN_MAP(0, 18)   // beware: this is the reset pin!
 #define PIN_BUTTON_3   NRF_GPIO_PIN_MAP(0, 11)   // touch button
 
+#define SAADC_INPUT_VBAT  NRF_SAADC_INPUT_AIN2
+
 #endif // PINOUT_H
