@@ -822,6 +822,21 @@ int main(void)
 	advertising_start(erase_bonds);
 
 	voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
+
+	// test drawing on the epaper display
+	epaper_fb_clear(EPAPER_COLOR_WHITE);
+
+	// some fun
+	epaper_fb_move_to( 50, 160);
+	epaper_fb_line_to(150, 160, EPAPER_COLOR_BLACK); // Das
+	epaper_fb_line_to(150,  90, EPAPER_COLOR_BLACK); // ist
+	epaper_fb_line_to( 50, 160, EPAPER_COLOR_BLACK); // das
+	epaper_fb_line_to( 50,  90, EPAPER_COLOR_BLACK); // Haus
+	epaper_fb_line_to(150,  90, EPAPER_COLOR_BLACK); // vom
+	epaper_fb_line_to(100,  40, EPAPER_COLOR_BLACK); // Ni-
+	epaper_fb_line_to( 50,  90, EPAPER_COLOR_BLACK); // ko-
+	epaper_fb_line_to(150, 160, EPAPER_COLOR_BLACK); // laus
+
 	epaper_update();
 
 	// Enter main loop.

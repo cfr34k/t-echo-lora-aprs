@@ -3,6 +3,7 @@
 // Controller: SSD1681
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <nrfx_spim.h>
@@ -39,8 +40,8 @@ const epd_ctrl_entry_t FULL_UPDATE_SEQUENCE[] = {
 
 	// set RAM area for 200x200 px at offset (0,0)
 	{LEN(2),              {0x11, 0x03}}, // Set RAM entry mode: x and y increment, update x after RAM data write
-	{LEN(3),              {0x44, 0 / 8, (0 + 200 - 1) / 8}}, // Set RAM x address, start and end
-	{LEN(5),              {0x45, 0 % 256, 0 / 256, (0 + 200 - 1) % 256, (0 + 200 - 1) / 256}}, // Set RAM y address, start and end
+	{LEN(3),              {0x44, 0 / 8, (0 + EPAPER_HEIGHT - 1) / 8}}, // Set RAM x address, start and end
+	{LEN(5),              {0x45, 0 % 256, 0 / 256, (0 + EPAPER_WIDTH - 1) % 256, (0 + EPAPER_WIDTH - 1) / 256}}, // Set RAM y address, start and end
 	{LEN(2),              {0x4e, 0 / 8}}, // Set RAM x address counter initial value
 	{LEN(3),              {0x4f, 0 % 256, 0 / 256}}, // Set RAM y address counter initial value
 
@@ -65,6 +66,13 @@ const epd_ctrl_entry_t FULL_UPDATE_SEQUENCE[] = {
 };
 
 
+typedef struct
+{
+	uint8_t x;
+	uint8_t y;
+} point_t;
+
+
 typedef enum
 {
 	TIM_RESET,
@@ -73,10 +81,12 @@ typedef enum
 } timer_state_t;
 
 
-
 static nrfx_spim_t m_spim = NRFX_SPIM_INSTANCE(3);
 
-static uint8_t  m_frame_command[200*200/8 + 1];
+#define FRAMEBUFFER_SIZE_BITS   (EPAPER_WIDTH * EPAPER_HEIGHT)
+#define FRAMEBUFFER_SIZE_BYTES  (FRAMEBUFFER_SIZE_BITS / 8)
+
+static uint8_t  m_frame_command[FRAMEBUFFER_SIZE_BYTES + 1];
 static uint8_t *m_frame_buffer = m_frame_command+1;
 
 static const epd_ctrl_entry_t *m_seq_ptr;
@@ -90,6 +100,8 @@ static timer_state_t m_timer_state;
 #define BUSY_CHECK_TICKS    APP_TIMER_TICKS(20)  // time between polls of the BUSY signal
 
 static bool m_busy;
+
+static point_t m_cursor;
 
 
 static ret_code_t send_command(void)
@@ -218,11 +230,8 @@ ret_code_t epaper_init(void)
 
 	m_frame_command[0] = 0x24; // write B/W RAM command
 
-	// FIXME: remove this.
-	// Initial framebuffer pattern for testing.
-	for(size_t i = 0; i < 200*200/8; i++) {
-		m_frame_buffer[i] = i % (200 / 8);
-	}
+	epaper_fb_clear(EPAPER_COLOR_WHITE);
+	m_cursor.x = m_cursor.y = 0;
 
 	NRF_LOG_INFO("epd: init.");
 
@@ -263,4 +272,96 @@ ret_code_t epaper_update(void)
 	m_busy = true;
 
 	return NRF_SUCCESS;
+}
+
+
+void epaper_fb_clear(uint8_t color)
+{
+	if(color) {
+		memset(m_frame_buffer, 0xFF, FRAMEBUFFER_SIZE_BYTES);
+	} else {
+		memset(m_frame_buffer, 0x00, FRAMEBUFFER_SIZE_BYTES);
+	}
+}
+
+
+void epaper_fb_set_pixel(uint8_t x, uint8_t y, uint8_t color)
+{
+	// adressing scheme is: first down (LSB first) then right.
+	uint32_t bitidx = x * EPAPER_HEIGHT + y;
+
+	if(color) {
+		m_frame_buffer[bitidx / 8] |= (1 << (7 - bitidx % 8));
+	} else {
+		m_frame_buffer[bitidx / 8] &= ~(1 << (7 - bitidx % 8));
+	}
+}
+
+
+void epaper_fb_move_to(uint8_t x, uint8_t y)
+{
+	m_cursor.x = x;
+	m_cursor.y = y;
+}
+
+
+/* Line-drawing using the Bresenham algorithm. */
+void epaper_fb_line_to(uint8_t xe, uint8_t ye, uint8_t color)
+{
+	bool flip_xy = false; // mirror on the 45°-axis
+	bool neg_x = false; // line moves leftwards (to smaller x)
+	bool neg_y = false; // line moves upwards (to smaller y)
+
+	uint8_t xa = m_cursor.x;
+	uint8_t ya = m_cursor.y;
+
+	uint8_t x = 0;
+	uint8_t y = 0;
+
+	int16_t dx = (int16_t)xe - (int16_t)xa;
+	int16_t dy = (int16_t)ye - (int16_t)ya;
+
+	if(abs(dy) > abs(dx)) {
+		dx = (int16_t)ye - (int16_t)ya;
+		dy = (int16_t)xe - (int16_t)xa;
+		flip_xy = true;
+	}
+
+	if(dx < 0) {
+		neg_x = true;
+		dx = -dx;
+	}
+
+	if(dy < 0) {
+		neg_y = true;
+		dy = -dy;
+	}
+
+	int16_t d    = 2*dy - dx;
+
+	int16_t d_o  = 2*dy;
+	int16_t d_no = 2*(dy - dx);
+
+	while(x <= dx) {
+		int16_t tx = neg_x ? -x : x;
+		int16_t ty = neg_y ? -y : y;
+
+		if(flip_xy) {
+			epaper_fb_set_pixel(xa + ty, ya + tx, color);
+		} else {
+			epaper_fb_set_pixel(xa + tx, ya + ty, color);
+		}
+
+		x++;
+
+		if(d <= 0) {
+			d += d_o;
+		} else {
+			d += d_no;
+			y++;
+		}
+	}
+
+	m_cursor.x = xe;
+	m_cursor.y = ye;
 }
