@@ -13,6 +13,7 @@
 #include <nrf_log.h>
 
 #include "pinout.h"
+#include "periph_pwr.h"
 
 #include "epaper.h"
 
@@ -129,6 +130,8 @@ static ret_code_t send_command(void)
 		// current (~10 mA) flows through the protection diodes of the display once
 		// the supply voltage is switched off.
 		reset_gpios();
+
+		periph_pwr_stop_activity(PERIPH_PWR_FLAG_EPAPER_UPDATE);
 
 		m_busy = false;
 
@@ -260,6 +263,8 @@ ret_code_t epaper_update(void)
 	if(m_busy) {
 		return NRF_ERROR_BUSY;
 	}
+
+	periph_pwr_start_activity(PERIPH_PWR_FLAG_EPAPER_UPDATE);
 
 	nrfx_spim_config_t spi_config = NRFX_SPIM_DEFAULT_CONFIG;
 	spi_config.frequency      = NRF_SPIM_FREQ_8M;

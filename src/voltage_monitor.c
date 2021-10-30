@@ -6,6 +6,8 @@
 
 #include "sdk_macros.h"
 
+#include "periph_pwr.h"
+
 #include "voltage_monitor.h"
 
 #define REFRESH_TIMER_INTERVAL_SEC  60
@@ -132,6 +134,9 @@ static void cb_saadc_handler(nrfx_saadc_evt_t const *p_evt)
 			// uninitialize the SAADC to save power
 			nrfx_saadc_uninit();
 
+			// shut down the external voltage switch
+			periph_pwr_stop_activity(PERIPH_PWR_FLAG_VOLTAGE_MEASUREMENT);
+
 			// convert measured values to millivolt
 			meas_millivolt[VOLTAGE_MONITOR_VBAT_RESULT_INDEX] =
 				m_adc_result[VOLTAGE_MONITOR_VBAT_RESULT_INDEX]
@@ -211,6 +216,8 @@ static ret_code_t start_sampling(void)
 	{ // sampling was already started
 		return NRF_SUCCESS;
 	}
+
+	periph_pwr_start_activity(PERIPH_PWR_FLAG_VOLTAGE_MEASUREMENT);
 
 	m_voltage_monitor_active = true;
 
