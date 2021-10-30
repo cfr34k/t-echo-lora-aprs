@@ -15,6 +15,9 @@
 // peripheral power enable. Must be set to enable LoRa, GPS, LEDs and Flash
 #define PIN_PWR_EN     NRF_GPIO_PIN_MAP(0, 12)
 
+// enable pin of the 3.3V regulator.
+#define PIN_REG_EN     NRF_GPIO_PIN_MAP(0, 13)
+
 #define PIN_LED_RED    NRF_GPIO_PIN_MAP(1,  3)
 #define PIN_LED_GREEN  NRF_GPIO_PIN_MAP(1,  1)
 #define PIN_LED_BLUE   NRF_GPIO_PIN_MAP(0, 14)

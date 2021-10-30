@@ -409,6 +409,8 @@ static void application_timers_start(void)
 static void periph_pwr_off(void)
 {
 	nrf_gpio_cfg_default(PIN_PWR_EN);
+
+	nrf_gpio_pin_clear(PIN_REG_EN);
 }
 
 
@@ -418,6 +420,8 @@ static void periph_pwr_on(void)
 {
 	nrf_gpio_pin_set(PIN_PWR_EN);
 	nrf_gpio_cfg_output(PIN_PWR_EN);
+
+	nrf_gpio_pin_set(PIN_REG_EN);
 }
 
 
@@ -459,6 +463,7 @@ static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
 	{
 		case BLE_ADV_EVT_FAST:
 			NRF_LOG_INFO("Fast advertising.");
+			periph_pwr_on();
 			err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
 			APP_ERROR_CHECK(err_code);
 			break;
@@ -499,6 +504,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 			m_conn_handle = p_ble_evt->evt.gap_evt.conn_handle;
 			err_code = nrf_ble_qwr_conn_handle_assign(&m_qwr, m_conn_handle);
 			APP_ERROR_CHECK(err_code);
+
+			// enable external peripherals
+			periph_pwr_on();
 
 			voltage_monitor_stop();
 			voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_CONNECTED);
@@ -786,6 +794,10 @@ static void gpio_init(void)
 	nrf_gpio_cfg_default(PIN_BUTTON_1);
 	//nrf_gpio_cfg_default(PIN_BUTTON_2); // not sure about this, because it is the reset pin
 	nrf_gpio_cfg_default(PIN_BUTTON_3);
+
+	// enable the 3.3V regulator
+	nrf_gpio_pin_set(PIN_REG_EN);
+	nrf_gpio_cfg_output(PIN_REG_EN);
 }
 
 
@@ -809,11 +821,11 @@ int main(void)
 	conn_params_init();
 	peer_manager_init();
 
-	periph_pwr_on();
-
 	epaper_init();
 
 	voltage_monitor_init(cb_voltage_monitor);
+
+	periph_pwr_on();
 
 	// Start execution.
 	NRF_LOG_INFO("Template example started.");
