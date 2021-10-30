@@ -104,6 +104,16 @@ static bool m_busy;
 static point_t m_cursor;
 
 
+static void reset_gpios()
+{
+	nrf_gpio_cfg_default(PIN_EPD_CS);
+	nrf_gpio_cfg_default(PIN_EPD_MISO);
+	nrf_gpio_cfg_default(PIN_EPD_MOSI);
+	nrf_gpio_cfg_default(PIN_EPD_SCK);
+	nrf_gpio_cfg_default(PIN_EPD_DC);
+}
+
+
 static ret_code_t send_command(void)
 {
 	// EasyDMA transfer buffer must reside in RAM, so we copy the constant
@@ -114,6 +124,12 @@ static ret_code_t send_command(void)
 		NRF_LOG_INFO("epd: end of sequence.");
 
 		nrfx_spim_uninit(&m_spim); // to save power
+
+		// reset all SPI I/Os to the default state (input). Otherwise a lot of
+		// current (~10 mA) flows through the protection diodes of the display once
+		// the supply voltage is switched off.
+		reset_gpios();
+
 		m_busy = false;
 
 		return NRF_SUCCESS;
