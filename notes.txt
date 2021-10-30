@@ -1,0 +1,19 @@
+Stromversorgung:
+
+VBAT
+|
++---> „5V“ ---> NRF52840 (VDDH)
+|
++---> 3.3V-Regler
+      |
+      +---> LoRa-Modul
+      |
+      +---> MOSFET 1 (PWR_ON) ---> VDD_POWR
+      |                            |
+      |                            +---> eInk
+      |                            +---> GPS
+      |                            +---> Flash
+      |                            +---> LEDs
+      |                            +---> BME280
+      |
+      +---> MOSFET 2 ---> Batterie-ADC
