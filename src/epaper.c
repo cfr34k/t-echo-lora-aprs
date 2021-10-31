@@ -77,6 +77,7 @@ typedef struct
 
 typedef enum
 {
+	TIM_STARTUP,
 	TIM_RESET,
 	TIM_SEQ_DELAY,
 	TIM_WAIT_BUSY,
@@ -97,9 +98,12 @@ static const epd_ctrl_entry_t *m_seq_end; // points to the first location beyond
 APP_TIMER_DEF(m_sequence_timer);
 static timer_state_t m_timer_state;
 
-#define RESET_ASSERT_TICKS  APP_TIMER_TICKS(1)   // time that the reset is low
+#define STARTUP_TICKS       APP_TIMER_TICKS(10)  // time to wait after applying power
+#define RESET_ASSERT_TICKS  APP_TIMER_TICKS(20)  // time that the reset is low
 #define RESET_DELAY_TICKS   APP_TIMER_TICKS(10)  // time to wait after reset is released
 #define BUSY_CHECK_TICKS    APP_TIMER_TICKS(20)  // time between polls of the BUSY signal
+
+static uint16_t m_busy_check_counter = 0;
 
 static bool m_busy;
 static bool m_shutdown_needed;
@@ -185,9 +189,7 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 		// directly execute the next command
 
 		// note: direct start seems to be too fast, so we add 10 ms delay before sending the next command
-		m_timer_state = TIM_SEQ_DELAY;
-		APP_ERROR_CHECK(app_timer_start(m_sequence_timer, APP_TIMER_TICKS(10), NULL));
-		//send_command();
+		send_command();
 	}
 
 }
@@ -197,10 +199,23 @@ static void cb_sequence_timer(void *p_context)
 {
 	switch(m_timer_state)
 	{
+		case TIM_STARTUP:
+			NRF_LOG_INFO("epd: startup finished.");
+
+			// assert the hardware reset
+			nrf_gpio_pin_clear(PIN_EPD_RST);
+			nrf_gpio_cfg_output(PIN_EPD_RST);
+
+			// hold the reset for some time
+			m_timer_state = TIM_RESET;
+			APP_ERROR_CHECK(app_timer_start(m_sequence_timer, RESET_ASSERT_TICKS, NULL));
+			break;
+
 		case TIM_RESET:
 			NRF_LOG_INFO("epd: reset finished.");
 
 			// reset has been asserted before this timer interval
+			nrf_gpio_pin_set(PIN_EPD_RST);
 			nrf_gpio_cfg_input(PIN_EPD_RST, NRF_GPIO_PIN_PULLUP); // clear the reset
 
 			// wait a bit and start the sequence then
@@ -217,10 +232,12 @@ static void cb_sequence_timer(void *p_context)
 		case TIM_WAIT_BUSY:
 			if(nrf_gpio_pin_read(PIN_EPD_BUSY)) {
 				// still busy, restart the timer
+				m_busy_check_counter++;
 				APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
 			} else {
 				// not busy anymore => send the next command
-				NRF_LOG_INFO("epd: busy flag released.");
+				NRF_LOG_INFO("epd: busy flag released after %d polls.", m_busy_check_counter);
+				m_busy_check_counter = 0;
 				APP_ERROR_CHECK(send_command());
 			}
 			break;
@@ -269,6 +286,7 @@ ret_code_t epaper_update(void)
 	spi_config.mosi_pin       = PIN_EPD_MOSI;
 	spi_config.sck_pin        = PIN_EPD_SCK;
 	spi_config.dcx_pin        = PIN_EPD_DC;
+	spi_config.use_hw_ss      = true;
 
 	VERIFY_SUCCESS(nrfx_spim_init(&m_spim, &spi_config, cb_spim, NULL));
 
@@ -276,19 +294,24 @@ ret_code_t epaper_update(void)
 	m_seq_ptr = FULL_UPDATE_SEQUENCE;
 	m_seq_end = FULL_UPDATE_SEQUENCE + (sizeof(FULL_UPDATE_SEQUENCE) / sizeof(FULL_UPDATE_SEQUENCE[0]));
 
-	// assert the hardware reset
-	nrf_gpio_pin_clear(PIN_EPD_RST);
-	nrf_gpio_cfg_output(PIN_EPD_RST);
+	nrf_gpio_cfg_input(PIN_EPD_RST, NRF_GPIO_PIN_PULLUP);
 
 	NRF_LOG_INFO("epd: starting update sequence.");
 
-	m_timer_state = TIM_RESET;
-	VERIFY_SUCCESS(app_timer_start(m_sequence_timer, RESET_ASSERT_TICKS, NULL));
+	m_timer_state = TIM_STARTUP;
+	VERIFY_SUCCESS(app_timer_start(m_sequence_timer, STARTUP_TICKS, NULL));
 
 	// the rest will happen asynchronously. See cb_sequence_timer() and cb_spim().
 	m_busy = true;
+	m_shutdown_needed = false;
 
 	return NRF_SUCCESS;
+}
+
+
+bool epaper_is_busy(void)
+{
+	return m_busy;
 }
 
 

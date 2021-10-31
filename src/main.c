@@ -134,6 +134,11 @@ BLE_ADVERTISING_DEF(m_advertising);                                             
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
+static bool m_epaper_update_requested = false;                                  /**< If set to true, the e-paper display will be redrawn ASAP from the main loop. */
+
+static uint8_t  m_bat_percent;
+static uint16_t m_bat_millivolt;
+
 BLE_BAS_DEF(m_ble_bas); // battery service
 
 // YOUR_JOB: Use UUIDs for service(s) used in your application.
@@ -547,6 +552,11 @@ static void cb_voltage_monitor(int16_t *meas_millivolt, uint8_t bat_percent)
 {
 	ret_code_t err_code;
 
+	m_bat_percent = bat_percent;
+	m_bat_millivolt = meas_millivolt[0];
+
+	m_epaper_update_requested = true;
+
 	NRF_LOG_INFO("VBAT measured: %d mV (-> %d %%)", meas_millivolt[0], bat_percent);
 
 	err_code = ble_bas_battery_level_update(&m_ble_bas, bat_percent, BLE_CONN_HANDLE_ALL);
@@ -796,6 +806,27 @@ static void gpio_init(void)
 }
 
 
+/**@brief Redraw the e-Paper display.
+ */
+static void redraw_display(void)
+{
+	char s[32];
+
+	epaper_fb_clear(EPAPER_COLOR_WHITE);
+
+	epaper_fb_move_to(0, 10);
+
+	snprintf(s, sizeof(s), "BAT: %d.%02d V / %d %%",
+			m_bat_millivolt / 1000,
+			(m_bat_millivolt / 10) % 100,
+			m_bat_percent);
+
+	epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+	epaper_update();
+}
+
+
 /**@brief Function for application main entry.
 */
 int main(void)
@@ -859,6 +890,11 @@ int main(void)
 	// Enter main loop.
 	for (;;)
 	{
+		if(m_epaper_update_requested && !epaper_is_busy()) {
+			m_epaper_update_requested = false;
+			redraw_display();
+		}
+
 		epaper_loop();
 		idle_state_handle();
 	}

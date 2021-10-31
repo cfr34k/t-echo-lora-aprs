@@ -3,6 +3,8 @@
 
 #include <sdk_errors.h>
 
+#include <stdbool.h>
+
 #define EPAPER_COLOR_WHITE    0x01
 #define EPAPER_COLOR_BLACK    0x00
 
@@ -54,6 +56,12 @@ ret_code_t epaper_init(void);
  * @returns    A result code from starting the sequence.
  */
 ret_code_t epaper_update(void);
+
+/**@brief Get the busy status of the driver.
+ *
+ * @returns   True if the driver is currently busy, false if an update can be started immediately.
+ */
+bool epaper_is_busy(void);
 
 /**@brief Main loop function.
  * @details
