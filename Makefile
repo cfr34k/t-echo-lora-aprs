@@ -61,6 +61,7 @@ SRC_FILES += \
   $(PROJ_DIR)/src/epaper.c \
   $(PROJ_DIR)/src/voltage_monitor.c \
   $(PROJ_DIR)/src/periph_pwr.c \
+  $(PROJ_DIR)/src/fasttrigon.c \
   $(PROJ_DIR)/src/main.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \

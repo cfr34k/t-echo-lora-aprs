@@ -14,6 +14,7 @@
 
 #include "pinout.h"
 #include "periph_pwr.h"
+#include "fasttrigon.h"
 
 #include "epaper.h"
 
@@ -103,6 +104,7 @@ static timer_state_t m_timer_state;
 static bool m_busy;
 
 static point_t m_cursor;
+static const GFXfont *m_font;
 
 
 static void reset_gpios()
@@ -250,7 +252,9 @@ ret_code_t epaper_init(void)
 	m_frame_command[0] = 0x24; // write B/W RAM command
 
 	epaper_fb_clear(EPAPER_COLOR_WHITE);
+
 	m_cursor.x = m_cursor.y = 0;
+	m_font = NULL;
 
 	NRF_LOG_INFO("epd: init.");
 
@@ -308,8 +312,12 @@ void epaper_fb_clear(uint8_t color)
 
 void epaper_fb_set_pixel(uint8_t x, uint8_t y, uint8_t color)
 {
-	// adressing scheme is: first down (LSB first) then right.
-	uint32_t bitidx = x * EPAPER_HEIGHT + y;
+	if(x >= EPAPER_WIDTH || y >= EPAPER_HEIGHT) {
+		return;
+	}
+
+	// adressing scheme is: first down (LSB first) then left.
+	uint32_t bitidx = (EPAPER_WIDTH - x - 1) * EPAPER_HEIGHT + y;
 
 	if(color) {
 		m_frame_buffer[bitidx / 8] |= (1 << (7 - bitidx % 8));
@@ -385,4 +393,89 @@ void epaper_fb_line_to(uint8_t xe, uint8_t ye, uint8_t color)
 
 	m_cursor.x = xe;
 	m_cursor.y = ye;
+}
+
+void epaper_fb_circle(uint8_t radius, uint8_t color)
+{
+	point_t m_center = m_cursor;
+
+	uint32_t npoints = 3UL * radius;
+
+	epaper_fb_move_to(m_center.x + radius, m_center.y);
+
+	for(uint32_t i = 0; i < npoints; i++) {
+		int32_t delta_x = radius * fasttrigon_cos(i * FASTTRIGON_LUT_SIZE / npoints) / FASTTRIGON_SCALE;
+		int32_t delta_y = radius * fasttrigon_sin(i * FASTTRIGON_LUT_SIZE / npoints) / FASTTRIGON_SCALE;
+
+		epaper_fb_line_to((int32_t)m_center.x + delta_x, (int32_t)m_center.y + delta_y, color);
+	}
+
+	m_cursor = m_center;
+}
+
+/* Font-drawing functions: These support drawing text from Adafruit GFX fonts.
+ * Use the 'fontconvert' utility from Adafruit GFX to generate fonts:
+ * https://github.com/adafruit/Adafruit-GFX-Library/tree/master/fontconvert
+ */
+
+void epaper_fb_set_font(const GFXfont *font)
+{
+	m_font = font;
+}
+
+ret_code_t epaper_fb_draw_char(uint8_t c, uint8_t color)
+{
+	if(!m_font) {
+		return NRF_ERROR_INVALID_STATE;
+	}
+
+	if(c < m_font->first || c > m_font->last) {
+		return NRF_ERROR_INVALID_PARAM;
+	}
+
+	GFXglyph *glyph = &m_font->glyph[c - m_font->first];
+	uint8_t  *bitmap = m_font->bitmap + glyph->bitmapOffset;
+
+	uint32_t bitidx = 0;
+	uint8_t current_byte = 0;
+
+	for(uint32_t y = 0; y < glyph->height; y++) {
+		for(uint32_t x = 0; x < glyph->width; x++) {
+			if((bitidx & 0x7) == 0) {
+				current_byte = bitmap[bitidx / 8];
+			}
+
+			if(current_byte & 0x80) {
+				epaper_fb_set_pixel(
+						m_cursor.x + glyph->xOffset + x,
+						m_cursor.y + glyph->yOffset + y,
+						color);
+			}
+
+			current_byte <<= 1;
+			bitidx++;
+		}
+	}
+
+	m_cursor.x += glyph->xAdvance;
+
+	return NRF_SUCCESS;
+}
+
+ret_code_t epaper_fb_draw_string(char *s, uint8_t color)
+{
+	while(*s) {
+		ret_code_t err_code = epaper_fb_draw_char((uint8_t)*s, color);
+
+		if(err_code == NRF_ERROR_INVALID_PARAM) {
+			// this character is not in the font, draw replacement character
+			VERIFY_SUCCESS(epaper_fb_draw_char('?', color));
+		} else {
+			VERIFY_SUCCESS(err_code);
+		}
+
+		s++;
+	}
+
+	return NRF_SUCCESS;
 }

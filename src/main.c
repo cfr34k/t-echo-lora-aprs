@@ -90,6 +90,9 @@
 #include "voltage_monitor.h"
 #include "periph_pwr.h"
 
+#define PROGMEM
+#include "fonts/Org_01.h"
+
 
 #define DEVICE_NAME                     "T-Echo"                                /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "HW: Lilygo / FW: cfr34k"               /**< Manufacturer. Will be passed to Device Information Service. */
@@ -832,13 +835,24 @@ int main(void)
 	// some fun
 	epaper_fb_move_to( 50, 160);
 	epaper_fb_line_to(150, 160, EPAPER_COLOR_BLACK); // Das
-	epaper_fb_line_to(150,  90, EPAPER_COLOR_BLACK); // ist
+	epaper_fb_line_to(150,  80, EPAPER_COLOR_BLACK); // ist
 	epaper_fb_line_to( 50, 160, EPAPER_COLOR_BLACK); // das
-	epaper_fb_line_to( 50,  90, EPAPER_COLOR_BLACK); // Haus
-	epaper_fb_line_to(150,  90, EPAPER_COLOR_BLACK); // vom
-	epaper_fb_line_to(100,  40, EPAPER_COLOR_BLACK); // Ni-
-	epaper_fb_line_to( 50,  90, EPAPER_COLOR_BLACK); // ko-
+	epaper_fb_line_to( 50,  80, EPAPER_COLOR_BLACK); // Haus
+	epaper_fb_line_to(150,  80, EPAPER_COLOR_BLACK); // vom
+	epaper_fb_line_to(100,  20, EPAPER_COLOR_BLACK); // Ni-
+	epaper_fb_line_to( 50,  80, EPAPER_COLOR_BLACK); // ko-
 	epaper_fb_line_to(150, 160, EPAPER_COLOR_BLACK); // laus
+
+	epaper_fb_move_to(100, 100);
+	epaper_fb_circle(80, EPAPER_COLOR_BLACK);
+
+	epaper_fb_set_font(&Org_01);
+	epaper_fb_move_to(0, 175);
+	epaper_fb_draw_string("abcdefghijklmnopqrstuvwxyz", EPAPER_COLOR_BLACK);
+	epaper_fb_move_to(0, 185);
+	epaper_fb_draw_string("ABCDEFGHIJKLMNOPQRSTUVWXYZ", EPAPER_COLOR_BLACK);
+	epaper_fb_move_to(0, 195);
+	epaper_fb_draw_string("0123456789#@!$(){}[]|äöü", EPAPER_COLOR_BLACK);
 
 	epaper_update();
 
