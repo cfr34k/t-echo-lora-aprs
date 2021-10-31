@@ -102,6 +102,7 @@ static timer_state_t m_timer_state;
 #define BUSY_CHECK_TICKS    APP_TIMER_TICKS(20)  // time between polls of the BUSY signal
 
 static bool m_busy;
+static bool m_shutdown_needed;
 
 static point_t m_cursor;
 static const GFXfont *m_font;
@@ -114,6 +115,7 @@ static void reset_gpios()
 	nrf_gpio_cfg_default(PIN_EPD_MOSI);
 	nrf_gpio_cfg_default(PIN_EPD_SCK);
 	nrf_gpio_cfg_default(PIN_EPD_DC);
+	nrf_gpio_cfg_default(PIN_EPD_RST);
 }
 
 
@@ -126,16 +128,8 @@ static ret_code_t send_command(void)
 	if(m_seq_ptr == m_seq_end) {
 		NRF_LOG_INFO("epd: end of sequence.");
 
-		nrfx_spim_uninit(&m_spim); // to save power
-
-		// reset all SPI I/Os to the default state (input). Otherwise a lot of
-		// current (~10 mA) flows through the protection diodes of the display once
-		// the supply voltage is switched off.
-		reset_gpios();
-
-		periph_pwr_stop_activity(PERIPH_PWR_FLAG_EPAPER_UPDATE);
-
-		m_busy = false;
+		// actual display shutdown will be done from the main loop
+		m_shutdown_needed = true;
 
 		return NRF_SUCCESS;
 	}
@@ -238,8 +232,7 @@ static void cb_sequence_timer(void *p_context)
 ret_code_t epaper_init(void)
 {
 	// initialize the GPIOs.
-	nrf_gpio_cfg_input(PIN_EPD_RST, NRF_GPIO_PIN_PULLUP);
-
+	nrf_gpio_cfg_default(PIN_EPD_RST);
 	nrf_gpio_cfg_input(PIN_EPD_BUSY, NRF_GPIO_PIN_NOPULL);
 
 	//nrf_gpio_pin_set(PIN_EPD_BL);
@@ -247,7 +240,7 @@ ret_code_t epaper_init(void)
 
 	// SPI will be initialized on demand. To prevent spurious driver
 	// activation, apply a pullup on the CS pin.
-	nrf_gpio_cfg_input(PIN_EPD_CS, NRF_GPIO_PIN_PULLUP);
+	nrf_gpio_cfg_default(PIN_EPD_CS);
 
 	m_frame_command[0] = 0x24; // write B/W RAM command
 
@@ -299,6 +292,26 @@ ret_code_t epaper_update(void)
 	return NRF_SUCCESS;
 }
 
+
+void epaper_loop(void)
+{
+	if(m_shutdown_needed) {
+		nrfx_spim_uninit(&m_spim); // to save power
+
+		// reset all SPI I/Os to the default state (input). Otherwise a lot of
+		// current (~10 mA) flows through the protection diodes of the display once
+		// the supply voltage is switched off.
+		reset_gpios();
+
+		periph_pwr_stop_activity(PERIPH_PWR_FLAG_EPAPER_UPDATE);
+
+		m_busy = false;
+		m_shutdown_needed = false;
+	}
+}
+
+
+/***** Framebuffer drawing functions *****/
 
 void epaper_fb_clear(uint8_t color)
 {

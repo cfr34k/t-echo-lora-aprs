@@ -55,6 +55,13 @@ ret_code_t epaper_init(void);
  */
 ret_code_t epaper_update(void);
 
+/**@brief Main loop function.
+ * @details
+ * Call this from the main loop as often as possible. Relevant for power
+ * management.
+ */
+void epaper_loop(void);
+
 /**@brief Clear the frame buffer with the specified color.
  *
  * @param color   Either EPAPER_COLOR_BLACK or EPAPER_COLOR_WHITE.

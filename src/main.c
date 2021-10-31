@@ -859,6 +859,7 @@ int main(void)
 	// Enter main loop.
 	for (;;)
 	{
+		epaper_loop();
 		idle_state_handle();
 	}
 }
