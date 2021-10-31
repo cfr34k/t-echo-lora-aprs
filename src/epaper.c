@@ -217,7 +217,6 @@ static void cb_sequence_timer(void *p_context)
 		case TIM_WAIT_BUSY:
 			if(nrf_gpio_pin_read(PIN_EPD_BUSY)) {
 				// still busy, restart the timer
-				NRF_LOG_INFO("epd: still busy, retrying.");
 				APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
 			} else {
 				// not busy anymore => send the next command
