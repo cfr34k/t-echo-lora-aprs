@@ -70,6 +70,17 @@ bool epaper_is_busy(void);
  */
 void epaper_loop(void);
 
+/**@brief Configure the GPIOs depending on the general power state.
+ *
+ * This function is mainly called by the periph_pwr module when the enable
+ * state of external regulators changes. Depending on whether the supply
+ * voltage is available, it is better to have pullups on some pins or not while
+ * in idle state.
+ *
+ * @param power_supplied   Set to true if the display is powered, false if power is switched off.
+ */
+void epaper_config_gpios(bool power_supplied);
+
 /**@brief Clear the frame buffer with the specified color.
  *
  * @param color   Either EPAPER_COLOR_BLACK or EPAPER_COLOR_WHITE.

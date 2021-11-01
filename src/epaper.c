@@ -123,17 +123,6 @@ static point_t m_cursor;
 static const GFXfont *m_font;
 
 
-static void reset_gpios()
-{
-	nrf_gpio_cfg_default(PIN_EPD_CS);
-	nrf_gpio_cfg_default(PIN_EPD_MISO);
-	nrf_gpio_cfg_default(PIN_EPD_MOSI);
-	nrf_gpio_cfg_default(PIN_EPD_SCK);
-	nrf_gpio_cfg_default(PIN_EPD_DC);
-	nrf_gpio_cfg_default(PIN_EPD_RST);
-}
-
-
 static ret_code_t send_command(void)
 {
 	// EasyDMA transfer buffer must reside in RAM, so we copy the constant
@@ -288,6 +277,28 @@ static void cb_sequence_timer(void *p_context)
 }
 
 
+void epaper_config_gpios(bool power_supplied)
+{
+	nrf_gpio_cfg_default(PIN_EPD_MISO);
+	nrf_gpio_cfg_default(PIN_EPD_MOSI);
+	nrf_gpio_cfg_default(PIN_EPD_SCK);
+	nrf_gpio_cfg_default(PIN_EPD_DC);
+
+	if(power_supplied) {
+		// while power is on, it is better to keep the pullups on Chip Select and
+		// the Reset pin to prevent noise causing spurious commands to be executed.
+		nrf_gpio_cfg_input(PIN_EPD_CS, NRF_GPIO_PIN_PULLUP);
+		nrf_gpio_cfg_input(PIN_EPD_RST, NRF_GPIO_PIN_PULLUP);
+	} else {
+		// reset all SPI I/Os to the default state (input). Otherwise a lot of
+		// current (~10 mA) flows through the protection diodes of the display once
+		// the supply voltage is switched off.
+		nrf_gpio_cfg_default(PIN_EPD_CS);
+		nrf_gpio_cfg_default(PIN_EPD_RST);
+	}
+}
+
+
 ret_code_t epaper_init(void)
 {
 	// initialize the GPIOs.
@@ -370,10 +381,7 @@ void epaper_loop(void)
 	if(m_shutdown_needed) {
 		nrfx_spim_uninit(&m_spim); // to save power
 
-		// reset all SPI I/Os to the default state (input). Otherwise a lot of
-		// current (~10 mA) flows through the protection diodes of the display once
-		// the supply voltage is switched off.
-		reset_gpios();
+		epaper_config_gpios(true); // safe powered state
 
 		periph_pwr_stop_activity(PERIPH_PWR_FLAG_EPAPER_UPDATE);
 
