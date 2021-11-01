@@ -84,7 +84,14 @@ typedef enum
 } timer_state_t;
 
 
-static nrfx_spim_t m_spim = NRFX_SPIM_INSTANCE(3);
+typedef enum
+{
+	SPI_CMD,
+	SPI_DATA,
+} spi_state_t;
+
+
+static nrfx_spim_t m_spim = NRFX_SPIM_INSTANCE(0);
 
 #define FRAMEBUFFER_SIZE_BITS   (EPAPER_WIDTH * EPAPER_HEIGHT)
 #define FRAMEBUFFER_SIZE_BYTES  (FRAMEBUFFER_SIZE_BITS / 8)
@@ -94,6 +101,10 @@ static uint8_t *m_frame_buffer = m_frame_command+1;
 
 static const epd_ctrl_entry_t *m_seq_ptr;
 static const epd_ctrl_entry_t *m_seq_end; // points to the first location beyond the end of the sequence
+
+static uint8_t    *m_spi_data;
+static uint16_t    m_spi_data_len;
+static spi_state_t m_spi_state;
 
 APP_TIMER_DEF(m_sequence_timer);
 static timer_state_t m_timer_state;
@@ -138,6 +149,12 @@ static ret_code_t send_command(void)
 		return NRF_SUCCESS;
 	}
 
+	m_spi_state = SPI_CMD;
+
+	// set up DC and CS pins
+	nrf_gpio_pin_clear(PIN_EPD_DC); // 0 => command
+	nrf_gpio_pin_clear(PIN_EPD_CS);
+
 	// set up and start SPI transfer from m_seq_ptr
 	if(m_seq_ptr->config & SEND_FRAMEBUF) {
 		// the framebuffer handled specially, because it is very large and
@@ -146,24 +163,33 @@ static ret_code_t send_command(void)
 		// set the command byte from the sequence entry.
 		m_frame_command[0] = m_seq_ptr->data[0];
 
-		// send the complete memory write command
+		// prepare the data and size
+		m_spi_data     = m_frame_buffer;
+		m_spi_data_len = FRAMEBUFFER_SIZE_BYTES;
+
+		// send the frame command
 		nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
-				m_frame_command, sizeof(m_frame_command));
+				m_frame_command, 1);
 
 		NRF_LOG_INFO("epd: sending framebuffer (cmd: 0x%02x, length: %d).", m_frame_command[0], xfer_desc.tx_length);
 
-		return nrfx_spim_xfer_dcx(&m_spim, &xfer_desc, 0, 1);
+		return nrfx_spim_xfer(&m_spim, &xfer_desc, 0);
 	} else {
 		uint8_t length = m_seq_ptr->config & 0x1F;
 
 		// make sure the data bytes are in RAM for EasyDMA
 		memcpy(bytes2transfer, m_seq_ptr->data, length);
+
+		// prepare the data and size
+		m_spi_data     = bytes2transfer + 1;
+		m_spi_data_len = length - 1;
+
 		nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
-				&bytes2transfer, length);
+				bytes2transfer, 1);
 
 		NRF_LOG_INFO("epd: sending command (cmd: 0x%02x, length: %d).", bytes2transfer[0], xfer_desc.tx_length);
 
-		return nrfx_spim_xfer_dcx(&m_spim, &xfer_desc, 0, 1); // always one command byte
+		return nrfx_spim_xfer(&m_spim, &xfer_desc, 0); // always one command byte
 	}
 }
 
@@ -171,25 +197,42 @@ static ret_code_t send_command(void)
 static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 {
 	const epd_ctrl_entry_t *cur_command = m_seq_ptr;
-	m_seq_ptr++;
 
 	NRF_LOG_INFO("epd: SPIM transfer finished.");
 
-	// check special post-processing flags
-	if(cur_command->config & DELAY_10MS) {
-		NRF_LOG_INFO("epd: starting delay.");
-		m_timer_state = TIM_SEQ_DELAY;
-		APP_ERROR_CHECK(app_timer_start(m_sequence_timer, RESET_DELAY_TICKS, NULL));
-	} else if(cur_command->config & WAIT_BUSY) {
-		NRF_LOG_INFO("epd: starting wait for BUSY.");
-		m_timer_state = TIM_WAIT_BUSY;
-		APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
-	} else {
-		NRF_LOG_INFO("epd: directly starting next transfer.");
-		// directly execute the next command
+	if(m_spi_state == SPI_CMD && m_spi_data_len != 0) {
+		// send the data
+		nrf_gpio_pin_set(PIN_EPD_DC); // 1 => data
 
-		// note: direct start seems to be too fast, so we add 10 ms delay before sending the next command
-		send_command();
+		m_spi_state = SPI_DATA;
+
+		NRF_LOG_INFO("epd: sending %d data bytes.", m_spi_data_len);
+
+		nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
+				m_spi_data, m_spi_data_len);
+
+		APP_ERROR_CHECK(nrfx_spim_xfer(&m_spim, &xfer_desc, 0));
+	} else {
+		nrf_gpio_pin_set(PIN_EPD_CS); // command complete
+
+		m_seq_ptr++; // go to next command
+
+		// check special post-processing flags
+		if(cur_command->config & DELAY_10MS) {
+			NRF_LOG_INFO("epd: starting delay.");
+			m_timer_state = TIM_SEQ_DELAY;
+			APP_ERROR_CHECK(app_timer_start(m_sequence_timer, RESET_DELAY_TICKS, NULL));
+		} else if(cur_command->config & WAIT_BUSY) {
+			NRF_LOG_INFO("epd: starting wait for BUSY.");
+			m_timer_state = TIM_WAIT_BUSY;
+			APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
+		} else {
+			NRF_LOG_INFO("epd: directly starting next transfer.");
+			// directly execute the next command
+
+			// note: direct start seems to be too fast, so we add 10 ms delay before sending the next command
+			send_command();
+		}
 	}
 
 }
@@ -281,19 +324,21 @@ ret_code_t epaper_update(void)
 
 	nrfx_spim_config_t spi_config = NRFX_SPIM_DEFAULT_CONFIG;
 	spi_config.frequency      = NRF_SPIM_FREQ_8M;
-	spi_config.ss_pin         = PIN_EPD_CS;
+	spi_config.ss_pin         = NRFX_SPIM_PIN_NOT_USED; // CS is controlled manually
 	spi_config.miso_pin       = PIN_EPD_MISO;
 	spi_config.mosi_pin       = PIN_EPD_MOSI;
 	spi_config.sck_pin        = PIN_EPD_SCK;
-	spi_config.dcx_pin        = PIN_EPD_DC;
-	spi_config.use_hw_ss      = true;
 
 	VERIFY_SUCCESS(nrfx_spim_init(&m_spim, &spi_config, cb_spim, NULL));
 
 	// according to the Devzone, SPI at 8 MHz requires high drive outputs
+	nrf_gpio_pin_set(PIN_EPD_CS);
+	nrf_gpio_pin_clear(PIN_EPD_DC);
+
 	nrf_gpio_cfg(PIN_EPD_CS,   NRF_GPIO_PIN_DIR_OUTPUT, NRF_GPIO_PIN_INPUT_DISCONNECT, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_H0H1, NRF_GPIO_PIN_NOSENSE);
 	nrf_gpio_cfg(PIN_EPD_MOSI, NRF_GPIO_PIN_DIR_OUTPUT, NRF_GPIO_PIN_INPUT_DISCONNECT, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_H0H1, NRF_GPIO_PIN_NOSENSE);
 	nrf_gpio_cfg(PIN_EPD_SCK,  NRF_GPIO_PIN_DIR_OUTPUT, NRF_GPIO_PIN_INPUT_DISCONNECT, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_H0H1, NRF_GPIO_PIN_NOSENSE);
+	nrf_gpio_cfg(PIN_EPD_DC,   NRF_GPIO_PIN_DIR_OUTPUT, NRF_GPIO_PIN_INPUT_DISCONNECT, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_H0H1, NRF_GPIO_PIN_NOSENSE);
 
 	// send the power-on sequence after asserting the hardware reset
 	m_seq_ptr = FULL_UPDATE_SEQUENCE;
