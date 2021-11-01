@@ -1,0 +1,152 @@
+#include <nrfx_uarte.h>
+#include <nrf_gpio.h>
+
+#include <sdk_macros.h>
+#include <nrf_log.h>
+
+#include "pinout.h"
+#include "periph_pwr.h"
+
+#include "gps.h"
+
+static nrfx_uarte_t m_uarte = NRFX_UARTE_INSTANCE(0);
+
+static gps_callback_t m_callback;
+
+#define RX_BUF_SIZE 128
+
+static uint8_t m_rx_buffer[2][RX_BUF_SIZE];
+static uint8_t m_rx_buffer_used[2];
+
+static uint8_t m_rx_buffer_idx;
+
+static uint8_t m_rx_buffer_complete_idx;
+static bool    m_rx_buffer_complete;
+
+
+static void cb_uarte(nrfx_uarte_event_t const * p_event, void *p_context)
+{
+	ret_code_t err_code;
+
+	uint8_t rx_byte;
+
+	switch(p_event->type)
+	{
+		case NRFX_UARTE_EVT_RX_DONE:
+			rx_byte = m_rx_buffer[m_rx_buffer_idx][ m_rx_buffer_used[m_rx_buffer_idx] ];
+
+			m_rx_buffer_used[m_rx_buffer_idx]++;
+
+			if((rx_byte == '\n') || (m_rx_buffer_used[m_rx_buffer_idx] >= RX_BUF_SIZE)) {
+				m_rx_buffer_complete_idx = m_rx_buffer_idx;
+				m_rx_buffer_complete = true;
+
+				m_rx_buffer_idx = (m_rx_buffer_idx + 1) % 2;
+				m_rx_buffer_used[m_rx_buffer_idx] = 0;
+			}
+
+			err_code = nrfx_uarte_rx(
+					&m_uarte,
+					&m_rx_buffer[m_rx_buffer_idx][ m_rx_buffer_used[m_rx_buffer_idx] ],
+					1);
+			APP_ERROR_CHECK(err_code);
+			break;
+
+		case NRFX_UARTE_EVT_ERROR:
+			NRF_LOG_ERROR("gps: UART error!");
+			break;
+
+		case NRFX_UARTE_EVT_TX_DONE:
+			NRF_LOG_WARNING("gps: TX completed, but should never have started.");
+			break;
+	}
+}
+
+
+ret_code_t gps_init(gps_callback_t callback)
+{
+	m_callback = callback;
+
+	gps_config_gpios(false);
+
+	return NRF_SUCCESS;
+}
+
+
+void gps_config_gpios(bool power_supplied)
+{
+	nrf_gpio_cfg_default(PIN_GPS_RESET_N); // internal pullup in the GPS module
+	nrf_gpio_cfg_default(PIN_GPS_WAKEUP);  // not used -> left open
+	nrf_gpio_cfg_default(PIN_GPS_PPS);
+	nrf_gpio_cfg_default(PIN_GPS_TX);
+	nrf_gpio_cfg_default(PIN_GPS_RX);
+}
+
+
+ret_code_t gps_start_tracking(void)
+{
+	ret_code_t err_code;
+
+	// prepare buffers
+	m_rx_buffer_used[0] = 0;
+	m_rx_buffer_idx = 0;
+
+	// power on
+	err_code = periph_pwr_start_activity(PERIPH_PWR_FLAG_GPS);
+	VERIFY_SUCCESS(err_code);
+
+	nrfx_uarte_config_t uart_config = NRFX_UARTE_DEFAULT_CONFIG;
+
+	uart_config.baudrate = NRF_UARTE_BAUDRATE_9600;
+	uart_config.pselrxd  = PIN_GPS_RX;
+	uart_config.pseltxd  = PIN_GPS_TX;
+	uart_config.hwfc     = false;
+
+	err_code = nrfx_uarte_init(&m_uarte, &uart_config, cb_uarte);
+	VERIFY_SUCCESS(err_code);
+
+	/* Start a 1-byte transfer. When a byte is received, cb_uarte() will be
+	 * called, which will start another 1-byte transfer. */
+	err_code = nrfx_uarte_rx(
+			&m_uarte,
+			&m_rx_buffer[m_rx_buffer_idx][ m_rx_buffer_used[m_rx_buffer_idx] ],
+			1);
+	VERIFY_SUCCESS(err_code);
+
+	return NRF_SUCCESS;
+}
+
+
+ret_code_t gps_stop_tracking(void)
+{
+	ret_code_t err_code;
+
+	nrfx_uarte_rx_abort(&m_uarte);
+	nrfx_uarte_uninit(&m_uarte);
+
+	err_code = periph_pwr_stop_activity(PERIPH_PWR_FLAG_GPS);
+	VERIFY_SUCCESS(err_code);
+	return NRF_SUCCESS;
+}
+
+
+void gps_loop(void)
+{
+	if(m_rx_buffer_complete) {
+		m_rx_buffer_complete = false;
+
+		uint8_t len = m_rx_buffer_used[m_rx_buffer_complete_idx];
+		uint8_t *buf = m_rx_buffer[m_rx_buffer_complete_idx];
+
+		// ensure that the buffer is safe to print
+		if(len >= RX_BUF_SIZE) {
+			len = RX_BUF_SIZE - 1;
+		}
+
+		buf[len] = '\0';
+
+		NRF_LOG_INFO("gps: received sentence: %s", NRF_LOG_PUSH((char*)buf));
+
+		// TODO: parse and call callback function
+	}
+}

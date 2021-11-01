@@ -3,6 +3,7 @@
 
 #include "pinout.h"
 #include "epaper.h"
+#include "gps.h"
 
 #include "periph_pwr.h"
 
@@ -22,6 +23,7 @@ static void periph_pwr_on(void)
 	nrf_gpio_cfg_output(PIN_PWR_EN);
 
 	epaper_config_gpios(true);
+	gps_config_gpios(true);
 }
 
 /**@brief Switch off external peripheral power.
@@ -31,6 +33,7 @@ static void periph_pwr_off(void)
 	nrf_gpio_cfg_default(PIN_PWR_EN);
 
 	epaper_config_gpios(false);
+	gps_config_gpios(false);
 }
 
 

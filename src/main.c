@@ -87,6 +87,7 @@
 
 #include "pinout.h"
 #include "epaper.h"
+#include "gps.h"
 #include "voltage_monitor.h"
 #include "periph_pwr.h"
 
@@ -492,6 +493,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
 			periph_pwr_stop_activity(PERIPH_PWR_FLAG_CONNECTED);
 
+			APP_ERROR_CHECK(gps_stop_tracking());
+
 			voltage_monitor_stop();
 			voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 			break;
@@ -507,6 +510,8 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 			// enable external peripherals
 			periph_pwr_start_activity(PERIPH_PWR_FLAG_LEDS);
 			periph_pwr_start_activity(PERIPH_PWR_FLAG_CONNECTED);
+
+			APP_ERROR_CHECK(gps_start_tracking());
 
 			voltage_monitor_stop();
 			voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_CONNECTED);
@@ -574,6 +579,11 @@ static void cb_voltage_monitor(int16_t *meas_millivolt, uint8_t bat_percent)
 			APP_ERROR_CHECK(err_code);
 			break;
 	}
+}
+
+/**@brief Callback function for the GPS. */
+static void cb_gps(const gps_data_t *data)
+{
 }
 
 
@@ -849,6 +859,7 @@ int main(void)
 
 	periph_pwr_init();
 	epaper_init();
+	gps_init(cb_gps);
 
 	voltage_monitor_init(cb_voltage_monitor);
 
@@ -896,6 +907,8 @@ int main(void)
 		}
 
 		epaper_loop();
+		gps_loop();
+
 		idle_state_handle();
 	}
 }

@@ -28,4 +28,10 @@
 
 #define SAADC_INPUT_VBAT  NRF_SAADC_INPUT_AIN2
 
+#define PIN_GPS_RESET_N    NRF_GPIO_PIN_MAP(1,  5)
+#define PIN_GPS_WAKEUP     NRF_GPIO_PIN_MAP(1,  2)
+#define PIN_GPS_PPS        NRF_GPIO_PIN_MAP(1,  4)
+#define PIN_GPS_RX         NRF_GPIO_PIN_MAP(1,  9)
+#define PIN_GPS_TX         NRF_GPIO_PIN_MAP(1,  8)
+
 #endif // PINOUT_H
