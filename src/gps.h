@@ -5,13 +5,9 @@
 
 #include <sdk_errors.h>
 
-typedef struct
-{
-	float lat;
-	float lon;
-} gps_data_t;
+#include "nmea.h"
 
-typedef void (* gps_callback_t)(const gps_data_t *data);
+typedef void (* gps_callback_t)(const nmea_data_t *data);
 
 ret_code_t gps_init(gps_callback_t callback);
 

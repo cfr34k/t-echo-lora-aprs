@@ -582,7 +582,7 @@ static void cb_voltage_monitor(int16_t *meas_millivolt, uint8_t bat_percent)
 }
 
 /**@brief Callback function for the GPS. */
-static void cb_gps(const gps_data_t *data)
+static void cb_gps(const nmea_data_t *data)
 {
 }
 

@@ -6,6 +6,7 @@
 
 #include "pinout.h"
 #include "periph_pwr.h"
+#include "nmea.h"
 
 #include "gps.h"
 
@@ -13,7 +14,7 @@ static nrfx_uarte_t m_uarte = NRFX_UARTE_INSTANCE(0);
 
 static gps_callback_t m_callback;
 
-#define RX_BUF_SIZE 128
+#define RX_BUF_SIZE 85   // NMEA sentence length is max. 82 bytes; + "\r\n\0"
 
 static uint8_t m_rx_buffer[2][RX_BUF_SIZE];
 static uint8_t m_rx_buffer_used[2];
@@ -23,6 +24,7 @@ static uint8_t m_rx_buffer_idx;
 static uint8_t m_rx_buffer_complete_idx;
 static bool    m_rx_buffer_complete;
 
+static nmea_data_t m_nmea_data;
 
 static void cb_uarte(nrfx_uarte_event_t const * p_event, void *p_context)
 {
@@ -53,7 +55,15 @@ static void cb_uarte(nrfx_uarte_event_t const * p_event, void *p_context)
 			break;
 
 		case NRFX_UARTE_EVT_ERROR:
-			NRF_LOG_ERROR("gps: UART error!");
+			NRF_LOG_ERROR("gps: UART error! Trying to restart.");
+
+			nrfx_uarte_rx_abort(&m_uarte);
+
+			err_code = nrfx_uarte_rx(
+					&m_uarte,
+					&m_rx_buffer[m_rx_buffer_idx][ m_rx_buffer_used[m_rx_buffer_idx] ],
+					1);
+			APP_ERROR_CHECK(err_code);
 			break;
 
 		case NRFX_UARTE_EVT_TX_DONE:
@@ -145,8 +155,13 @@ void gps_loop(void)
 
 		buf[len] = '\0';
 
-		NRF_LOG_INFO("gps: received sentence: %s", NRF_LOG_PUSH((char*)buf));
+		//NRF_LOG_INFO("gps: received sentence: %s", NRF_LOG_PUSH((char*)buf));
 
-		// TODO: parse and call callback function
+		bool pos_updated = false;
+		nmea_parse((char*)buf, &pos_updated, &m_nmea_data);
+
+		if(pos_updated) {
+			m_callback(&m_nmea_data);
+		}
 	}
 }
