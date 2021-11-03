@@ -62,4 +62,12 @@ typedef struct
  */
 ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data);
 
+/**@brief Retrieve a string for the given fix type.
+ */
+const char* nmea_fix_type_to_string(uint8_t fix_type);
+
+/**@brief Retrieve a short system name for the given system ID.
+ */
+const char* nmea_sys_id_to_short_name(uint8_t sys_id);
+
 #endif // NMEA_H

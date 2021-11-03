@@ -140,6 +140,8 @@ static bool m_epaper_update_requested = false;                                  
 static uint8_t  m_bat_percent;
 static uint16_t m_bat_millivolt;
 
+static nmea_data_t m_nmea_data;
+
 BLE_BAS_DEF(m_ble_bas); // battery service
 
 // YOUR_JOB: Use UUIDs for service(s) used in your application.
@@ -584,6 +586,8 @@ static void cb_voltage_monitor(int16_t *meas_millivolt, uint8_t bat_percent)
 /**@brief Callback function for the GPS. */
 static void cb_gps(const nmea_data_t *data)
 {
+	// make a copy for display rendering
+	m_nmea_data = *data;
 }
 
 
@@ -816,15 +820,38 @@ static void gpio_init(void)
 }
 
 
+static void format_float(char *s, size_t s_len, float f, uint8_t decimals)
+{
+	char fmt[32];
+
+	int32_t factor = 1;
+
+	for(uint8_t i = 0; i < decimals; i++) {
+		factor *= 10;
+	}
+
+	snprintf(fmt, sizeof(fmt), "%%s%%d.%%0%dd", decimals);
+
+	snprintf(s, s_len, fmt,
+			(f < 0 && f > -1.0) ? "-" : "",
+			(int32_t)f,
+			(int32_t)(((f > 0) ? (f - (int32_t)f) : ((int32_t)f - f)) * factor));
+}
+
+
 /**@brief Redraw the e-Paper display.
  */
 static void redraw_display(void)
 {
 	char s[32];
+	char tmp1[16], tmp2[16], tmp3[16];
+
+	uint8_t line_height = epaper_fb_get_line_height();
+	uint8_t yoffset = line_height;
 
 	epaper_fb_clear(EPAPER_COLOR_WHITE);
 
-	epaper_fb_move_to(0, 10);
+	epaper_fb_move_to(0, yoffset);
 
 	snprintf(s, sizeof(s), "BAT: %d.%02d V / %d %%",
 			m_bat_millivolt / 1000,
@@ -832,6 +859,60 @@ static void redraw_display(void)
 			m_bat_percent);
 
 	epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+	yoffset += line_height + line_height/2;
+	epaper_fb_move_to(0, yoffset);
+
+	epaper_fb_draw_string("GNSS-Status:", EPAPER_COLOR_BLACK);
+
+	yoffset += line_height;
+	epaper_fb_move_to(0, yoffset);
+
+	if(m_nmea_data.pos_valid) {
+		format_float(tmp1, sizeof(tmp1), m_nmea_data.lat, 6);
+		snprintf(s, sizeof(s), "Lat: %s", tmp1);
+
+		epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+		yoffset += line_height;
+		epaper_fb_move_to(0, yoffset);
+
+		format_float(tmp1, sizeof(tmp1), m_nmea_data.lon, 6);
+		snprintf(s, sizeof(s), "Lon: %s", tmp1);
+
+		epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+	} else {
+		epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);
+	}
+
+	yoffset += line_height;
+	epaper_fb_move_to(0, yoffset);
+
+	for(uint8_t i = 0; i < NMEA_NUM_FIX_INFO; i++) {
+		nmea_fix_info_t *fix_info = &(m_nmea_data.fix_info[i]);
+
+		if(fix_info->sys_id == NMEA_SYS_ID_INVALID) {
+			continue;
+		}
+
+		snprintf(s, sizeof(s), "%s: %s [%s] Sats: %d",
+				nmea_sys_id_to_short_name(fix_info->sys_id),
+				nmea_fix_type_to_string(fix_info->fix_type),
+				fix_info->auto_mode ? "auto" : "man",
+				fix_info->sats_used);
+
+		yoffset += line_height;
+		epaper_fb_move_to(0, yoffset);
+	}
+
+	format_float(tmp1, sizeof(tmp1), m_nmea_data.hdop, 1);
+	format_float(tmp2, sizeof(tmp2), m_nmea_data.vdop, 1);
+	format_float(tmp3, sizeof(tmp3), m_nmea_data.pdop, 1);
+
+	snprintf(s, sizeof(s), "DOP H: %s V: %s P: %s", tmp1, tmp2, tmp3);
+
+	yoffset += line_height;
+	epaper_fb_move_to(0, yoffset);
 
 	epaper_update();
 }

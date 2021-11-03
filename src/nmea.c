@@ -311,8 +311,38 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 			info_token_idx++;
 		}
 
-		fix_info_to_data_struct(data, auto_mode, fix_type, pdop, hdop, vdop, used_sats, sys_id);
+		if(fix_type >= 0) {
+			fix_info_to_data_struct(data, auto_mode, fix_type, pdop, hdop, vdop, used_sats, sys_id);
+		}
 	}
 
 	return NRF_SUCCESS;
+}
+
+
+const char* nmea_fix_type_to_string(uint8_t fix_type)
+{
+	switch(fix_type)
+	{
+		case NMEA_FIX_TYPE_NONE: return "none";
+		case NMEA_FIX_TYPE_2D:   return "2D";
+		case NMEA_FIX_TYPE_3D:   return "3D";
+		default:                 return NULL; // unknown
+	}
+}
+
+
+const char* nmea_sys_id_to_short_name(uint8_t sys_id)
+{
+	switch(sys_id)
+	{
+		case NMEA_SYS_ID_INVALID: return "unk";
+		case NMEA_SYS_ID_GPS:     return "GPS";
+		case NMEA_SYS_ID_GLONASS: return "GLO";
+		case NMEA_SYS_ID_GALILEO: return "GAL";
+		case NMEA_SYS_ID_BEIDOU:  return "BD";
+		case NMEA_SYS_ID_QZSS:    return "QZ";
+		case NMEA_SYS_ID_NAVIC:   return "NAV";
+		default:                  return NULL; // unknown
+	}
 }

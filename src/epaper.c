@@ -572,3 +572,12 @@ ret_code_t epaper_fb_draw_string(char *s, uint8_t color)
 
 	return NRF_SUCCESS;
 }
+
+uint8_t epaper_fb_get_line_height(void)
+{
+	if(m_font) {
+		return m_font->yAdvance;
+	} else {
+		return 0;
+	}
+}

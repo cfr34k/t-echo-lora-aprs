@@ -162,4 +162,10 @@ ret_code_t epaper_fb_draw_char(uint8_t c, uint8_t color);
  */
 ret_code_t epaper_fb_draw_string(char *s, uint8_t color);
 
+/**@brief Get the line height of the current font.
+ *
+ * @returns The line height in pixels (zero if no font is set).
+ */
+uint8_t epaper_fb_get_line_height(void);
+
 #endif // EPAPER_H
