@@ -7484,7 +7484,7 @@
 // <i> longer one will be fragmented.
 
 #ifndef NRF_LOG_BACKEND_RTT_TEMP_BUFFER_SIZE
-#define NRF_LOG_BACKEND_RTT_TEMP_BUFFER_SIZE 64
+#define NRF_LOG_BACKEND_RTT_TEMP_BUFFER_SIZE 128
 #endif
 
 // <o> NRF_LOG_BACKEND_RTT_TX_RETRY_DELAY_MS - Period before retrying writing to RTT 
@@ -7666,21 +7666,7 @@
 // <1024=> 1024 
 
 #ifndef NRF_LOG_STR_PUSH_BUFFER_SIZE
-#define NRF_LOG_STR_PUSH_BUFFER_SIZE 128
-#endif
-
-// <o> NRF_LOG_STR_PUSH_BUFFER_SIZE  - Size of the buffer dedicated for strings stored using @ref NRF_LOG_PUSH.
- 
-// <16=> 16 
-// <32=> 32 
-// <64=> 64 
-// <128=> 128 
-// <256=> 256 
-// <512=> 512 
-// <1024=> 1024 
-
-#ifndef NRF_LOG_STR_PUSH_BUFFER_SIZE
-#define NRF_LOG_STR_PUSH_BUFFER_SIZE 128
+#define NRF_LOG_STR_PUSH_BUFFER_SIZE 256
 #endif
 
 // <e> NRF_LOG_USES_COLORS - If enabled then ANSI escape code for colors is prefixed to every string
