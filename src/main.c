@@ -885,7 +885,7 @@ static void redraw_display(void)
 		epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);
 	}
 
-	yoffset += line_height;
+	yoffset += line_height + line_height/2;
 	epaper_fb_move_to(0, yoffset);
 
 	for(uint8_t i = 0; i < NMEA_NUM_FIX_INFO; i++) {
@@ -901,6 +901,8 @@ static void redraw_display(void)
 				fix_info->auto_mode ? "auto" : "man",
 				fix_info->sats_used);
 
+		epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
 		yoffset += line_height;
 		epaper_fb_move_to(0, yoffset);
 	}
@@ -909,7 +911,10 @@ static void redraw_display(void)
 	format_float(tmp2, sizeof(tmp2), m_nmea_data.vdop, 1);
 	format_float(tmp3, sizeof(tmp3), m_nmea_data.pdop, 1);
 
-	snprintf(s, sizeof(s), "DOP H: %s V: %s P: %s", tmp1, tmp2, tmp3);
+	snprintf(s, sizeof(s), "DOP H: %s V: %s P: %s",
+			tmp1, tmp2, tmp3);
+
+	epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 	yoffset += line_height;
 	epaper_fb_move_to(0, yoffset);
