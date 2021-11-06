@@ -92,7 +92,7 @@
 #include "periph_pwr.h"
 
 #define PROGMEM
-#include "fonts/Org_01.h"
+#include "fonts/Font_DIN1451Mittel_10.h"
 
 
 #define DEVICE_NAME                     "T-Echo"                                /**< Name of device. Will be included in the advertising data. */
@@ -974,7 +974,7 @@ int main(void)
 	epaper_fb_move_to(100, 100);
 	epaper_fb_circle(80, EPAPER_COLOR_BLACK);
 
-	epaper_fb_set_font(&Org_01);
+	epaper_fb_set_font(&din1451m10pt7b);
 	epaper_fb_move_to(0, 175);
 	epaper_fb_draw_string("abcdefghijklmnopqrstuvwxyz", EPAPER_COLOR_BLACK);
 	epaper_fb_move_to(0, 185);
