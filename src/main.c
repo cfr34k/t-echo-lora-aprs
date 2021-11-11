@@ -88,6 +88,7 @@
 #include "pinout.h"
 #include "epaper.h"
 #include "gps.h"
+#include "lora.h"
 #include "voltage_monitor.h"
 #include "periph_pwr.h"
 
@@ -946,6 +947,7 @@ int main(void)
 	periph_pwr_init();
 	epaper_init();
 	gps_init(cb_gps);
+	lora_init();
 
 	voltage_monitor_init(cb_voltage_monitor);
 
@@ -984,6 +986,8 @@ int main(void)
 
 	epaper_update();
 
+	lora_send_packet((uint8_t*)"Hello LoRa!", 11);
+
 	// Enter main loop.
 	for (;;)
 	{
@@ -994,6 +998,7 @@ int main(void)
 
 		epaper_loop();
 		gps_loop();
+		lora_loop();
 
 		idle_state_handle();
 	}

@@ -4,6 +4,7 @@
 #include "pinout.h"
 #include "epaper.h"
 #include "gps.h"
+#include "lora.h"
 
 #include "periph_pwr.h"
 
@@ -42,6 +43,8 @@ static void periph_pwr_off(void)
 static void reg_3v3_on(void)
 {
 	nrf_gpio_pin_set(PIN_REG_EN);
+
+	lora_config_gpios(true);
 }
 
 /**@brief Switch off the external 3.3V regulator.
@@ -49,6 +52,8 @@ static void reg_3v3_on(void)
 static void reg_3v3_off(void)
 {
 	nrf_gpio_pin_clear(PIN_REG_EN);
+
+	lora_config_gpios(false);
 }
 
 
