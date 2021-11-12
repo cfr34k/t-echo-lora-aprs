@@ -181,6 +181,7 @@ typedef enum
 	LORA_STATE_SET_PACKET_PARAMS,
 
 	LORA_STATE_GET_DEVICE_ERRORS,
+	LORA_STATE_CLEAR_DEVICE_ERRORS,
 
 	// for TX only
 	LORA_STATE_SET_PA_CONFIG,
@@ -209,6 +210,7 @@ static const char *LORA_STATE_NAMES[] = {
 	"SET_PACKET_PARAMS",
 
 	"GET_DEVICE_ERRORS",
+	"CLEAR_DEVICE_ERRORS",
 
 	// for TX only
 	"SET_PA_CONFIG",
@@ -316,7 +318,7 @@ static ret_code_t read_data_from_module(const uint8_t *command, uint16_t tx_leng
  */
 static ret_code_t handle_state_exit(void)
 {
-	NRF_LOG_INFO("lora: leaving state %s: status byte is 0x%02x", LORA_STATE_NAMES[m_state], m_status.status);
+	NRF_LOG_INFO("lora: leaving state %s: status=0x%02x", LORA_STATE_NAMES[m_state], m_status.status);
 
 	switch(m_state)
 	{
@@ -410,20 +412,19 @@ static ret_code_t handle_state_entry(void)
 			break;
 
 		case LORA_STATE_SET_DIO3_AS_TCXO_CTRL:
-			// TODO: not sure if this is needed
 			command[0] = SX1262_OPCODE_SET_DIO3_AS_TCXO_CTRL;
 			command[1] = 0x07; // supply 3.3V to the TCXO
 			command[2] = 0x00; // bytes 2..4: timeout
-			command[3] = 0x19; // 100 ms in steps of 15.625 μs
-			command[4] = 0x00;
+			command[3] = 0x02; // 10 ms in steps of 15.625 μs
+			command[4] = 0x80;
 
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
 
 		case LORA_STATE_SET_MODULATION_PARAMS:
 			command[0] = SX1262_OPCODE_SET_MODULATION_PARAMS;
-			command[1] = SX1262_LORA_SF_7;
-			command[2] = SX1262_LORA_BW_125;
+			command[1] = SX1262_LORA_SF_9;
+			command[2] = SX1262_LORA_BW_20;
 			command[3] = SX1262_LORA_CR_4_5;
 			command[4] = SX1262_LORA_LDRO_OFF;
 
@@ -432,8 +433,8 @@ static ret_code_t handle_state_entry(void)
 
 		case LORA_STATE_SET_PACKET_PARAMS:
 			command[0] = SX1262_OPCODE_SET_PACKET_PARAMS;
-			command[1] = 0x00; // 8 preamble symbols: MSB
-			command[2] = 0x08; // 8 preamble symbols: LSB
+			command[1] = 0x00; // 16 preamble symbols: MSB
+			command[2] = 0x10; // 16 preamble symbols: LSB
 			command[3] = SX1262_LORA_HEADER_TYPE_EXPLICIT;
 			command[4] = m_payload_length;
 			command[5] = SX1262_LORA_CRC_TYPE_ON;
@@ -449,11 +450,17 @@ static ret_code_t handle_state_entry(void)
 			command[0] = SX1262_OPCODE_GET_DEVICE_ERRORS;
 			command[1] = 0x00;
 			command[2] = 0x00;
+			command[3] = 0x00;
 
-			APP_ERROR_CHECK(read_data_from_module(command, 3, m_buffer_rx, 3));
+			APP_ERROR_CHECK(read_data_from_module(command, 4, m_buffer_rx, 4));
+			break;
 
-			/* NOTE! This is the last common state for TX and RX. The path used
-			 * is determined in cb_spim(). */
+		case LORA_STATE_CLEAR_DEVICE_ERRORS:
+			command[0] = SX1262_OPCODE_CLEAR_DEVICE_ERRORS;
+			command[1] = 0x00;
+			command[2] = 0x00;
+
+			APP_ERROR_CHECK(send_command(command, 3, &m_status));
 			break;
 
 		/* The following states are only used in TX. */
@@ -484,9 +491,9 @@ static ret_code_t handle_state_entry(void)
 
 		case LORA_STATE_SETUP_TXDONE_IRQ:
 			command[0] = SX1262_OPCODE_SET_DIO_IRQ_PARAMS;
-			command[1] = 0x01; // IRQ Mask: MSB
+			command[1] = 0x02; // IRQ Mask: MSB
 			command[2] = 0x01; // IRQ Mask: LSB => TxDone or Timeout
-			command[3] = 0x01; // DIO1 Mask: MSB
+			command[3] = 0x02; // DIO1 Mask: MSB
 			command[4] = 0x01; // DIO1 Mask: LSB => TxDone or Timeout
 			command[5] = 0x00; // DIO2 Mask: MSB
 			command[6] = 0x00; // DIO2 Mask: LSB
@@ -499,17 +506,17 @@ static ret_code_t handle_state_entry(void)
 		case LORA_STATE_START_TX:
 			{
 				float toa = calc_toa(
-						7,      // SF
+						9,      // SF
 						1,      // CR=4/5
-						125.0f, // BW
-						8,      // preamble symbols
+						20.88f, // BW
+						16,     // preamble symbols
 						m_payload_length,
 						true,   // explicit header
 						true);  // use CRC
 
 				m_tx_timeout = 1.20f * toa * 1000.0f / TX_DONE_POLL_INTERVAL_MS;
 
-				NRF_LOG_INFO("lora: expected time on air: %d ms", (int)(1000.0f * toa));
+				NRF_LOG_INFO("lora: expected time on air: %d ms", (int)(toa));
 			}
 
 			command[0] = SX1262_OPCODE_SET_TX;
@@ -552,7 +559,7 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 	switch(m_state)
 	{
 		case LORA_STATE_SET_STDBY_RC:
-			m_next_state = LORA_STATE_SET_PACKET_TYPE;
+			m_next_state = LORA_STATE_SET_DIO3_AS_TCXO_CTRL;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
@@ -562,12 +569,12 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_SET_RF_FREQUENCY:
-			m_next_state = LORA_STATE_CALIBRATE_IMAGE;
+			m_next_state = LORA_STATE_SET_BUFFER_BASE_ADDRS;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
 		case LORA_STATE_CALIBRATE_IMAGE:
-			m_next_state = LORA_STATE_SET_BUFFER_BASE_ADDRS;
+			m_next_state = LORA_STATE_SET_PACKET_TYPE;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
@@ -577,12 +584,13 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_SET_DIO2_AS_RF_SW_CTRL:
-			// note: DIO3 setup skipped
 			m_next_state = LORA_STATE_SET_PA_CONFIG;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
 		case LORA_STATE_SET_DIO3_AS_TCXO_CTRL:
+			m_next_state = LORA_STATE_CALIBRATE_IMAGE;
+			transit_to_state(LORA_STATE_CLEAR_DEVICE_ERRORS);
 			break;
 
 		case LORA_STATE_SET_MODULATION_PARAMS:
@@ -598,6 +606,10 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_GET_DEVICE_ERRORS:
+			transit_to_state(m_next_state);
+			break;
+
+		case LORA_STATE_CLEAR_DEVICE_ERRORS:
 			transit_to_state(m_next_state);
 			break;
 
@@ -695,6 +707,7 @@ void lora_config_gpios(bool power_supplied)
 	nrf_gpio_cfg_default(PIN_LORA_MISO);
 	nrf_gpio_cfg_default(PIN_LORA_MOSI);
 	nrf_gpio_cfg_default(PIN_LORA_SCK);
+	nrf_gpio_cfg_default(PIN_LORA_DIO3);
 
 	if(power_supplied) {
 		// while power is on, it is better to keep the pullups on Chip Select and
