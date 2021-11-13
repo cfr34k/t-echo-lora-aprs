@@ -8,14 +8,15 @@
  * - 
  */
 
+#include <math.h>
+
 #include <nrfx_spim.h>
 #include <nrf_log.h>
 #include <app_timer.h>
 
 #include "pinout.h"
 #include "periph_pwr.h"
-
-#include "math.h"
+#include "leds.h"
 
 #include "lora.h"
 
@@ -638,11 +639,13 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_START_TX:
+			led_on(LED_RED);
 			m_next_state = LORA_STATE_WAIT_TX_DONE;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
 		case LORA_STATE_CLEAR_TXDONE_IRQ:
+			led_off(LED_RED);
 			m_next_state = LORA_STATE_IDLE;
 			transit_to_state(LORA_STATE_GET_DEVICE_ERRORS);
 			break;
