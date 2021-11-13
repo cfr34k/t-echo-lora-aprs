@@ -563,18 +563,33 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
+		case LORA_STATE_SET_DIO3_AS_TCXO_CTRL:
+			m_next_state = LORA_STATE_CALIBRATE_IMAGE;
+			transit_to_state(LORA_STATE_CLEAR_DEVICE_ERRORS);
+			break;
+
+		case LORA_STATE_CALIBRATE_IMAGE:
+			m_next_state = LORA_STATE_SET_PACKET_TYPE;
+			transit_to_state(LORA_STATE_WAIT_BUSY);
+			break;
+
 		case LORA_STATE_SET_PACKET_TYPE:
 			m_next_state = LORA_STATE_SET_MODULATION_PARAMS;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
-		case LORA_STATE_SET_RF_FREQUENCY:
-			m_next_state = LORA_STATE_SET_BUFFER_BASE_ADDRS;
+		case LORA_STATE_SET_MODULATION_PARAMS:
+			m_next_state = LORA_STATE_SET_PACKET_PARAMS;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
-		case LORA_STATE_CALIBRATE_IMAGE:
-			m_next_state = LORA_STATE_SET_PACKET_TYPE;
+		case LORA_STATE_SET_PACKET_PARAMS:
+			m_next_state = LORA_STATE_SET_RF_FREQUENCY;
+			transit_to_state(LORA_STATE_WAIT_BUSY);
+			break;
+
+		case LORA_STATE_SET_RF_FREQUENCY:
+			m_next_state = LORA_STATE_SET_BUFFER_BASE_ADDRS;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
@@ -584,26 +599,13 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_SET_DIO2_AS_RF_SW_CTRL:
+			// TODO: switch between TX and RX.
+			// For now, TX only
 			m_next_state = LORA_STATE_SET_PA_CONFIG;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
-		case LORA_STATE_SET_DIO3_AS_TCXO_CTRL:
-			m_next_state = LORA_STATE_CALIBRATE_IMAGE;
-			transit_to_state(LORA_STATE_CLEAR_DEVICE_ERRORS);
-			break;
-
-		case LORA_STATE_SET_MODULATION_PARAMS:
-			m_next_state = LORA_STATE_SET_PACKET_PARAMS;
-			transit_to_state(LORA_STATE_WAIT_BUSY);
-			break;
-
-		case LORA_STATE_SET_PACKET_PARAMS:
-			// TODO: switch between TX and RX.
-			// For now, TX only
-			m_next_state = LORA_STATE_SET_RF_FREQUENCY;
-			transit_to_state(LORA_STATE_WAIT_BUSY);
-			break;
+			/* Generic, reusable states */
 
 		case LORA_STATE_GET_DEVICE_ERRORS:
 			transit_to_state(m_next_state);
