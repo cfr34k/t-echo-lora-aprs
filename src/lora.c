@@ -711,6 +711,8 @@ void lora_config_gpios(bool power_supplied)
 	nrf_gpio_cfg_default(PIN_LORA_SCK);
 	nrf_gpio_cfg_default(PIN_LORA_DIO3);
 
+	nrf_gpio_cfg_input(PIN_LORA_DIO1, NRF_GPIO_PIN_NOPULL);
+
 	if(power_supplied) {
 		// while power is on, it is better to keep the pullups on Chip Select and
 		// the Reset pin to prevent noise causing spurious commands to be executed.
