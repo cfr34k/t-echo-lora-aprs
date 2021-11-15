@@ -193,10 +193,18 @@ typedef enum
 	LORA_STATE_WAIT_TX_DONE,
 	LORA_STATE_CLEAR_TXDONE_IRQ,
 
-	// for RX only: TODO
+	// for RX only
+	LORA_STATE_SETUP_RX_IRQ,
+	LORA_STATE_START_RX,
+	LORA_STATE_WAIT_PACKET_RECEIVED,
+	LORA_STATE_CLEAR_RX_IRQ,
+	LORA_STATE_READ_BUFFER_STATE,
+	LORA_STATE_READ_PACKET_DATA,
+
+	LORA_NUM_STATES
 } lora_state_t;
 
-static const char *LORA_STATE_NAMES[] = {
+static const char *LORA_STATE_NAMES[LORA_NUM_STATES] = {
 	"IDLE",
 	"WAIT_BUSY",
 	"RESET",
@@ -221,6 +229,14 @@ static const char *LORA_STATE_NAMES[] = {
 	"START_TX",
 	"WAIT_TX_DONE",
 	"CLEAR_TXDONE_IRQ",
+
+	// for RX only
+	"SETUP_RX_IRQ",
+	"START_RX",
+	"WAIT_PACKET_RECEIVED",
+	"CLEAR_RX_IRQ",
+	"READ_BUFFER_STATE",
+	"READ_PACKET_DATA",
 };
 
 typedef struct
@@ -234,10 +250,12 @@ static nrfx_spim_t m_spim = NRFX_SPIM_INSTANCE(2);
 APP_TIMER_DEF(m_sequence_timer);
 
 #define TX_DONE_POLL_INTERVAL_MS 100
+#define RX_DONE_POLL_INTERVAL_MS 100
 
 #define BUSY_CHECK_TICKS      APP_TIMER_TICKS(1)  // time between polls of the BUSY signal
 #define RESET_TICKS           APP_TIMER_TICKS(250)  // time that a reset is applied
 #define TX_DONE_CHECK_TICKS   APP_TIMER_TICKS(TX_DONE_POLL_INTERVAL_MS)  // time between polls of the DIO1 signal
+#define RX_DONE_CHECK_TICKS   APP_TIMER_TICKS(RX_DONE_POLL_INTERVAL_MS)  // time between polls of the DIO1 signal
 
 static bool m_shutdown_needed = false;
 
@@ -254,6 +272,9 @@ static uint8_t *m_buffer = m_buffer_write_command + 2;
 static uint8_t  m_buffer_rx[RX_BUF_SIZE];
 
 static uint8_t  m_payload_length;
+
+static uint8_t  m_rx_packet_len;
+static uint8_t  m_rx_packet_offset;
 
 static uint32_t m_tx_timeout = 600;
 
@@ -326,6 +347,23 @@ static ret_code_t handle_state_exit(void)
 		case LORA_STATE_GET_DEVICE_ERRORS:
 			NRF_LOG_INFO("lora: status: 0x%02x, device errors: 0x%04x",
 					m_buffer_rx[1], (m_buffer_rx[2] << 8L) | m_buffer_rx[3]);
+			break;
+
+		case LORA_STATE_READ_BUFFER_STATE:
+			NRF_LOG_INFO("lora: status: 0x%02x, payload length: %d, offset: %d",
+					m_buffer_rx[1], m_buffer_rx[2], m_buffer_rx[3]);
+
+			m_rx_packet_len    = m_buffer_rx[2];
+			m_rx_packet_offset = m_buffer_rx[3];
+			break;
+
+		case LORA_STATE_READ_PACKET_DATA:
+			// the first three bytes contain the status byte and must be
+			// removed to get the payload alone.
+			m_buffer_rx[m_rx_packet_len+3] = '\0';
+
+			NRF_LOG_INFO("lora: received packet:");
+			NRF_LOG_HEXDUMP_INFO(m_buffer_rx+3, m_rx_packet_len);
 			break;
 
 		default:
@@ -534,11 +572,64 @@ static ret_code_t handle_state_entry(void)
 
 		case LORA_STATE_CLEAR_TXDONE_IRQ:
 			command[0] = SX1262_OPCODE_CLEAR_IRQ_STATUS;
-			command[1] = 0x01; // Clear timeout
+			command[1] = 0x02; // Clear timeout
 			command[2] = 0x01; // and TxDone IRQs
 
 			APP_ERROR_CHECK(send_command(command, 3, &m_status));
 			break;
+
+		/* The following states are only used in RX. */
+
+		case LORA_STATE_SETUP_RX_IRQ:
+			command[0] = SX1262_OPCODE_SET_DIO_IRQ_PARAMS;
+			command[1] = 0x02; // IRQ Mask: MSB
+			command[2] = 0x02; // IRQ Mask: LSB => RxDone or Timeout
+			command[3] = 0x02; // DIO1 Mask: MSB
+			command[4] = 0x02; // DIO1 Mask: LSB => RxDone or Timeout
+			command[5] = 0x00; // DIO2 Mask: MSB
+			command[6] = 0x00; // DIO2 Mask: LSB
+			command[7] = 0x00; // DIO3 Mask: MSB
+			command[8] = 0x00; // DIO3 Mask: LSB
+
+			APP_ERROR_CHECK(send_command(command, 9, &m_status));
+			break;
+
+		case LORA_STATE_START_RX:
+			command[0] = SX1262_OPCODE_SET_RX;
+			command[1] = 0x00; // Bytes 1..3: timeout
+			command[2] = 0x00; // 0x000000 = single mode, no timeout
+			command[3] = 0x00; // 0xFFFFFF = continuous mode
+
+			APP_ERROR_CHECK(send_command(command, 4, &m_status));
+			break;
+
+		case LORA_STATE_WAIT_PACKET_RECEIVED:
+			VERIFY_SUCCESS(app_timer_start(m_sequence_timer, RX_DONE_CHECK_TICKS, NULL));
+			break;
+
+		case LORA_STATE_CLEAR_RX_IRQ:
+			command[0] = SX1262_OPCODE_CLEAR_IRQ_STATUS;
+			command[1] = 0x02; // Clear timeout
+			command[2] = 0x02; // and RxDone IRQs
+
+			APP_ERROR_CHECK(send_command(command, 3, &m_status));
+			break;
+
+		case LORA_STATE_READ_BUFFER_STATE:
+			command[0] = SX1262_OPCODE_GET_RX_BUF_STATUS;
+
+			APP_ERROR_CHECK(read_data_from_module(command, 1, m_buffer_rx, 4));
+			break;
+
+		case LORA_STATE_READ_PACKET_DATA:
+			command[0] = SX1262_OPCODE_READ_BUFFER;
+			command[1] = m_rx_packet_offset;
+			command[2] = 0x00;
+
+			APP_ERROR_CHECK(read_data_from_module(command, 3, m_buffer_rx, m_rx_packet_len + 3));
+			break;
+
+		case LORA_NUM_STATES: break; // dummy state, do not use
 	}
 
 	return NRF_SUCCESS;
@@ -646,8 +737,33 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 
 		case LORA_STATE_CLEAR_TXDONE_IRQ:
 			led_off(LED_RED);
-			m_next_state = LORA_STATE_IDLE;
+			m_next_state = LORA_STATE_SETUP_RX_IRQ; // start receiving after TX is complete
 			transit_to_state(LORA_STATE_GET_DEVICE_ERRORS);
+			break;
+
+			/* The following states are only used in RX. */
+
+		case LORA_STATE_SETUP_RX_IRQ:
+			transit_to_state(LORA_STATE_START_RX);
+			break;
+
+		case LORA_STATE_START_RX:
+			led_on(LED_GREEN);
+			m_next_state = LORA_STATE_WAIT_PACKET_RECEIVED;
+			transit_to_state(LORA_STATE_WAIT_BUSY);
+			break;
+
+		case LORA_STATE_CLEAR_RX_IRQ:
+			led_off(LED_GREEN);
+			transit_to_state(LORA_STATE_READ_BUFFER_STATE);
+			break;
+
+		case LORA_STATE_READ_BUFFER_STATE:
+			transit_to_state(LORA_STATE_READ_PACKET_DATA);
+			break;
+
+		case LORA_STATE_READ_PACKET_DATA:
+			transit_to_state(LORA_STATE_IDLE);
 			break;
 
 		default:
@@ -697,6 +813,19 @@ static void cb_sequence_timer(void *p_context)
 
 				m_busy_check_counter = 0;
 				transit_to_state(LORA_STATE_CLEAR_TXDONE_IRQ);
+			}
+			break;
+
+		case LORA_STATE_WAIT_PACKET_RECEIVED:
+			if(!nrf_gpio_pin_read(PIN_LORA_DIO1)) {
+				// still not done, restart the timer
+				m_busy_check_counter++;
+				APP_ERROR_CHECK(app_timer_start(m_sequence_timer, TX_DONE_CHECK_TICKS, NULL));
+			} else {
+				NRF_LOG_INFO("lora: rx_done signalled after %d polls.", m_busy_check_counter);
+
+				m_busy_check_counter = 0;
+				transit_to_state(LORA_STATE_CLEAR_RX_IRQ);
 			}
 			break;
 
