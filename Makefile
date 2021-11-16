@@ -61,7 +61,6 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_ppi.c \
   $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_ppi.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp.c \
-  $(SDK_ROOT)/components/libraries/bsp/bsp_btn_ble.c \
   $(PROJ_DIR)/src/epaper.c \
   $(PROJ_DIR)/src/voltage_monitor.c \
   $(PROJ_DIR)/src/periph_pwr.c \
@@ -70,6 +69,7 @@ SRC_FILES += \
   $(PROJ_DIR)/src/gps.c \
   $(PROJ_DIR)/src/lora.c \
   $(PROJ_DIR)/src/leds.c \
+  $(PROJ_DIR)/src/buttons.c \
   $(PROJ_DIR)/src/main.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \

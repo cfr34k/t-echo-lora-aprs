@@ -55,6 +55,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "bsp.h"
 #include "ble_types.h"
 #include "nordic_common.h"
 #include "nrf.h"
@@ -74,7 +75,6 @@
 #include "fds.h"
 #include "peer_manager.h"
 #include "peer_manager_handler.h"
-#include "bsp_btn_ble.h"
 #include "sensorsim.h"
 #include "ble_conn_state.h"
 #include "nrf_ble_gatt.h"
@@ -92,6 +92,7 @@
 #include "voltage_monitor.h"
 #include "periph_pwr.h"
 #include "leds.h"
+#include "buttons.h"
 
 #define PROGMEM
 #include "fonts/Font_DIN1451Mittel_10.h"
@@ -134,6 +135,8 @@
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
+
+APP_TIMER_DEF(m_backlight_timer);
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
@@ -195,6 +198,14 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 }
 
 
+/**@brief Timeout handler for the LED backlight.
+ */
+void cb_backlight_timer(void *arg)
+{
+	led_off(LED_EPAPER_BACKLIGHT);
+}
+
+
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module. This creates and starts application timers.
@@ -214,6 +225,9 @@ static void timers_init(void)
 	   ret_code_t err_code;
 	   err_code = app_timer_create(&m_app_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
 	   APP_ERROR_CHECK(err_code); */
+
+	err_code = app_timer_create(&m_backlight_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_backlight_timer);
+	APP_ERROR_CHECK(err_code);
 }
 
 
@@ -435,8 +449,8 @@ static void sleep_mode_enter(void)
 	APP_ERROR_CHECK(err_code);
 
 	// Prepare wakeup buttons.
-	err_code = bsp_btn_ble_sleep_mode_prepare();
-	APP_ERROR_CHECK(err_code);
+	/*err_code = bsp_btn_ble_sleep_mode_prepare();
+	APP_ERROR_CHECK(err_code);*/
 
 	// Go to system-off mode (this function will not return; wakeup will cause a reset).
 	err_code = sd_power_system_off();
@@ -593,6 +607,23 @@ static void cb_gps(const nmea_data_t *data)
 }
 
 
+/**@brief Buttons callback.
+ */
+void cb_buttons(uint8_t pin, uint8_t evt)
+{
+	switch(pin)
+	{
+		case PIN_BTN_TOUCH:
+			if(evt == APP_BUTTON_PUSH) {
+				APP_ERROR_CHECK(app_timer_stop(m_backlight_timer));
+				led_on(LED_EPAPER_BACKLIGHT);
+				APP_ERROR_CHECK(app_timer_start(m_backlight_timer, APP_TIMER_TICKS(3000), NULL));
+			}
+			break;
+	}
+}
+
+
 /**@brief Function for initializing the BLE stack.
  *
  * @details Initializes the SoftDevice and the BLE event interrupt.
@@ -739,21 +770,13 @@ static void advertising_init(void)
 
 
 /**@brief Function for initializing buttons and leds.
- *
- * @param[out] p_erase_bonds  Will be true if the clear bonding button was pressed to wake the application up.
  */
-static void buttons_leds_init(bool * p_erase_bonds)
+static void buttons_leds_init(void)
 {
 	ret_code_t err_code;
-	bsp_event_t startup_event;
 
 	err_code = bsp_init(BSP_INIT_LEDS | BSP_INIT_BUTTONS, bsp_event_handler);
 	APP_ERROR_CHECK(err_code);
-
-	err_code = bsp_btn_ble_init(NULL, &startup_event);
-	APP_ERROR_CHECK(err_code);
-
-	*p_erase_bonds = (startup_event == BSP_EVENT_CLEAR_BONDING_DATA);
 }
 
 
@@ -929,13 +952,11 @@ static void redraw_display(void)
 */
 int main(void)
 {
-	bool erase_bonds;
-
 	// Initialize.
 	log_init();
 	gpio_init();
 	timers_init();
-	buttons_leds_init(&erase_bonds);
+	buttons_leds_init();
 	power_management_init();
 	ble_stack_init();
 	gap_params_init();
@@ -950,14 +971,13 @@ int main(void)
 	gps_init(cb_gps);
 	lora_init();
 	leds_init();
+	buttons_init(cb_buttons);
 
 	voltage_monitor_init(cb_voltage_monitor);
 
 	// Start execution.
 	NRF_LOG_INFO("Template example started.");
 	application_timers_start();
-
-	advertising_start(erase_bonds);
 
 	voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 
@@ -990,11 +1010,21 @@ int main(void)
 
 	lora_send_packet((uint8_t*)"Hello LoRa!", 11);
 
+	bool first_redraw = true;
+
 	// Enter main loop.
 	for (;;)
 	{
 		if(m_epaper_update_requested && !epaper_is_busy()) {
 			m_epaper_update_requested = false;
+
+			if(first_redraw) {
+				first_redraw = false;
+
+				bool erase_bonds = bsp_button_is_pressed(0);
+				advertising_start(erase_bonds);
+			}
+
 			redraw_display();
 		}
 

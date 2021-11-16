@@ -43,4 +43,6 @@
 #define PIN_LORA_DIO1   NRF_GPIO_PIN_MAP(0, 20)
 #define PIN_LORA_DIO3   NRF_GPIO_PIN_MAP(0, 21)
 
+#define PIN_BTN_TOUCH   NRF_GPIO_PIN_MAP(0, 11)
+
 #endif // PINOUT_H
