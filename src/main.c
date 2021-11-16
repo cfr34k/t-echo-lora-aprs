@@ -91,6 +91,7 @@
 #include "lora.h"
 #include "voltage_monitor.h"
 #include "periph_pwr.h"
+#include "leds.h"
 
 #define PROGMEM
 #include "fonts/Font_DIN1451Mittel_10.h"
@@ -948,6 +949,7 @@ int main(void)
 	epaper_init();
 	gps_init(cb_gps);
 	lora_init();
+	leds_init();
 
 	voltage_monitor_init(cb_voltage_monitor);
 
