@@ -775,8 +775,11 @@ static void buttons_leds_init(void)
 {
 	ret_code_t err_code;
 
-	err_code = bsp_init(BSP_INIT_LEDS | BSP_INIT_BUTTONS, bsp_event_handler);
+	err_code = bsp_init(BSP_INIT_LEDS, bsp_event_handler);
 	APP_ERROR_CHECK(err_code);
+
+	leds_init();
+	buttons_init(cb_buttons);
 }
 
 
@@ -956,7 +959,6 @@ int main(void)
 	log_init();
 	gpio_init();
 	timers_init();
-	buttons_leds_init();
 	power_management_init();
 	ble_stack_init();
 	gap_params_init();
@@ -965,13 +967,12 @@ int main(void)
 	services_init();
 	conn_params_init();
 	peer_manager_init();
+	buttons_leds_init();
 
 	periph_pwr_init();
 	epaper_init();
 	gps_init(cb_gps);
 	lora_init();
-	leds_init();
-	buttons_init(cb_buttons);
 
 	voltage_monitor_init(cb_voltage_monitor);
 
@@ -1021,7 +1022,7 @@ int main(void)
 			if(first_redraw) {
 				first_redraw = false;
 
-				bool erase_bonds = bsp_button_is_pressed(0);
+				bool erase_bonds = buttons_button_is_pressed(BUTTONS_BTN_1);
 				advertising_start(erase_bonds);
 			}
 

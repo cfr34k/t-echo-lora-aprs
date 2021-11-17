@@ -29,12 +29,13 @@ extern "C" {
 //#define BSP_LED_1      LED_2
 //#define BSP_LED_2      LED_3
 
-#define BUTTONS_NUMBER 1
-
-#define BUTTON_1       PIN_BUTTON_1
-#define BUTTON_PULL    NRF_GPIO_PIN_NOPULL
+#define BUTTONS_NUMBER 0
 
 #define BUTTONS_ACTIVE_STATE 0
+
+#if 0
+#define BUTTON_1       PIN_BUTTON_1
+#define BUTTON_PULL    NRF_GPIO_PIN_NOPULL
 
 #define BUTTONS_LIST { BUTTON_1 }
 
@@ -45,6 +46,7 @@ extern "C" {
 //#define CTS_PIN_NUMBER 7
 //#define RTS_PIN_NUMBER 5
 //#define HWFC           true
+#endif
 
 #ifdef __cplusplus
 }

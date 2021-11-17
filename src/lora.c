@@ -340,7 +340,7 @@ static ret_code_t read_data_from_module(const uint8_t *command, uint16_t tx_leng
  */
 static ret_code_t handle_state_exit(void)
 {
-	NRF_LOG_INFO("lora: leaving state %s: status=0x%02x", LORA_STATE_NAMES[m_state], m_status.status);
+	//NRF_LOG_INFO("lora: leaving state %s: status=0x%02x", LORA_STATE_NAMES[m_state], m_status.status);
 
 	switch(m_state)
 	{
@@ -379,7 +379,7 @@ static ret_code_t handle_state_entry(void)
 {
 	uint8_t command[LORA_MAX_COMMAND_LEN];
 
-	NRF_LOG_INFO("lora: entering state %s", LORA_STATE_NAMES[m_state]);
+	//NRF_LOG_INFO("lora: entering state %s", LORA_STATE_NAMES[m_state]);
 
 	switch(m_state)
 	{
