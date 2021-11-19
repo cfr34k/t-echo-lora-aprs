@@ -279,6 +279,8 @@ static uint8_t  m_rx_packet_offset;
 
 static uint32_t m_tx_timeout = 600;
 
+static lora_callback_t m_callback;
+
 
 static float calc_toa(
 		uint8_t sf,
@@ -363,6 +365,8 @@ static ret_code_t handle_state_exit(void)
 			// removed to get the payload alone.
 			m_buffer_rx[m_rx_packet_len+3] = '\0';
 
+			m_callback(LORA_EVT_PACKET_RECEIVED, m_buffer_rx + 3, m_rx_packet_len);
+
 			NRF_LOG_INFO("lora: received packet:");
 			NRF_LOG_HEXDUMP_INFO(m_buffer_rx+3, m_rx_packet_len);
 			break;
@@ -417,12 +421,19 @@ static ret_code_t handle_state_entry(void)
 
 		case LORA_STATE_SET_RF_FREQUENCY:
 			// frequency = value * f_xtal / 2^25
-			// => value = 434.4 MHz * 2^25 / (32 MHz) = 455501414.4 = 0x1b266666
 			command[0] = SX1262_OPCODE_SET_RF_FREQUENCY;
+
+			// => value = 434.4 MHz * 2^25 / (32 MHz) = 455501414.4 = 0x1b266666
 			command[1] = 0x1B;
 			command[2] = 0x26;
 			command[3] = 0x66;
 			command[4] = 0x66;
+
+			// => value = 433.775 MHz * 2^25 / (32 MHz) = 0x1b1c6666
+			//command[1] = 0x1B;
+			//command[2] = 0x1C;
+			//command[3] = 0x66;
+			//command[4] = 0x66;
 
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
@@ -467,6 +478,12 @@ static ret_code_t handle_state_entry(void)
 			command[2] = SX1262_LORA_BW_20;
 			command[3] = SX1262_LORA_CR_4_5;
 			command[4] = SX1262_LORA_LDRO_OFF;
+
+			// Settings used by LoRa-APRS
+			//command[1] = SX1262_LORA_SF_12;
+			//command[2] = SX1262_LORA_BW_125;
+			//command[3] = SX1262_LORA_CR_4_5;
+			//command[4] = SX1262_LORA_LDRO_OFF;
 
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
@@ -548,7 +565,7 @@ static ret_code_t handle_state_entry(void)
 				float toa = calc_toa(
 						9,      // SF
 						1,      // CR=4/5
-						20.88f, // BW
+						20.86f, // BW
 						16,     // preamble symbols
 						m_payload_length,
 						true,   // explicit header
@@ -861,8 +878,10 @@ void lora_config_gpios(bool power_supplied)
 }
 
 
-ret_code_t lora_init(void)
+ret_code_t lora_init(lora_callback_t callback)
 {
+	m_callback = callback;
+
 	// initialize the GPIOs.
 	nrf_gpio_cfg_default(PIN_LORA_RST);
 	nrf_gpio_cfg_input(PIN_LORA_BUSY, NRF_GPIO_PIN_NOPULL);
@@ -881,7 +900,7 @@ ret_code_t lora_init(void)
 	return app_timer_create(&m_sequence_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_sequence_timer);
 }
 
-ret_code_t lora_send_packet(uint8_t *data, uint8_t length)
+ret_code_t lora_send_packet(const uint8_t *data, uint8_t length)
 {
 	if(m_state != LORA_STATE_IDLE) {
 		return NRF_ERROR_BUSY;
