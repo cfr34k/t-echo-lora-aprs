@@ -78,6 +78,7 @@
 #define SX1262_LORA_SF_9       0x09
 #define SX1262_LORA_SF_10      0x0A
 #define SX1262_LORA_SF_11      0x0B
+#define SX1262_LORA_SF_12      0x0C
 
 // LoRa bandwidths
 #define SX1262_LORA_BW_BYTE_IDX   2
