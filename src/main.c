@@ -94,6 +94,8 @@
 #include "leds.h"
 #include "buttons.h"
 
+#include "aprs.h"
+
 #define PROGMEM
 #include "fonts/Font_DIN1451Mittel_10.h"
 
@@ -146,6 +148,17 @@ static uint8_t  m_bat_percent;
 static uint16_t m_bat_millivolt;
 
 static nmea_data_t m_nmea_data;
+
+typedef enum
+{
+	DISP_STATE_STARTUP,
+	DISP_STATE_GPS,
+	DISP_STATE_LORA_PACKET
+} display_state_t;
+
+static display_state_t m_display_state = DISP_STATE_STARTUP;
+static uint8_t m_display_message[256];
+static uint8_t m_display_message_len = 0;
 
 BLE_BAS_DEF(m_ble_bas); // battery service
 
@@ -607,6 +620,20 @@ static void cb_gps(const nmea_data_t *data)
 }
 
 
+void cb_lora(lora_evt_t evt, const uint8_t *data, uint8_t len)
+{
+	switch(evt)
+	{
+		case LORA_EVT_PACKET_RECEIVED:
+			m_display_state = DISP_STATE_LORA_PACKET;
+			memcpy(m_display_message, data, len);
+			m_display_message_len = len;
+			m_epaper_update_requested = true;
+			break;
+	}
+}
+
+
 /**@brief Buttons callback.
  */
 void cb_buttons(uint8_t pin, uint8_t evt)
@@ -879,73 +906,110 @@ static void redraw_display(void)
 
 	epaper_fb_clear(EPAPER_COLOR_WHITE);
 
-	epaper_fb_move_to(0, yoffset);
-
-	snprintf(s, sizeof(s), "BAT: %d.%02d V / %d %%",
-			m_bat_millivolt / 1000,
-			(m_bat_millivolt / 10) % 100,
-			m_bat_percent);
-
-	epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-	yoffset += line_height + line_height/2;
-	epaper_fb_move_to(0, yoffset);
-
-	epaper_fb_draw_string("GNSS-Status:", EPAPER_COLOR_BLACK);
-
-	yoffset += line_height;
-	epaper_fb_move_to(0, yoffset);
-
-	if(m_nmea_data.pos_valid) {
-		format_float(tmp1, sizeof(tmp1), m_nmea_data.lat, 6);
-		snprintf(s, sizeof(s), "Lat: %s", tmp1);
-
-		epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-		yoffset += line_height;
+	if(m_display_state != DISP_STATE_STARTUP) {
 		epaper_fb_move_to(0, yoffset);
 
-		format_float(tmp1, sizeof(tmp1), m_nmea_data.lon, 6);
-		snprintf(s, sizeof(s), "Lon: %s", tmp1);
-
-		epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-	} else {
-		epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);
-	}
-
-	yoffset += line_height + line_height/2;
-	epaper_fb_move_to(0, yoffset);
-
-	for(uint8_t i = 0; i < NMEA_NUM_FIX_INFO; i++) {
-		nmea_fix_info_t *fix_info = &(m_nmea_data.fix_info[i]);
-
-		if(fix_info->sys_id == NMEA_SYS_ID_INVALID) {
-			continue;
-		}
-
-		snprintf(s, sizeof(s), "%s: %s [%s] Sats: %d",
-				nmea_sys_id_to_short_name(fix_info->sys_id),
-				nmea_fix_type_to_string(fix_info->fix_type),
-				fix_info->auto_mode ? "auto" : "man",
-				fix_info->sats_used);
+		snprintf(s, sizeof(s), "BAT: %d.%02d V / %d %%",
+				m_bat_millivolt / 1000,
+				(m_bat_millivolt / 10) % 100,
+				m_bat_percent);
 
 		epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
-		yoffset += line_height;
-		epaper_fb_move_to(0, yoffset);
+		yoffset += line_height + line_height/2;
 	}
 
-	format_float(tmp1, sizeof(tmp1), m_nmea_data.hdop, 1);
-	format_float(tmp2, sizeof(tmp2), m_nmea_data.vdop, 1);
-	format_float(tmp3, sizeof(tmp3), m_nmea_data.pdop, 1);
+	switch(m_display_state)
+	{
+		case DISP_STATE_STARTUP:
+			// some fun
+			epaper_fb_move_to( 50, 160);
+			epaper_fb_line_to(150, 160, EPAPER_COLOR_BLACK); // Das
+			epaper_fb_line_to(150,  80, EPAPER_COLOR_BLACK); // ist
+			epaper_fb_line_to( 50, 160, EPAPER_COLOR_BLACK); // das
+			epaper_fb_line_to( 50,  80, EPAPER_COLOR_BLACK); // Haus
+			epaper_fb_line_to(150,  80, EPAPER_COLOR_BLACK); // vom
+			epaper_fb_line_to(100,  20, EPAPER_COLOR_BLACK); // Ni-
+			epaper_fb_line_to( 50,  80, EPAPER_COLOR_BLACK); // ko-
+			epaper_fb_line_to(150, 160, EPAPER_COLOR_BLACK); // laus
 
-	snprintf(s, sizeof(s), "DOP H: %s V: %s P: %s",
-			tmp1, tmp2, tmp3);
+			epaper_fb_move_to(100, 100);
+			epaper_fb_circle(80, EPAPER_COLOR_BLACK);
 
-	epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+			epaper_fb_set_font(&din1451m10pt7b);
+			epaper_fb_move_to(0, 180);
+			epaper_fb_draw_string("Lora-APRS v0.0.1", EPAPER_COLOR_BLACK);
+			break;
 
-	yoffset += line_height;
-	epaper_fb_move_to(0, yoffset);
+		case DISP_STATE_GPS:
+			epaper_fb_move_to(0, yoffset);
+
+			epaper_fb_draw_string("GNSS-Status:", EPAPER_COLOR_BLACK);
+
+			yoffset += line_height;
+			epaper_fb_move_to(0, yoffset);
+
+			if(m_nmea_data.pos_valid) {
+				format_float(tmp1, sizeof(tmp1), m_nmea_data.lat, 6);
+				snprintf(s, sizeof(s), "Lat: %s", tmp1);
+
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
+
+				format_float(tmp1, sizeof(tmp1), m_nmea_data.lon, 6);
+				snprintf(s, sizeof(s), "Lon: %s", tmp1);
+
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+			} else {
+				epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);
+			}
+
+			yoffset += line_height + line_height/2;
+			epaper_fb_move_to(0, yoffset);
+
+			for(uint8_t i = 0; i < NMEA_NUM_FIX_INFO; i++) {
+				nmea_fix_info_t *fix_info = &(m_nmea_data.fix_info[i]);
+
+				if(fix_info->sys_id == NMEA_SYS_ID_INVALID) {
+					continue;
+				}
+
+				snprintf(s, sizeof(s), "%s: %s [%s] Sats: %d",
+						nmea_sys_id_to_short_name(fix_info->sys_id),
+						nmea_fix_type_to_string(fix_info->fix_type),
+						fix_info->auto_mode ? "auto" : "man",
+						fix_info->sats_used);
+
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
+			}
+
+			format_float(tmp1, sizeof(tmp1), m_nmea_data.hdop, 1);
+			format_float(tmp2, sizeof(tmp2), m_nmea_data.vdop, 1);
+			format_float(tmp3, sizeof(tmp3), m_nmea_data.pdop, 1);
+
+			snprintf(s, sizeof(s), "DOP H: %s V: %s P: %s",
+					tmp1, tmp2, tmp3);
+
+			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+			yoffset += line_height;
+			epaper_fb_move_to(0, yoffset);
+			break;
+
+		case DISP_STATE_LORA_PACKET:
+			epaper_fb_move_to(0, yoffset);
+
+			m_display_message[m_display_message_len] = '\0';
+			epaper_fb_draw_string((char*)m_display_message, EPAPER_COLOR_BLACK);
+
+			yoffset += line_height;
+			break;
+	}
 
 	epaper_update();
 }
@@ -972,7 +1036,7 @@ int main(void)
 	periph_pwr_init();
 	epaper_init();
 	gps_init(cb_gps);
-	lora_init();
+	lora_init(cb_lora);
 
 	voltage_monitor_init(cb_voltage_monitor);
 
@@ -982,34 +1046,32 @@ int main(void)
 
 	voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 
-	// test drawing on the epaper display
-	epaper_fb_clear(EPAPER_COLOR_WHITE);
-
-	// some fun
-	epaper_fb_move_to( 50, 160);
-	epaper_fb_line_to(150, 160, EPAPER_COLOR_BLACK); // Das
-	epaper_fb_line_to(150,  80, EPAPER_COLOR_BLACK); // ist
-	epaper_fb_line_to( 50, 160, EPAPER_COLOR_BLACK); // das
-	epaper_fb_line_to( 50,  80, EPAPER_COLOR_BLACK); // Haus
-	epaper_fb_line_to(150,  80, EPAPER_COLOR_BLACK); // vom
-	epaper_fb_line_to(100,  20, EPAPER_COLOR_BLACK); // Ni-
-	epaper_fb_line_to( 50,  80, EPAPER_COLOR_BLACK); // ko-
-	epaper_fb_line_to(150, 160, EPAPER_COLOR_BLACK); // laus
-
-	epaper_fb_move_to(100, 100);
-	epaper_fb_circle(80, EPAPER_COLOR_BLACK);
-
-	epaper_fb_set_font(&din1451m10pt7b);
-	epaper_fb_move_to(0, 175);
-	epaper_fb_draw_string("abcdefghijklmnopqrstuvwxyz", EPAPER_COLOR_BLACK);
-	epaper_fb_move_to(0, 185);
-	epaper_fb_draw_string("ABCDEFGHIJKLMNOPQRSTUVWXYZ", EPAPER_COLOR_BLACK);
-	epaper_fb_move_to(0, 195);
-	epaper_fb_draw_string("0123456789#@!$(){}[]|äöü", EPAPER_COLOR_BLACK);
-
 	epaper_update();
 
-	lora_send_packet((uint8_t*)"Hello LoRa!", 11);
+	uint8_t message[APRS_MAX_FRAME_LEN];
+	size_t frame_len = 0;
+
+	aprs_init();
+	aprs_set_source("DL5TKL", 0);
+	aprs_set_dest("GPS", 0);
+	aprs_add_path("WIDE1", 1);
+	aprs_add_path("WIDE2", 2);
+	aprs_set_icon(AI_JOGGER);
+	aprs_set_comment("T-Echo test");
+	aprs_update_pos_time(49.586646, 11.012561, 332, 1637267230);
+
+	frame_len = aprs_build_frame(message);
+
+	NRF_LOG_INFO("Generated frame:");
+	NRF_LOG_HEXDUMP_INFO(message, frame_len);
+
+	//lora_send_packet(message, frame_len);
+	lora_send_packet((const uint8_t*)"Hallo LoRa!", 11);
+
+	m_display_state = DISP_STATE_STARTUP;
+	redraw_display();
+
+	m_display_state = DISP_STATE_GPS;
 
 	bool first_redraw = true;
 
