@@ -70,6 +70,7 @@ SRC_FILES += \
   $(PROJ_DIR)/src/lora.c \
   $(PROJ_DIR)/src/leds.c \
   $(PROJ_DIR)/src/buttons.c \
+  $(PROJ_DIR)/src/aprs.c \
   $(PROJ_DIR)/src/main.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
