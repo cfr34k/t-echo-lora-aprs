@@ -169,10 +169,12 @@
 typedef enum
 {
 	// for both TX and RX
-	LORA_STATE_IDLE,
+	LORA_STATE_OFF,
 	LORA_STATE_WAIT_BUSY,
 	LORA_STATE_RESET,
 	LORA_STATE_SET_STDBY_RC,
+	LORA_STATE_SET_SLEEP,
+
 	LORA_STATE_SET_PACKET_TYPE,
 	LORA_STATE_SET_RF_FREQUENCY,
 	LORA_STATE_CALIBRATE_IMAGE,
@@ -181,6 +183,7 @@ typedef enum
 	LORA_STATE_SET_DIO3_AS_TCXO_CTRL,
 	LORA_STATE_SET_MODULATION_PARAMS,
 	LORA_STATE_SET_PACKET_PARAMS,
+	LORA_STATE_CONFIGURED_IDLE,
 
 	LORA_STATE_GET_DEVICE_ERRORS,
 	LORA_STATE_CLEAR_DEVICE_ERRORS,
@@ -201,6 +204,8 @@ typedef enum
 	LORA_STATE_CLEAR_RX_IRQ,
 	LORA_STATE_READ_BUFFER_STATE,
 	LORA_STATE_READ_PACKET_DATA,
+	LORA_STATE_ABORT_RX1,
+	LORA_STATE_ABORT_RX2,
 
 	LORA_NUM_STATES
 } lora_state_t;
@@ -218,6 +223,7 @@ static const char *LORA_STATE_NAMES[LORA_NUM_STATES] = {
 	"SET_DIO3_AS_TCXO_CTRL",
 	"SET_MODULATION_PARAMS",
 	"SET_PACKET_PARAMS",
+	"CONFIGURED_IDLE",
 
 	"GET_DEVICE_ERRORS",
 	"CLEAR_DEVICE_ERRORS",
@@ -238,6 +244,8 @@ static const char *LORA_STATE_NAMES[LORA_NUM_STATES] = {
 	"CLEAR_RX_IRQ",
 	"READ_BUFFER_STATE",
 	"READ_PACKET_DATA",
+	"ABORT_RX1",
+	"ABORT_RX2",
 };
 
 typedef struct
@@ -280,6 +288,10 @@ static uint8_t  m_rx_packet_offset;
 static uint32_t m_tx_timeout = 600;
 
 static lora_callback_t m_callback;
+
+
+static ret_code_t handle_state_entry(void);
+static ret_code_t handle_state_exit(void);
 
 
 static float calc_toa(
@@ -339,6 +351,15 @@ static ret_code_t read_data_from_module(const uint8_t *command, uint16_t tx_leng
 	return nrfx_spim_xfer(&m_spim, &xfer_desc, 0);
 }
 
+/**@brief Move to a new state in the FSM, calling state exit and entry functions on the way.
+ */
+static void transit_to_state(lora_state_t new_state)
+{
+	APP_ERROR_CHECK(handle_state_exit());
+	m_state = new_state;
+	APP_ERROR_CHECK(handle_state_entry());
+}
+
 /**@brief Run actions that should be executed when a state is about to be left.
  */
 static ret_code_t handle_state_exit(void)
@@ -388,7 +409,7 @@ static ret_code_t handle_state_entry(void)
 
 	switch(m_state)
 	{
-		case LORA_STATE_IDLE:
+		case LORA_STATE_OFF:
 			// as we enter the idle state here, we shut down all used
 			// peripherals on the next main loop iteration.
 			m_shutdown_needed = true;
@@ -408,6 +429,13 @@ static ret_code_t handle_state_entry(void)
 		case LORA_STATE_SET_STDBY_RC:
 			command[0] = SX1262_OPCODE_SET_STANDBY;
 			command[1] = 0x00; // STDBY_RC
+
+			APP_ERROR_CHECK(send_command(command, 2, &m_status));
+			break;
+
+		case LORA_STATE_SET_SLEEP:
+			command[0] = SX1262_OPCODE_SET_SLEEP;
+			command[1] = 0x00; // no config retention
 
 			APP_ERROR_CHECK(send_command(command, 2, &m_status));
 			break;
@@ -501,6 +529,15 @@ static ret_code_t handle_state_entry(void)
 
 			/* NOTE! This is the last common state for TX and RX. The path used
 			 * is determined in cb_spim(). */
+			break;
+
+		case LORA_STATE_CONFIGURED_IDLE:
+			if(m_payload_length != 0) {
+				// a packet should be sent, so we continue immediately.
+				transit_to_state(LORA_STATE_SET_PA_CONFIG);
+			} else {
+				m_callback(LORA_EVT_CONFIGURED_IDLE, NULL, 0);
+			}
 			break;
 
 		case LORA_STATE_GET_DEVICE_ERRORS:
@@ -647,19 +684,25 @@ static ret_code_t handle_state_entry(void)
 			APP_ERROR_CHECK(read_data_from_module(command, 3, m_buffer_rx, m_rx_packet_len + 3));
 			break;
 
+		case LORA_STATE_ABORT_RX1:
+			command[0] = SX1262_OPCODE_CLEAR_IRQ_STATUS;
+			command[1] = 0x02; // Clear timeout
+			command[2] = 0x02; // and RxDone IRQs
+
+			APP_ERROR_CHECK(send_command(command, 3, &m_status));
+			break;
+
+		case LORA_STATE_ABORT_RX2:
+			command[0] = SX1262_OPCODE_SET_STANDBY;
+			command[1] = 0x00; // STDBY_RC
+
+			APP_ERROR_CHECK(send_command(command, 2, &m_status));
+			break;
+
 		case LORA_NUM_STATES: break; // dummy state, do not use
 	}
 
 	return NRF_SUCCESS;
-}
-
-/**@brief Move to a new state in the FSM, calling state exit and entry functions on the way.
- */
-static void transit_to_state(lora_state_t new_state)
-{
-	APP_ERROR_CHECK(handle_state_exit());
-	m_state = new_state;
-	APP_ERROR_CHECK(handle_state_entry());
 }
 
 static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
@@ -671,6 +714,10 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 		case LORA_STATE_SET_STDBY_RC:
 			m_next_state = LORA_STATE_SET_DIO3_AS_TCXO_CTRL;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
+			break;
+
+		case LORA_STATE_SET_SLEEP:
+			transit_to_state(LORA_STATE_OFF);
 			break;
 
 		case LORA_STATE_SET_DIO3_AS_TCXO_CTRL:
@@ -709,9 +756,7 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_SET_DIO2_AS_RF_SW_CTRL:
-			// TODO: switch between TX and RX.
-			// For now, TX only
-			m_next_state = LORA_STATE_SET_PA_CONFIG;
+			m_next_state = LORA_STATE_CONFIGURED_IDLE;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
@@ -755,7 +800,10 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 
 		case LORA_STATE_CLEAR_TXDONE_IRQ:
 			led_off(LED_RED);
-			m_next_state = LORA_STATE_SETUP_RX_IRQ; // start receiving after TX is complete
+			m_payload_length = 0; // packet transmission completed
+			m_callback(LORA_EVT_TX_COMPLETE, NULL, 0);
+
+			m_next_state = LORA_STATE_CONFIGURED_IDLE;
 			transit_to_state(LORA_STATE_GET_DEVICE_ERRORS);
 			break;
 
@@ -771,6 +819,7 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
+			/* RX completed. */
 		case LORA_STATE_CLEAR_RX_IRQ:
 			led_off(LED_GREEN);
 			transit_to_state(LORA_STATE_READ_BUFFER_STATE);
@@ -781,7 +830,17 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_READ_PACKET_DATA:
-			transit_to_state(LORA_STATE_IDLE);
+			transit_to_state(LORA_STATE_CONFIGURED_IDLE);
+			break;
+
+			/* RX aborted. */
+		case LORA_STATE_ABORT_RX1:
+			led_off(LED_GREEN);
+			transit_to_state(LORA_STATE_ABORT_RX2);
+			break;
+
+		case LORA_STATE_ABORT_RX2:
+			transit_to_state(LORA_STATE_CONFIGURED_IDLE);
 			break;
 
 		default:
@@ -895,17 +954,14 @@ ret_code_t lora_init(lora_callback_t callback)
 
 	NRF_LOG_INFO("lora: init.");
 
-	m_state = LORA_STATE_IDLE;
+	m_state = LORA_STATE_OFF;
 
 	return app_timer_create(&m_sequence_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_sequence_timer);
 }
 
-ret_code_t lora_send_packet(const uint8_t *data, uint8_t length)
-{
-	if(m_state != LORA_STATE_IDLE) {
-		return NRF_ERROR_BUSY;
-	}
 
+ret_code_t lora_power_on(void)
+{
 	periph_pwr_start_activity(PERIPH_PWR_FLAG_LORA);
 
 	nrfx_spim_config_t spi_config = NRFX_SPIM_DEFAULT_CONFIG;
@@ -921,18 +977,6 @@ ret_code_t lora_send_packet(const uint8_t *data, uint8_t length)
 	nrf_gpio_pin_set(PIN_LORA_CS);
 	nrf_gpio_cfg_output(PIN_LORA_CS);
 
-#if 0
-	// according to the Devzone, SPI at 8 MHz requires high drive outputs
-	nrf_gpio_cfg(PIN_LORA_CS,   NRF_GPIO_PIN_DIR_OUTPUT, NRF_GPIO_PIN_INPUT_DISCONNECT, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_H0H1, NRF_GPIO_PIN_NOSENSE);
-	nrf_gpio_cfg(PIN_LORA_MOSI, NRF_GPIO_PIN_DIR_OUTPUT, NRF_GPIO_PIN_INPUT_DISCONNECT, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_H0H1, NRF_GPIO_PIN_NOSENSE);
-	nrf_gpio_cfg(PIN_LORA_SCK,  NRF_GPIO_PIN_DIR_OUTPUT, NRF_GPIO_PIN_INPUT_DISCONNECT, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_H0H1, NRF_GPIO_PIN_NOSENSE);
-	nrf_gpio_cfg(PIN_LORA_DC,   NRF_GPIO_PIN_DIR_OUTPUT, NRF_GPIO_PIN_INPUT_DISCONNECT, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_H0H1, NRF_GPIO_PIN_NOSENSE);
-#endif
-
-	// copy the data to send
-	m_payload_length = length;
-	memcpy(m_buffer, data, length);
-
 	// module has been powered on; reset it for proper startup
 	NRF_LOG_INFO("lora: Resetting module.");
 	transit_to_state(LORA_STATE_RESET);
@@ -944,9 +988,63 @@ ret_code_t lora_send_packet(const uint8_t *data, uint8_t length)
 }
 
 
+void lora_power_off(void)
+{
+	// do not directly switch off, but enter sleep mode to ensure the module is
+	// drawing low current even if it stays powered.
+	transit_to_state(LORA_STATE_SET_SLEEP);
+}
+
+
+ret_code_t lora_send_packet(const uint8_t *data, uint8_t length)
+{
+	// copy the data to send
+	m_payload_length = length;
+	memcpy(m_buffer, data, length);
+
+	switch(m_state) {
+		case LORA_STATE_OFF:
+			VERIFY_SUCCESS(lora_power_on());
+			break;
+
+		case LORA_STATE_CONFIGURED_IDLE:
+			transit_to_state(LORA_STATE_SET_PA_CONFIG);
+			break;
+
+		case LORA_STATE_WAIT_PACKET_RECEIVED:
+			transit_to_state(LORA_STATE_ABORT_RX1);
+			break;
+
+		default:
+			return NRF_ERROR_BUSY;
+	}
+
+	return NRF_SUCCESS;
+}
+
+
+ret_code_t lora_start_rx(void)
+{
+	switch(m_state) {
+		case LORA_STATE_OFF:
+			VERIFY_SUCCESS(lora_power_on());
+			break;
+
+		case LORA_STATE_CONFIGURED_IDLE:
+			transit_to_state(LORA_STATE_SETUP_RX_IRQ);
+			break;
+
+		default:
+			return NRF_ERROR_BUSY;
+	}
+
+	return NRF_SUCCESS;
+}
+
+
 bool lora_is_busy(void)
 {
-	return (m_state != LORA_STATE_IDLE);
+	return (m_state != LORA_STATE_OFF) && (m_state != LORA_STATE_CONFIGURED_IDLE);
 }
 
 
@@ -960,5 +1058,7 @@ void lora_loop(void)
 		periph_pwr_stop_activity(PERIPH_PWR_FLAG_LORA);
 
 		m_shutdown_needed = false;
+
+		m_callback(LORA_EVT_OFF, NULL, 0);
 	}
 }

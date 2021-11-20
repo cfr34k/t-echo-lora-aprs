@@ -630,6 +630,13 @@ void cb_lora(lora_evt_t evt, const uint8_t *data, uint8_t len)
 			m_display_message_len = len;
 			m_epaper_update_requested = true;
 			break;
+
+		case LORA_EVT_CONFIGURED_IDLE:
+			lora_start_rx();
+			break;
+
+		default:
+			break;
 	}
 }
 
@@ -646,6 +653,10 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 				led_on(LED_EPAPER_BACKLIGHT);
 				APP_ERROR_CHECK(app_timer_start(m_backlight_timer, APP_TIMER_TICKS(3000), NULL));
 			}
+			break;
+
+		case PIN_BUTTON_1:
+			lora_send_packet((const uint8_t*)"Hallo LoRa!", 11);
 			break;
 	}
 }
