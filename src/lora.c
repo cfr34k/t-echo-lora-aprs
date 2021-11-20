@@ -182,13 +182,13 @@ typedef enum
 	LORA_STATE_SET_DIO2_AS_RF_SW_CTRL,
 	LORA_STATE_SET_DIO3_AS_TCXO_CTRL,
 	LORA_STATE_SET_MODULATION_PARAMS,
-	LORA_STATE_SET_PACKET_PARAMS,
 	LORA_STATE_CONFIGURED_IDLE,
 
 	LORA_STATE_GET_DEVICE_ERRORS,
 	LORA_STATE_CLEAR_DEVICE_ERRORS,
 
 	// for TX only
+	LORA_STATE_SET_TX_PACKET_PARAMS,
 	LORA_STATE_SET_PA_CONFIG,
 	LORA_STATE_SET_TX_PARAMS,
 	LORA_STATE_WRITE_BUFFER,
@@ -198,11 +198,13 @@ typedef enum
 	LORA_STATE_CLEAR_TXDONE_IRQ,
 
 	// for RX only
+	LORA_STATE_SET_RX_PACKET_PARAMS,
 	LORA_STATE_SETUP_RX_IRQ,
 	LORA_STATE_START_RX,
 	LORA_STATE_WAIT_PACKET_RECEIVED,
 	LORA_STATE_CLEAR_RX_IRQ,
 	LORA_STATE_READ_BUFFER_STATE,
+	LORA_STATE_READ_PACKET_INFO,
 	LORA_STATE_READ_PACKET_DATA,
 	LORA_STATE_ABORT_RX1,
 	LORA_STATE_ABORT_RX2,
@@ -222,13 +224,13 @@ static const char *LORA_STATE_NAMES[LORA_NUM_STATES] = {
 	"SET_DIO2_AS_RF_SW_CTRL",
 	"SET_DIO3_AS_TCXO_CTRL",
 	"SET_MODULATION_PARAMS",
-	"SET_PACKET_PARAMS",
 	"CONFIGURED_IDLE",
 
 	"GET_DEVICE_ERRORS",
 	"CLEAR_DEVICE_ERRORS",
 
 	// for TX only
+	"SET_TX_PACKET_PARAMS",
 	"SET_PA_CONFIG",
 	"SET_TX_PARAMS",
 	"WRITE_BUFFER",
@@ -238,11 +240,13 @@ static const char *LORA_STATE_NAMES[LORA_NUM_STATES] = {
 	"CLEAR_TXDONE_IRQ",
 
 	// for RX only
+	"SET_RX_PACKET_PARAMS",
 	"SETUP_RX_IRQ",
 	"START_RX",
 	"WAIT_PACKET_RECEIVED",
 	"CLEAR_RX_IRQ",
 	"READ_BUFFER_STATE",
+	"READ_PACKET_INFO",
 	"READ_PACKET_DATA",
 	"ABORT_RX1",
 	"ABORT_RX2",
@@ -286,6 +290,8 @@ static uint8_t  m_rx_packet_len;
 static uint8_t  m_rx_packet_offset;
 
 static uint32_t m_tx_timeout = 600;
+
+static lora_evt_data_t m_evt_data;
 
 static lora_callback_t m_callback;
 
@@ -381,12 +387,21 @@ static ret_code_t handle_state_exit(void)
 			m_rx_packet_offset = m_buffer_rx[3];
 			break;
 
+		case LORA_STATE_READ_PACKET_INFO:
+			m_evt_data.rx_packet_data.rssi       = -((float)m_buffer_rx[2] / 2);
+			m_evt_data.rx_packet_data.snr        =  ((float)m_buffer_rx[3] / 4);
+			m_evt_data.rx_packet_data.signalRssi = -((float)m_buffer_rx[4] / 2);
+			break;
+
 		case LORA_STATE_READ_PACKET_DATA:
 			// the first three bytes contain the status byte and must be
 			// removed to get the payload alone.
 			m_buffer_rx[m_rx_packet_len+3] = '\0';
 
-			m_callback(LORA_EVT_PACKET_RECEIVED, m_buffer_rx + 3, m_rx_packet_len);
+			m_evt_data.rx_packet_data.data     = m_buffer_rx + 3;
+			m_evt_data.rx_packet_data.data_len = m_rx_packet_len;
+
+			m_callback(LORA_EVT_PACKET_RECEIVED, &m_evt_data);
 
 			NRF_LOG_INFO("lora: received packet:");
 			NRF_LOG_HEXDUMP_INFO(m_buffer_rx+3, m_rx_packet_len);
@@ -516,27 +531,12 @@ static ret_code_t handle_state_entry(void)
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
 
-		case LORA_STATE_SET_PACKET_PARAMS:
-			command[0] = SX1262_OPCODE_SET_PACKET_PARAMS;
-			command[1] = 0x00; // 16 preamble symbols: MSB
-			command[2] = 0x10; // 16 preamble symbols: LSB
-			command[3] = SX1262_LORA_HEADER_TYPE_EXPLICIT;
-			command[4] = m_payload_length;
-			command[5] = SX1262_LORA_CRC_TYPE_ON;
-			command[6] = SX1262_LORA_INVERT_IQ_OFF;
-
-			APP_ERROR_CHECK(send_command(command, 7, &m_status));
-
-			/* NOTE! This is the last common state for TX and RX. The path used
-			 * is determined in cb_spim(). */
-			break;
-
 		case LORA_STATE_CONFIGURED_IDLE:
 			if(m_payload_length != 0) {
 				// a packet should be sent, so we continue immediately.
-				transit_to_state(LORA_STATE_SET_PA_CONFIG);
+				transit_to_state(LORA_STATE_SET_TX_PACKET_PARAMS);
 			} else {
-				m_callback(LORA_EVT_CONFIGURED_IDLE, NULL, 0);
+				m_callback(LORA_EVT_CONFIGURED_IDLE, NULL);
 			}
 			break;
 
@@ -558,6 +558,18 @@ static ret_code_t handle_state_entry(void)
 			break;
 
 		/* The following states are only used in TX. */
+
+		case LORA_STATE_SET_TX_PACKET_PARAMS:
+			command[0] = SX1262_OPCODE_SET_PACKET_PARAMS;
+			command[1] = 0x00; // 16 preamble symbols: MSB
+			command[2] = 0x10; // 16 preamble symbols: LSB
+			command[3] = SX1262_LORA_HEADER_TYPE_EXPLICIT;
+			command[4] = m_payload_length;
+			command[5] = SX1262_LORA_CRC_TYPE_ON;
+			command[6] = SX1262_LORA_INVERT_IQ_OFF;
+
+			APP_ERROR_CHECK(send_command(command, 7, &m_status));
+			break;
 
 		case LORA_STATE_SET_PA_CONFIG:
 			// optimal PA settings for +14 dBm, see datasheet page 77
@@ -635,6 +647,18 @@ static ret_code_t handle_state_entry(void)
 
 		/* The following states are only used in RX. */
 
+		case LORA_STATE_SET_RX_PACKET_PARAMS:
+			command[0] = SX1262_OPCODE_SET_PACKET_PARAMS;
+			command[1] = 0x00; // 16 preamble symbols: MSB
+			command[2] = 0x10; // 16 preamble symbols: LSB
+			command[3] = SX1262_LORA_HEADER_TYPE_EXPLICIT;
+			command[4] = 0xFF; // expect up to 255 bytes
+			command[5] = SX1262_LORA_CRC_TYPE_ON;
+			command[6] = SX1262_LORA_INVERT_IQ_OFF;
+
+			APP_ERROR_CHECK(send_command(command, 7, &m_status));
+			break;
+
 		case LORA_STATE_SETUP_RX_IRQ:
 			command[0] = SX1262_OPCODE_SET_DIO_IRQ_PARAMS;
 			command[1] = 0x02; // IRQ Mask: MSB
@@ -674,6 +698,12 @@ static ret_code_t handle_state_entry(void)
 			command[0] = SX1262_OPCODE_GET_RX_BUF_STATUS;
 
 			APP_ERROR_CHECK(read_data_from_module(command, 1, m_buffer_rx, 4));
+			break;
+
+		case LORA_STATE_READ_PACKET_INFO:
+			command[0] = SX1262_OPCODE_GET_PACKET_STATUS;
+
+			APP_ERROR_CHECK(read_data_from_module(command, 1, m_buffer_rx, 5));
 			break;
 
 		case LORA_STATE_READ_PACKET_DATA:
@@ -736,11 +766,6 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_SET_MODULATION_PARAMS:
-			m_next_state = LORA_STATE_SET_PACKET_PARAMS;
-			transit_to_state(LORA_STATE_WAIT_BUSY);
-			break;
-
-		case LORA_STATE_SET_PACKET_PARAMS:
 			m_next_state = LORA_STATE_SET_RF_FREQUENCY;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
@@ -772,6 +797,10 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 
 			/* The following states are only used in TX. */
 
+		case LORA_STATE_SET_TX_PACKET_PARAMS:
+			transit_to_state(LORA_STATE_SET_PA_CONFIG);
+			break;
+
 		case LORA_STATE_SET_PA_CONFIG:
 			m_next_state = LORA_STATE_SET_TX_PARAMS;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
@@ -801,13 +830,17 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 		case LORA_STATE_CLEAR_TXDONE_IRQ:
 			led_off(LED_RED);
 			m_payload_length = 0; // packet transmission completed
-			m_callback(LORA_EVT_TX_COMPLETE, NULL, 0);
+			m_callback(LORA_EVT_TX_COMPLETE, NULL);
 
 			m_next_state = LORA_STATE_CONFIGURED_IDLE;
 			transit_to_state(LORA_STATE_GET_DEVICE_ERRORS);
 			break;
 
 			/* The following states are only used in RX. */
+
+		case LORA_STATE_SET_RX_PACKET_PARAMS:
+			transit_to_state(LORA_STATE_SETUP_RX_IRQ);
+			break;
 
 		case LORA_STATE_SETUP_RX_IRQ:
 			transit_to_state(LORA_STATE_START_RX);
@@ -826,6 +859,10 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_READ_BUFFER_STATE:
+			transit_to_state(LORA_STATE_READ_PACKET_INFO);
+			break;
+
+		case LORA_STATE_READ_PACKET_INFO:
 			transit_to_state(LORA_STATE_READ_PACKET_DATA);
 			break;
 
@@ -1008,11 +1045,17 @@ ret_code_t lora_send_packet(const uint8_t *data, uint8_t length)
 			break;
 
 		case LORA_STATE_CONFIGURED_IDLE:
-			transit_to_state(LORA_STATE_SET_PA_CONFIG);
+			transit_to_state(LORA_STATE_SET_TX_PACKET_PARAMS);
 			break;
 
 		case LORA_STATE_WAIT_PACKET_RECEIVED:
 			transit_to_state(LORA_STATE_ABORT_RX1);
+			break;
+
+		case LORA_STATE_READ_PACKET_DATA:
+			// A packet has just been received and processed. The next state
+			// will be CONFIGURED_IDLE, so the FSM will automatically
+			// transition to TX anyway and do not need to do anything here.
 			break;
 
 		default:
@@ -1031,7 +1074,7 @@ ret_code_t lora_start_rx(void)
 			break;
 
 		case LORA_STATE_CONFIGURED_IDLE:
-			transit_to_state(LORA_STATE_SETUP_RX_IRQ);
+			transit_to_state(LORA_STATE_SET_RX_PACKET_PARAMS);
 			break;
 
 		default:
@@ -1059,6 +1102,6 @@ void lora_loop(void)
 
 		m_shutdown_needed = false;
 
-		m_callback(LORA_EVT_OFF, NULL, 0);
+		m_callback(LORA_EVT_OFF, NULL);
 	}
 }

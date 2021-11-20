@@ -620,15 +620,29 @@ static void cb_gps(const nmea_data_t *data)
 }
 
 
-void cb_lora(lora_evt_t evt, const uint8_t *data, uint8_t len)
+void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 {
 	switch(evt)
 	{
 		case LORA_EVT_PACKET_RECEIVED:
 			m_display_state = DISP_STATE_LORA_PACKET;
-			memcpy(m_display_message, data, len);
-			m_display_message_len = len;
+			memcpy(m_display_message, data->rx_packet_data.data, data->rx_packet_data.data_len);
+			m_display_message_len = data->rx_packet_data.data_len;
 			m_epaper_update_requested = true;
+
+			if(m_display_message[0] == 'Q') {
+				// build and send a reply
+				char response[256];
+				snprintf(response, sizeof(response), "R: -%d.%01d / %d.%02d / -%d.%01d",
+						(int)(-data->rx_packet_data.rssi),
+						(int)(10 * ((-data->rx_packet_data.rssi) - (int)(-data->rx_packet_data.rssi))),
+						(int)(data->rx_packet_data.snr),
+						(int)(100 * ((data->rx_packet_data.snr) - (int)(data->rx_packet_data.snr))),
+						(int)(-data->rx_packet_data.signalRssi),
+						(int)(10 * ((-data->rx_packet_data.signalRssi) - (int)(-data->rx_packet_data.signalRssi))));
+
+				lora_send_packet((uint8_t*)response, strlen(response));
+			}
 			break;
 
 		case LORA_EVT_CONFIGURED_IDLE:
@@ -656,7 +670,7 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 			break;
 
 		case PIN_BUTTON_1:
-			lora_send_packet((const uint8_t*)"Hallo LoRa!", 11);
+			lora_send_packet((const uint8_t*)"Q: test de DL5TKL", 17);
 			break;
 	}
 }
@@ -1077,7 +1091,7 @@ int main(void)
 	NRF_LOG_HEXDUMP_INFO(message, frame_len);
 
 	//lora_send_packet(message, frame_len);
-	lora_send_packet((const uint8_t*)"Hallo LoRa!", 11);
+	//lora_send_packet((const uint8_t*)"Hallo LoRa!", 11);
 
 	m_display_state = DISP_STATE_STARTUP;
 	redraw_display();

@@ -14,7 +14,19 @@ typedef enum
 	LORA_EVT_OFF,
 } lora_evt_t;
 
-typedef void (* lora_callback_t)(lora_evt_t evt, const uint8_t *data, uint8_t len);
+typedef union
+{
+	struct {
+		uint8_t *data;
+		uint8_t  data_len;
+
+		float rssi;
+		float snr;
+		float signalRssi;
+	} rx_packet_data;
+} lora_evt_data_t;
+
+typedef void (* lora_callback_t)(lora_evt_t evt, const lora_evt_data_t *data);
 
 void lora_config_gpios(bool power_supplied);
 ret_code_t lora_init(lora_callback_t callback);
