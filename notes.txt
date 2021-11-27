@@ -17,3 +17,7 @@ VBAT
       |                            +---> BME280
       |
       +---> MOSFET 2 ---> Batterie-ADC
+
+Nachrichtenformat:
+
+source ">" dest ("," path)* ":" body
