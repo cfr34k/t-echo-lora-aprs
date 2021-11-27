@@ -6,6 +6,8 @@
 #define BUTTONS_BTN_TOUCH 0
 #define BUTTONS_BTN_1     1
 
+#define BUTTONS_EVT_LONGPRESS 0x11
+
 bool buttons_button_is_pressed(uint8_t btn);
 
 ret_code_t buttons_init(app_button_handler_t callback);
