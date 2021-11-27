@@ -407,6 +407,16 @@ static ret_code_t handle_state_exit(void)
 			NRF_LOG_HEXDUMP_INFO(m_buffer_rx+3, m_rx_packet_len);
 			break;
 
+		case LORA_STATE_WAIT_TX_DONE:
+			led_off(LED_RED);
+			VERIFY_SUCCESS(app_timer_stop(m_sequence_timer));
+			break;
+
+		case LORA_STATE_WAIT_PACKET_RECEIVED:
+			led_off(LED_GREEN);
+			VERIFY_SUCCESS(app_timer_stop(m_sequence_timer));
+			break;
+
 		default:
 			break;
 	}
@@ -828,7 +838,6 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_CLEAR_TXDONE_IRQ:
-			led_off(LED_RED);
 			m_payload_length = 0; // packet transmission completed
 			m_callback(LORA_EVT_TX_COMPLETE, NULL);
 
@@ -854,7 +863,6 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 
 			/* RX completed. */
 		case LORA_STATE_CLEAR_RX_IRQ:
-			led_off(LED_GREEN);
 			transit_to_state(LORA_STATE_READ_BUFFER_STATE);
 			break;
 
