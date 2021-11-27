@@ -55,6 +55,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "app_button.h"
 #include "bsp.h"
 #include "ble_types.h"
 #include "nordic_common.h"
@@ -159,6 +160,8 @@ typedef enum
 static display_state_t m_display_state = DISP_STATE_STARTUP;
 static uint8_t m_display_message[256];
 static uint8_t m_display_message_len = 0;
+
+static bool m_lora_rx_active = false;
 
 BLE_BAS_DEF(m_ble_bas); // battery service
 
@@ -646,7 +649,11 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 			break;
 
 		case LORA_EVT_CONFIGURED_IDLE:
-			lora_start_rx();
+			if(m_lora_rx_active) {
+				lora_start_rx();
+			} else {
+				lora_power_off();
+			}
 			break;
 
 		default:
@@ -666,11 +673,31 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 				APP_ERROR_CHECK(app_timer_stop(m_backlight_timer));
 				led_on(LED_EPAPER_BACKLIGHT);
 				APP_ERROR_CHECK(app_timer_start(m_backlight_timer, APP_TIMER_TICKS(3000), NULL));
+			} else if(evt == BUTTONS_EVT_LONGPRESS) {
+				m_lora_rx_active = !m_lora_rx_active;
+				if(m_lora_rx_active) {
+					lora_start_rx();
+				} else {
+					lora_power_off();
+				}
 			}
 			break;
 
 		case PIN_BUTTON_1:
-			lora_send_packet((const uint8_t*)"Q: test de DL5TKL", 17);
+			if(evt == APP_BUTTON_PUSH) {
+				uint8_t message[APRS_MAX_FRAME_LEN];
+				size_t  frame_len;
+
+				aprs_set_comment("T-Echo test");
+				aprs_update_pos_time(48.73705, 11.41350, 380, 1638041813);
+
+				frame_len = aprs_build_frame(message);
+
+				NRF_LOG_INFO("Generated frame:");
+				NRF_LOG_HEXDUMP_INFO(message, frame_len);
+
+				lora_send_packet(message, frame_len);
+			}
 			break;
 	}
 }
@@ -1062,6 +1089,7 @@ int main(void)
 	epaper_init();
 	gps_init(cb_gps);
 	lora_init(cb_lora);
+	aprs_init();
 
 	voltage_monitor_init(cb_voltage_monitor);
 
@@ -1071,26 +1099,15 @@ int main(void)
 
 	voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 
-	epaper_update();
-
-	uint8_t message[APRS_MAX_FRAME_LEN];
-	size_t frame_len = 0;
-
-	aprs_init();
+	// Initial APRS setup
 	aprs_set_source("DL5TKL", 0);
 	aprs_set_dest("GPS", 0);
-	aprs_add_path("WIDE1", 1);
+
+	aprs_clear_path();
 	aprs_add_path("WIDE2", 2);
+
 	aprs_set_icon(AI_JOGGER);
-	aprs_set_comment("T-Echo test");
-	aprs_update_pos_time(49.586646, 11.012561, 332, 1637267230);
 
-	frame_len = aprs_build_frame(message);
-
-	NRF_LOG_INFO("Generated frame:");
-	NRF_LOG_HEXDUMP_INFO(message, frame_len);
-
-	//lora_send_packet(message, frame_len);
 	//lora_send_packet((const uint8_t*)"Hallo LoRa!", 11);
 
 	m_display_state = DISP_STATE_STARTUP;
