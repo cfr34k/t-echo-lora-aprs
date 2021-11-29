@@ -161,6 +161,8 @@ static display_state_t m_display_state = DISP_STATE_STARTUP;
 static uint8_t m_display_message[256];
 static uint8_t m_display_message_len = 0;
 
+static float m_rssi, m_snr, m_signalRssi;
+
 static bool m_lora_rx_active = false;
 
 BLE_BAS_DEF(m_ble_bas); // battery service
@@ -631,21 +633,12 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 			m_display_state = DISP_STATE_LORA_PACKET;
 			memcpy(m_display_message, data->rx_packet_data.data, data->rx_packet_data.data_len);
 			m_display_message_len = data->rx_packet_data.data_len;
+
+			m_rssi = data->rx_packet_data.rssi;
+			m_signalRssi = data->rx_packet_data.signalRssi;
+			m_snr = data->rx_packet_data.snr;
+
 			m_epaper_update_requested = true;
-
-			if(m_display_message[0] == 'Q') {
-				// build and send a reply
-				char response[256];
-				snprintf(response, sizeof(response), "R: -%d.%01d / %d.%02d / -%d.%01d",
-						(int)(-data->rx_packet_data.rssi),
-						(int)(10 * ((-data->rx_packet_data.rssi) - (int)(-data->rx_packet_data.rssi))),
-						(int)(data->rx_packet_data.snr),
-						(int)(100 * ((data->rx_packet_data.snr) - (int)(data->rx_packet_data.snr))),
-						(int)(-data->rx_packet_data.signalRssi),
-						(int)(10 * ((-data->rx_packet_data.signalRssi) - (int)(-data->rx_packet_data.signalRssi))));
-
-				lora_send_packet((uint8_t*)response, strlen(response));
-			}
 			break;
 
 		case LORA_EVT_CONFIGURED_IDLE:
@@ -1056,10 +1049,53 @@ static void redraw_display(void)
 		case DISP_STATE_LORA_PACKET:
 			epaper_fb_move_to(0, yoffset);
 
-			m_display_message[m_display_message_len] = '\0';
-			epaper_fb_draw_string((char*)m_display_message, EPAPER_COLOR_BLACK);
+			{
+				char line[32];
+				char *lineptr = line;
 
-			yoffset += line_height;
+				static const char hexlut[16] = "0123456789ABCDEF";
+
+				size_t len = m_display_message_len;
+				if(len > 7*6) {
+					len = 7*6;
+				}
+
+				for(uint8_t i = 0; i < len; i++) {
+					*(lineptr++) = hexlut[ (m_display_message[i] >> 4) & 0x0F ];
+					*(lineptr++) = hexlut[ (m_display_message[i] >> 0) & 0x0F ];
+					*(lineptr++) = ' ';
+
+					if((i % 7) == 6) {
+						*lineptr = '\0';
+
+						epaper_fb_draw_string(line, EPAPER_COLOR_BLACK);
+						yoffset += line_height;
+						epaper_fb_move_to(0, yoffset);
+
+						lineptr = line;
+					}
+				}
+
+				if(lineptr != line) {
+					*lineptr = '\0';
+
+					epaper_fb_draw_string(line, EPAPER_COLOR_BLACK);
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+				}
+
+				snprintf(line, sizeof(line), "R: -%d.%01d / %d.%02d / -%d.%01d",
+						(int)(-m_rssi),
+						(int)(10 * ((-m_rssi) - (int)(-m_rssi))),
+						(int)(m_snr),
+						(int)(100 * ((m_snr) - (int)(m_snr))),
+						(int)(-m_signalRssi),
+						(int)(10 * ((-m_signalRssi) - (int)(-m_signalRssi))));
+
+				epaper_fb_draw_string(line, EPAPER_COLOR_BLACK);
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
+			}
 			break;
 	}
 
