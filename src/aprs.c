@@ -33,22 +33,13 @@ aprs_addr_t m_src;
 aprs_addr_t m_path[8];
 uint8_t m_npath;
 
-uint8_t m_type;
-uint8_t m_protocol;
 uint8_t m_info[APRS_MAX_INFO_LEN];
 
 aprs_icon_t m_icon;
 char m_comment[APRS_MAX_COMMENT_LEN+1];
 
 
-static void import_ascii(uint8_t *out, char *in, size_t n)
-{
-	for(size_t i = 0; i < n; i++) {
-		uint8_t tmp = (uint8_t)in[i];
-		out[i] = tmp << 1;
-	}
-}
-
+#if 0
 /*
  * http://n1vg.net/packet/
  *
@@ -79,27 +70,25 @@ static uint16_t calculate_fcs(uint8_t *data, size_t len)
 
 	return ~lfsr; // invert all bits in the end
 }
+#endif
 
 static void append_address(uint8_t **frameptr, aprs_addr_t *addr, uint8_t is_last)
 {
-	size_t len = strlen(addr->call);
-
-	// convert the data to the AX.25 representation
-	import_ascii(*frameptr, addr->call, len);
-
-	// pad to 6 bytes
-	for(size_t i = len; i < 6; i++) {
-		(*frameptr)[i] = ((uint8_t)' ') << 1;
+	if(addr->ssid != 0) {
+		int ret = sprintf((char*)*frameptr, "%s-%d", addr->call, addr->ssid);
+		if(ret > 0) {
+			*frameptr += ret;
+		}
+	} else {
+		size_t len = strlen(addr->call);
+		strncpy((char*)*frameptr, addr->call, len);
+		*frameptr += len;
 	}
 
-	// the 7th byte is special
-	(*frameptr)[6] = 0x60 | ((addr->ssid << 1) & 0x1E);
-
-	if(is_last) {
-		(*frameptr)[6] |= 0x01;
+	if(!is_last) {
+		**frameptr = ',';
+		(*frameptr)++;
 	}
-
-	*frameptr += 7;
 }
 
 static void update_info_field(void)
@@ -157,22 +146,26 @@ static void update_info_field(void)
 			ICON_DATA[m_icon].aprs_char, m_comment,
 			(int)alt_ft);
 	*/
+	/*
 	// time as hhmmss
-	snprintf((char*)m_info, sizeof(m_info), "/%02i%02i%02ih%02i%02i.%02i%c/%03i%02i.%02i%c%c%s /a=%06i",
+	snprintf((char*)m_info, sizeof(m_info), "/%02i%02i%02ih%02i%02i.%02i%c/%03i%02i.%02i%c%c/A=%06i %s",
 			tms->tm_hour, tms->tm_min, tms->tm_sec,
 			lat_deg, lat_min, lat_min_fract, lat_ns,
 			lon_deg, lon_min, lon_min_fract, lon_ew,
-			m_icon_map[m_icon], m_comment,
-			(int)alt_ft);
+			m_icon_map[m_icon], (int)alt_ft, m_comment);
+	*/
+	// no time at all
+	(void)tms;
+	snprintf((char*)m_info, sizeof(m_info), "!%02i%02i.%02i%c/%03i%02i.%02i%c%c%s /A=%06i",
+			lat_deg, lat_min, lat_min_fract, lat_ns,
+			lon_deg, lon_min, lon_min_fract, lon_ew,
+			m_icon_map[m_icon], m_comment, (int)alt_ft);
 }
 
 // PUBLIC FUNCTIONS
 
 void aprs_init(void)
 {
-	m_type     = 0x03; // UI frame
-	m_protocol = 0xF0; // no level 3 protocol
-
 	m_dest.call[6] = '\0';
 	m_src.call[6] = '\0';
 
@@ -241,17 +234,21 @@ size_t aprs_build_frame(uint8_t *frame)
 {
 	uint8_t *frameptr = frame;
 	uint8_t *infoptr = m_info;
-	uint16_t fcs;
+	//uint16_t fcs;
 
-	append_address(&frameptr, &(m_dest), 0);
-	append_address(&frameptr, &(m_src), (m_npath == 0) ? 1 : 0);
+	*(frameptr++) = '<';
+	*(frameptr++) = 0xFF;
+	*(frameptr++) = 0x01;
+
+	append_address(&frameptr, &(m_src), 1);
+	*(frameptr++) = '>';
+	append_address(&frameptr, &(m_dest), (m_npath == 0) ? 1 : 0);
 
 	for(uint8_t i = 0; i < m_npath; i++) {
 		append_address(&frameptr, &(m_path[i]), (m_npath == (i+1)) ? 1 : 0);
 	}
 
-	*(frameptr++) = m_type;
-	*(frameptr++) = m_protocol;
+	*(frameptr++) = ':';
 
 	update_info_field();
 
@@ -262,12 +259,16 @@ size_t aprs_build_frame(uint8_t *frame)
 		infoptr++;
 	}
 
+	*(frameptr++) = '\n';
+
+#if 0
 	fcs = calculate_fcs(frame, (frameptr-frame));
 
 	//*(frameptr++) = bit_reverse(fcs >> 8);
 	//*(frameptr++) = bit_reverse(fcs & 0xFF);
 	*(frameptr++) = fcs & 0xFF;
 	*(frameptr++) = fcs >> 8;
+#endif
 
 	*frameptr = '\0';
 
