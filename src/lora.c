@@ -477,16 +477,16 @@ static ret_code_t handle_state_entry(void)
 			command[0] = SX1262_OPCODE_SET_RF_FREQUENCY;
 
 			// => value = 434.4 MHz * 2^25 / (32 MHz) = 455501414.4 = 0x1b266666
-			command[1] = 0x1B;
-			command[2] = 0x26;
-			command[3] = 0x66;
-			command[4] = 0x66;
-
-			// => value = 433.775 MHz * 2^25 / (32 MHz) = 0x1b1c6666
 			//command[1] = 0x1B;
-			//command[2] = 0x1C;
+			//command[2] = 0x26;
 			//command[3] = 0x66;
 			//command[4] = 0x66;
+
+			// => value = 433.775 MHz * 2^25 / (32 MHz) = 0x1b1c6666
+			command[1] = 0x1B;
+			command[2] = 0x1C;
+			command[3] = 0x66;
+			command[4] = 0x66;
 
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
@@ -527,16 +527,16 @@ static ret_code_t handle_state_entry(void)
 
 		case LORA_STATE_SET_MODULATION_PARAMS:
 			command[0] = SX1262_OPCODE_SET_MODULATION_PARAMS;
-			command[1] = SX1262_LORA_SF_9;
-			command[2] = SX1262_LORA_BW_20;
-			command[3] = SX1262_LORA_CR_4_5;
-			command[4] = SX1262_LORA_LDRO_OFF;
-
-			// Settings used by LoRa-APRS
-			//command[1] = SX1262_LORA_SF_12;
-			//command[2] = SX1262_LORA_BW_125;
+			//command[1] = SX1262_LORA_SF_9;
+			//command[2] = SX1262_LORA_BW_20;
 			//command[3] = SX1262_LORA_CR_4_5;
 			//command[4] = SX1262_LORA_LDRO_OFF;
+
+			// Settings used by LoRa-APRS
+			command[1] = SX1262_LORA_SF_12;
+			command[2] = SX1262_LORA_BW_125;
+			command[3] = SX1262_LORA_CR_4_5;
+			command[4] = SX1262_LORA_LDRO_OFF;
 
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
@@ -622,15 +622,15 @@ static ret_code_t handle_state_entry(void)
 		case LORA_STATE_START_TX:
 			{
 				float toa = calc_toa(
-						9,      // SF
+						12,     // SF
 						1,      // CR=4/5
-						20.86f, // BW
+						125.0f, // BW
 						16,     // preamble symbols
 						m_payload_length,
 						true,   // explicit header
 						true);  // use CRC
 
-				m_tx_timeout = 1.20f * toa * 1000.0f / TX_DONE_POLL_INTERVAL_MS;
+				m_tx_timeout = 1.50f * toa * 1000.0f / TX_DONE_POLL_INTERVAL_MS;
 
 				NRF_LOG_INFO("lora: expected time on air: %d ms", (int)(toa));
 			}
