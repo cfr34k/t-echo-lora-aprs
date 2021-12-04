@@ -86,6 +86,8 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
+#include "lns_wrap.h"
+
 #include "pinout.h"
 #include "epaper.h"
 #include "gps.h"
@@ -344,29 +346,6 @@ static void services_init(void)
 	err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
 	APP_ERROR_CHECK(err_code);
 
-	/* YOUR_JOB: Add code to initialize the services used by the application.
-	   ble_xxs_init_t                     xxs_init;
-	   ble_yys_init_t                     yys_init;
-
-	// Initialize XXX Service.
-	memset(&xxs_init, 0, sizeof(xxs_init));
-
-	xxs_init.evt_handler                = NULL;
-	xxs_init.is_xxx_notify_supported    = true;
-	xxs_init.ble_xx_initial_value.level = 100;
-
-	err_code = ble_bas_init(&m_xxs, &xxs_init);
-	APP_ERROR_CHECK(err_code);
-
-	// Initialize YYY Service.
-	memset(&yys_init, 0, sizeof(yys_init));
-	yys_init.evt_handler                  = on_yys_evt;
-	yys_init.ble_yy_initial_value.counter = 0;
-
-	err_code = ble_yy_service_init(&yys_init, &yy_init);
-	APP_ERROR_CHECK(err_code);
-	*/
-
 	ble_bas_init_t bas_init;
 
 	memset(&bas_init, 0, sizeof(bas_init));
@@ -381,6 +360,9 @@ static void services_init(void)
 	bas_init.bl_report_rd_sec     = SEC_OPEN;
 
 	err_code = ble_bas_init(&m_ble_bas, &bas_init);
+	APP_ERROR_CHECK(err_code);
+
+	err_code = lns_wrap_init();
 	APP_ERROR_CHECK(err_code);
 }
 
