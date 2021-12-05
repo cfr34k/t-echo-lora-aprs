@@ -1,6 +1,8 @@
 #include <nrf_log.h>
 
-#include "ble_lns.h"
+#include <ble_lns.h>
+
+#include "lns_wrap.h"
 
 BLE_LNS_DEF(m_ble_lns);
 
@@ -126,4 +128,34 @@ ret_code_t lns_wrap_init(void)
 	lns_init.ctrl_point_security_req_cccd_write_perm = SEC_OPEN;
 
 	return ble_lns_init(&m_ble_lns, &lns_init);
+}
+
+ret_code_t lns_wrap_update_data(const nmea_data_t *data)
+{
+	if(data->pos_valid) {
+		m_location_speed.position_status = BLE_LNS_POSITION_OK;
+
+		m_location_speed.location_present = true;
+		m_location_speed.latitude  = data->lat * 1e7;
+		m_location_speed.longitude = data->lon * 1e7;
+
+		m_position_quality.position_status = BLE_LNS_POSITION_OK;
+
+		m_position_quality.hdop_present = true;
+		m_position_quality.hdop         = 5 * data->hdop;
+		m_position_quality.vdop_present = true;
+		m_position_quality.vdop         = 5 * data->vdop;
+	} else {
+		m_location_speed.position_status = BLE_LNS_LAST_KNOWN_POSITION;
+		m_position_quality.position_status = BLE_LNS_LAST_KNOWN_POSITION;
+	}
+
+	m_position_quality.number_of_satellites_in_solution_present = true;
+	m_position_quality.number_of_satellites_in_solution = 0;
+	for(int i = 0; i < NMEA_NUM_FIX_INFO; i++) {
+		m_position_quality.number_of_satellites_in_solution
+			+= data->fix_info[i].sats_used;
+	}
+
+	return ble_lns_loc_speed_send(&m_ble_lns);
 }

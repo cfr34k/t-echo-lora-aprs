@@ -604,6 +604,11 @@ static void cb_gps(const nmea_data_t *data)
 {
 	// make a copy for display rendering
 	m_nmea_data = *data;
+
+	APP_ERROR_CHECK(lns_wrap_update_data(data));
+
+	// FIXME: time and altitude
+	aprs_update_pos_time(data->lat, data->lon, 0, 0);
 }
 
 
@@ -664,7 +669,6 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 				size_t  frame_len;
 
 				aprs_set_comment("T-Echo test");
-				aprs_update_pos_time(48.73705, 11.41350, 380, 1638041813);
 
 				frame_len = aprs_build_frame(message);
 
