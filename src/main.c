@@ -87,6 +87,7 @@
 #include "nrf_log_default_backends.h"
 
 #include "lns_wrap.h"
+#include "aprs_service.h"
 
 #include "pinout.h"
 #include "epaper.h"
@@ -168,6 +169,8 @@ static float m_rssi, m_snr, m_signalRssi;
 static bool m_lora_rx_active = false;
 
 BLE_BAS_DEF(m_ble_bas); // battery service
+
+APRS_SERVICE_DEF(m_aprs_service);
 
 // YOUR_JOB: Use UUIDs for service(s) used in your application.
 static ble_uuid_t m_adv_uuids[] =                                               /**< Universally unique service identifiers. */
@@ -307,31 +310,32 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
 }
 
 
-/**@brief Function for handling the YYY Service events.
- * YOUR_JOB implement a service handler function depending on the event the service you are using can generate
- *
- * @details This function will be called for all YY Service events which are passed to
- *          the application.
- *
- * @param[in]   p_yy_service   YY Service structure.
- * @param[in]   p_evt          Event received from the YY Service.
- *
- *
- static void on_yys_evt(ble_yy_service_t     * p_yy_service,
- ble_yy_service_evt_t * p_evt)
- {
- switch (p_evt->evt_type)
- {
- case BLE_YY_NAME_EVT_WRITE:
- APPL_LOG("[APPL]: charact written with value %s. ", p_evt->params.char_xx.value.p_str);
- break;
+static void cb_aprs_service(aprs_service_evt_t evt)
+{
+	switch(evt)
+	{
+		case APRS_SERVICE_EVT_MYCALL_CHANGED:
+			{
+				char mycall[16];
 
- default:
-// No implementation needed.
-break;
+				APP_ERROR_CHECK(aprs_service_get_mycall(&m_aprs_service, mycall, sizeof(mycall)));
+
+				aprs_set_source(mycall, 0);
+			}
+			break;
+
+		case APRS_SERVICE_EVT_COMMENT_CHANGED:
+			{
+				char comment[64];
+
+				APP_ERROR_CHECK(aprs_service_get_comment(&m_aprs_service, comment, sizeof(comment)));
+
+				aprs_set_comment(comment);
+			}
+			break;
+	}
 }
-}
-*/
+
 
 /**@brief Function for initializing services that will be used by the application.
 */
@@ -346,6 +350,7 @@ static void services_init(void)
 	err_code = nrf_ble_qwr_init(&m_qwr, &qwr_init);
 	APP_ERROR_CHECK(err_code);
 
+	// Initialize the Battery Service
 	ble_bas_init_t bas_init;
 
 	memset(&bas_init, 0, sizeof(bas_init));
@@ -362,7 +367,18 @@ static void services_init(void)
 	err_code = ble_bas_init(&m_ble_bas, &bas_init);
 	APP_ERROR_CHECK(err_code);
 
+	// Initialize the Location and Navigation Service
 	err_code = lns_wrap_init();
+	APP_ERROR_CHECK(err_code);
+
+	// Initialize the APRS Service
+	aprs_service_init_t aprs_init;
+
+	memset(&aprs_init, 0, sizeof(aprs_init));
+
+	aprs_init.callback = cb_aprs_service;
+
+	err_code = aprs_service_init(&m_aprs_service, &aprs_init);
 	APP_ERROR_CHECK(err_code);
 }
 
@@ -605,7 +621,7 @@ static void cb_gps(const nmea_data_t *data)
 	// make a copy for display rendering
 	m_nmea_data = *data;
 
-	APP_ERROR_CHECK(lns_wrap_update_data(data));
+	//APP_ERROR_CHECK(lns_wrap_update_data(data));
 
 	// FIXME: time and altitude
 	aprs_update_pos_time(data->lat, data->lon, 0, 0);
@@ -614,6 +630,8 @@ static void cb_gps(const nmea_data_t *data)
 
 void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 {
+	ret_code_t err_code;
+
 	switch(evt)
 	{
 		case LORA_EVT_PACKET_RECEIVED:
@@ -626,6 +644,27 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 			m_snr = data->rx_packet_data.snr;
 
 			m_epaper_update_requested = true;
+
+			err_code = aprs_service_notify_rx_message(
+					&m_aprs_service,
+					m_conn_handle,
+					data->rx_packet_data.data,
+					data->rx_packet_data.data_len);
+
+			switch(err_code) {
+				case NRF_ERROR_RESOURCES:
+				case NRF_ERROR_INVALID_STATE:
+				case NRF_ERROR_BUSY:
+				case NRF_ERROR_FORBIDDEN:
+				case BLE_ERROR_GATTS_SYS_ATTR_MISSING:
+					// these may happen in normal operation -> do nothing
+					break;
+
+				default:
+					// check all other error codes
+					APP_ERROR_CHECK(err_code);
+					break;
+			}
 			break;
 
 		case LORA_EVT_CONFIGURED_IDLE:
