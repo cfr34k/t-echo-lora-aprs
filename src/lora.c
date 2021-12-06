@@ -536,7 +536,7 @@ static ret_code_t handle_state_entry(void)
 			command[1] = SX1262_LORA_SF_12;
 			command[2] = SX1262_LORA_BW_125;
 			command[3] = SX1262_LORA_CR_4_5;
-			command[4] = SX1262_LORA_LDRO_OFF;
+			command[4] = SX1262_LORA_LDRO_ON;
 
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
