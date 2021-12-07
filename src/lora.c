@@ -848,11 +848,13 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			/* The following states are only used in RX. */
 
 		case LORA_STATE_SET_RX_PACKET_PARAMS:
-			transit_to_state(LORA_STATE_SETUP_RX_IRQ);
+			m_next_state = LORA_STATE_SETUP_RX_IRQ;
+			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
 		case LORA_STATE_SETUP_RX_IRQ:
-			transit_to_state(LORA_STATE_START_RX);
+			m_next_state = LORA_STATE_START_RX;
+			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
 		case LORA_STATE_START_RX:
@@ -880,7 +882,6 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 
 			/* RX aborted. */
 		case LORA_STATE_ABORT_RX1:
-			led_off(LED_GREEN);
 			transit_to_state(LORA_STATE_ABORT_RX2);
 			break;
 
