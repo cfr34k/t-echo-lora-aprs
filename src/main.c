@@ -1161,13 +1161,13 @@ int main(void)
 	voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 
 	// Initial APRS setup
-	aprs_set_source("DL5TKL", 0);
-	aprs_set_dest("GPS", 0);
+	aprs_set_source("DL5TKL", 4);
+	aprs_set_dest("APLT01", 0);
 
 	aprs_clear_path();
-	aprs_add_path("WIDE2", 2);
+	//aprs_add_path("WIDE2", 2);
 
-	aprs_set_icon(AI_JOGGER);
+	aprs_set_icon(AI_BIKE);
 
 	//lora_send_packet((const uint8_t*)"Hallo LoRa!", 11);
 
