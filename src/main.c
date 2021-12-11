@@ -527,7 +527,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
 			periph_pwr_stop_activity(PERIPH_PWR_FLAG_CONNECTED);
 
-			APP_ERROR_CHECK(gps_stop_tracking());
+			APP_ERROR_CHECK(gps_power_off());
 
 			voltage_monitor_stop();
 			voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
@@ -545,7 +545,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 			periph_pwr_start_activity(PERIPH_PWR_FLAG_LEDS);
 			periph_pwr_start_activity(PERIPH_PWR_FLAG_CONNECTED);
 
-			APP_ERROR_CHECK(gps_start_tracking());
+			APP_ERROR_CHECK(gps_power_on());
 
 			voltage_monitor_stop();
 			voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_CONNECTED);
