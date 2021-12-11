@@ -624,7 +624,7 @@ static void cb_gps(const nmea_data_t *data)
 	//APP_ERROR_CHECK(lns_wrap_update_data(data));
 
 	// FIXME: time and altitude
-	aprs_update_pos_time(data->lat, data->lon, 0, 0);
+	aprs_update_pos_time(data->lat, data->lon, data->altitude, 0);
 }
 
 
@@ -1025,12 +1025,19 @@ static void redraw_display(void)
 
 				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
+				epaper_fb_move_to(150, yoffset);
+				epaper_fb_draw_string("Alt:", EPAPER_COLOR_BLACK);
+
 				yoffset += line_height;
 				epaper_fb_move_to(0, yoffset);
 
 				format_float(tmp1, sizeof(tmp1), m_nmea_data.lon, 6);
 				snprintf(s, sizeof(s), "Lon: %s", tmp1);
 
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+				epaper_fb_move_to(150, yoffset);
+				snprintf(s, sizeof(s), "%d", (int)(m_nmea_data.altitude + 0.5f));
 				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 			} else {
 				epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);

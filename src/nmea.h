@@ -32,6 +32,7 @@ typedef struct
 {
 	float lat;
 	float lon;
+	float altitude;
 	bool  pos_valid;
 
 	nmea_fix_info_t fix_info[NMEA_NUM_FIX_INFO];

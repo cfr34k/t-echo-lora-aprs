@@ -211,38 +211,65 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 
 	char *token = nmea_tokenize(sentence + 1, ','); // skip the '$' in the beginning
 
-	if(strcmp(token, "GNGLL") == 0) {
-		// parse Geographic Position, Latitude / Longitude and time sentence.
+	if(strcmp(token, "GNGGA") == 0) {
+		// parse Detailed GNSS position information
 		size_t info_token_idx = 0;
 
-		float lat = INVALID_COORD, lon = INVALID_COORD;
+		float lat = INVALID_COORD, lon = INVALID_COORD, altitude = 0.0f;
 		bool data_valid = false;
 
 		while((token = nmea_tokenize(NULL, ','))) {
 			switch(info_token_idx) {
-				case 0:
+				// case 0: time
+
+				case 1:
 					lat = nmea_coord_to_float(token);
 					break;
 
-				case 1:
+				case 2:
 					lat *= nmea_sign_from_char(token);
 					break;
 
-				case 2:
+				case 3:
 					lon = nmea_coord_to_float(token);
 					break;
 
-				case 3:
+				case 4:
 					lon *= nmea_sign_from_char(token);
 					break;
 
-				// case 4: time (not handled yet)
+				case 5: // quality indicator
+					switch(token[0]) {
+						case '0': // no position
+							data_valid = false;
+							break;
 
-				case 5:
-					if(token[0] == 'A') {
-						data_valid = true;
+						case '1': // no differential corrections (autonomous)
+						case '2': // differentially corrected position (SBAS, DGPS,Atlas DGPSservice, L- Dif and e-Dif)
+						case '3': // ???
+						case '4': // RTK fixed or Atlas high precision services converged
+						case '5': // RTK float,Atlas high precision services converging
+							data_valid = true;
+							break;
+
+						default:
+							data_valid = false;
+							break;
 					}
 					break;
+
+				// case 6: number of satellites in solution
+				// case 7: HDOP
+
+				case 8: // altitude
+					altitude = strtof(token, NULL);
+					break;
+
+				// case 9: unit of altitude
+				// case 10: geoidal separation
+				// case 11: unit of geoidal separation
+				// case 12: age of differential corrections in seconds
+				// case 13: DGPS station ID
 			}
 
 			info_token_idx++;
@@ -253,6 +280,7 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 
 			data->lat = lat;
 			data->lon = lon;
+			data->altitude = altitude;
 			data->pos_valid = true;
 		} else {
 			data->pos_valid = false;
