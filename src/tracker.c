@@ -13,7 +13,7 @@
 #define MAX_HEADING_DELTA_DEG    20.0f
 
 #define MIN_TX_INTERVAL_MS      30000
-#define MAX_TX_INTERVAL_MS     300000
+#define MAX_TX_INTERVAL_MS     600000
 
 #define MAX_DISTANCE_M         1000
 
@@ -29,7 +29,24 @@ static tracker_callback m_callback;
 #define EARTH_RADIUS_M   6371000
 static float great_circle_distance_m(float lat1, float lon1, float lat2, float lon2)
 {
-	float angle = acosf(sinf(lat1) * sinf(lat2) + cosf(lat1) * cosf(lat2) * cosf(lon1 - lon2));
+	// convert to radians
+	lat1 *= 3.141593f / 180.0f;
+	lon1 *= 3.141593f / 180.0f;
+	lat2 *= 3.141593f / 180.0f;
+	lon2 *= 3.141593f / 180.0f;
+
+	// calculation using the haversine formula from
+	// https://en.wikipedia.org/wiki/Great-circle_distance
+	float sin_dlat_over_2 = sinf((lat2 - lat1) * 0.5f);
+	float sin_dlon_over_2 = sinf((lon2 - lon1) * 0.5f);
+	float sin_sumlat_over_2 = sinf((lat2 + lat1) * 0.5f);
+
+	float sin_sq_dlat_over_2 = sin_dlat_over_2 * sin_dlat_over_2;
+	float sin_sq_dlon_over_2 = sin_dlon_over_2 * sin_dlon_over_2;
+	float sin_sq_sumlat_over_2 = sin_sumlat_over_2 * sin_sumlat_over_2;
+
+	float arg = sqrtf(sin_sq_dlat_over_2 + (1 - sin_sq_dlat_over_2 - sin_sq_sumlat_over_2) * sin_sq_dlon_over_2);
+	float angle = 2.0f * asinf(arg);
 	return angle * EARTH_RADIUS_M;
 }
 

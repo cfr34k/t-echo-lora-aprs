@@ -900,7 +900,7 @@ static void cb_sequence_timer(void *p_context)
 	switch(m_state)
 	{
 		case LORA_STATE_RESET:
-			NRF_LOG_INFO("lora: reset complete.");
+			NRF_LOG_DEBUG("lora: reset complete.");
 
 			nrf_gpio_cfg_input(PIN_LORA_RST, NRF_GPIO_PIN_PULLUP);
 
@@ -1024,7 +1024,7 @@ ret_code_t lora_power_on(void)
 	nrf_gpio_cfg_output(PIN_LORA_CS);
 
 	// module has been powered on; reset it for proper startup
-	NRF_LOG_INFO("lora: Resetting module.");
+	NRF_LOG_DEBUG("lora: Resetting module.");
 	transit_to_state(LORA_STATE_RESET);
 
 	// the rest will happen asynchronously. See cb_sequence_timer() and cb_spim().
