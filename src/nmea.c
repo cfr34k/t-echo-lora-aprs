@@ -289,6 +289,46 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 		if(position_updated != NULL) {
 			*position_updated = true;
 		}
+	} else if(strcmp(token, "GNRMC") == 0) {
+		// parse Ground speed and heading
+		size_t info_token_idx = 0;
+
+		float speed = 0.0f, heading = 0.0f;
+		bool data_valid = false;
+
+		while((token = nmea_tokenize(NULL, ','))) {
+			switch(info_token_idx) {
+				case 6: // speed
+					speed = strtof(token, NULL);
+					break;
+
+				case 7: // heading
+					heading = strtof(token, NULL);
+					break;
+
+				case 11: // quality indicator
+					if(token[0] == 'E' || token[0] == 'A' || token[0] == 'D') {
+						data_valid = true;
+					}
+			}
+
+			info_token_idx++;
+		}
+
+		if(data_valid) {
+			//NRF_LOG_INFO("Got valid speed: " NRF_LOG_FLOAT_MARKER ", heading: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(speed), NRF_LOG_FLOAT(heading));
+
+			data->speed = speed;
+			data->heading = heading;
+			data->speed_heading_valid = true;
+		} else {
+			data->speed_heading_valid = false;
+		}
+
+		if(position_updated != NULL) {
+			*position_updated = true;
+		}
+
 	} else if(strcmp(token, "GNGSA") == 0) {
 		// parse DOP and Active Satellites sentence.
 		size_t info_token_idx = 0;

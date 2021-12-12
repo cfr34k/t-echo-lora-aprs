@@ -35,6 +35,10 @@ typedef struct
 	float altitude;
 	bool  pos_valid;
 
+	float speed;
+	float heading;
+	bool  speed_heading_valid;
+
 	nmea_fix_info_t fix_info[NMEA_NUM_FIX_INFO];
 
 	float pdop;
