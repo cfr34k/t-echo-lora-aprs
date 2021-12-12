@@ -336,7 +336,7 @@ static ret_code_t send_command(const uint8_t *command, uint16_t length, sx1262_s
 		xfer_desc = (nrfx_spim_xfer_desc_t)NRFX_SPIM_XFER_TX(command, length);
 	}
 
-	NRF_LOG_INFO("lora: sending command (cmd: 0x%02x, length: %d).", command[0], xfer_desc.tx_length);
+	NRF_LOG_DEBUG("lora: sending command (cmd: 0x%02x, length: %d).", command[0], xfer_desc.tx_length);
 
 	nrf_gpio_pin_clear(PIN_LORA_CS);
 
@@ -350,7 +350,7 @@ static ret_code_t read_data_from_module(const uint8_t *command, uint16_t tx_leng
 	xfer_desc = (nrfx_spim_xfer_desc_t)
 		NRFX_SPIM_XFER_TRX(command, tx_length, rx_data, rx_length);
 
-	NRF_LOG_INFO("lora: requesting data (cmd: 0x%02x, tx_len: %d, rx_len: %d).", command[0], xfer_desc.tx_length, xfer_desc.rx_length);
+	NRF_LOG_DEBUG("lora: requesting data (cmd: 0x%02x, tx_len: %d, rx_len: %d).", command[0], xfer_desc.tx_length, xfer_desc.rx_length);
 
 	nrf_gpio_pin_clear(PIN_LORA_CS);
 
@@ -915,7 +915,7 @@ static void cb_sequence_timer(void *p_context)
 				APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
 			} else {
 				// not busy anymore => send the next command
-				NRF_LOG_INFO("lora: busy flag released after %d polls.", m_busy_check_counter);
+				NRF_LOG_DEBUG("lora: busy flag released after %d polls.", m_busy_check_counter);
 				m_busy_check_counter = 0;
 				transit_to_state(m_next_state);
 			}
@@ -931,7 +931,7 @@ static void cb_sequence_timer(void *p_context)
 					NRF_LOG_ERROR("lora: tx_done timed out after %d polls.", m_busy_check_counter);
 				} else {
 					// done!
-					NRF_LOG_INFO("lora: tx_done signalled after %d polls.", m_busy_check_counter);
+					NRF_LOG_DEBUG("lora: tx_done signalled after %d polls.", m_busy_check_counter);
 				}
 
 				m_busy_check_counter = 0;
@@ -945,7 +945,7 @@ static void cb_sequence_timer(void *p_context)
 				m_busy_check_counter++;
 				APP_ERROR_CHECK(app_timer_start(m_sequence_timer, TX_DONE_CHECK_TICKS, NULL));
 			} else {
-				NRF_LOG_INFO("lora: rx_done signalled after %d polls.", m_busy_check_counter);
+				NRF_LOG_DEBUG("lora: rx_done signalled after %d polls.", m_busy_check_counter);
 
 				m_busy_check_counter = 0;
 				transit_to_state(LORA_STATE_CLEAR_RX_IRQ);
