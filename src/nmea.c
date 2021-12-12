@@ -293,13 +293,13 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 		// parse Ground speed and heading
 		size_t info_token_idx = 0;
 
-		float speed = 0.0f, heading = 0.0f;
+		float speed_knots = 0.0f, heading = 0.0f;
 		bool data_valid = false;
 
 		while((token = nmea_tokenize(NULL, ','))) {
 			switch(info_token_idx) {
 				case 6: // speed
-					speed = strtof(token, NULL);
+					speed_knots = strtof(token, NULL);
 					break;
 
 				case 7: // heading
@@ -318,7 +318,7 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 		if(data_valid) {
 			//NRF_LOG_INFO("Got valid speed: " NRF_LOG_FLOAT_MARKER ", heading: " NRF_LOG_FLOAT_MARKER, NRF_LOG_FLOAT(speed), NRF_LOG_FLOAT(heading));
 
-			data->speed = speed;
+			data->speed = speed_knots * 0.5144444f;
 			data->heading = heading;
 			data->speed_heading_valid = true;
 		} else {

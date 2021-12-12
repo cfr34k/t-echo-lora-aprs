@@ -90,6 +90,7 @@
 #include "aprs_service.h"
 
 #include "pinout.h"
+#include "time_base.h"
 #include "epaper.h"
 #include "gps.h"
 #include "lora.h"
@@ -97,6 +98,7 @@
 #include "periph_pwr.h"
 #include "leds.h"
 #include "buttons.h"
+#include "tracker.h"
 
 #include "aprs.h"
 
@@ -107,7 +109,7 @@
 #define DEVICE_NAME                     "T-Echo"                                /**< Name of device. Will be included in the advertising data. */
 #define MANUFACTURER_NAME               "HW: Lilygo / FW: cfr34k"               /**< Manufacturer. Will be passed to Device Information Service. */
 #define APP_ADV_INTERVAL                300                                     /**< The advertising interval (in units of 0.625 ms. This value corresponds to 187.5 ms). */
-#define APP_ADV_DURATION                18000                                   /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
+#define APP_ADV_DURATION                1000                                   /**< The advertising duration (180 seconds) in units of 10 milliseconds. */
 #define APP_ADV_INTERVAL_SLOW           1600                                    /**< The advertising interval (in units of 0.625 ms. This value corresponds to 1 second). */
 
 #define APP_ADV_DURATION_SLOW           0                                       /**< The slow advertising duration (forever) in units of 10 milliseconds. */
@@ -157,8 +159,12 @@ typedef enum
 {
 	DISP_STATE_STARTUP,
 	DISP_STATE_GPS,
+	DISP_STATE_TRACKER,
 	DISP_STATE_LORA_PACKET
 } display_state_t;
+
+#define DISP_CYCLE_FIRST   DISP_STATE_GPS
+#define DISP_CYCLE_LAST    DISP_STATE_LORA_PACKET
 
 static display_state_t m_display_state = DISP_STATE_STARTUP;
 static uint8_t m_display_message[256];
@@ -167,6 +173,7 @@ static uint8_t m_display_message_len = 0;
 static float m_rssi, m_snr, m_signalRssi;
 
 static bool m_lora_rx_active = false;
+static bool m_tracker_active = false;
 
 BLE_BAS_DEF(m_ble_bas); // battery service
 
@@ -526,8 +533,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
 			periph_pwr_stop_activity(PERIPH_PWR_FLAG_CONNECTED);
 
-			APP_ERROR_CHECK(gps_power_off());
-
 			voltage_monitor_stop();
 			voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 			break;
@@ -543,8 +548,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 			// enable external peripherals
 			periph_pwr_start_activity(PERIPH_PWR_FLAG_LEDS);
 			periph_pwr_start_activity(PERIPH_PWR_FLAG_CONNECTED);
-
-			APP_ERROR_CHECK(gps_power_on());
 
 			voltage_monitor_stop();
 			voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_CONNECTED);
@@ -622,8 +625,9 @@ static void cb_gps(const nmea_data_t *data)
 
 	//APP_ERROR_CHECK(lns_wrap_update_data(data));
 
-	// FIXME: time and altitude
-	aprs_update_pos_time(data->lat, data->lon, data->altitude, 0);
+	if(m_tracker_active) {
+		tracker_run(data);
+	}
 }
 
 
@@ -680,6 +684,18 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 }
 
 
+/**@brief Tracker event handler.
+ */
+static void cb_tracker(tracker_evt_t evt)
+{
+	switch(evt) {
+		case TRACKER_EVT_TRANSMISSION_STARTED:
+			m_epaper_update_requested = true;
+			break;
+	}
+}
+
+
 /**@brief Buttons callback.
  */
 void cb_buttons(uint8_t pin, uint8_t evt)
@@ -703,17 +719,23 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 
 		case PIN_BUTTON_1:
 			if(evt == APP_BUTTON_PUSH) {
-				uint8_t message[APRS_MAX_FRAME_LEN];
-				size_t  frame_len;
+				if(m_display_state == DISP_CYCLE_LAST) {
+					m_display_state = DISP_CYCLE_FIRST;
+				} else {
+					m_display_state++;
+				}
 
-				aprs_set_comment("T-Echo test");
+				m_epaper_update_requested = true;
+			} else if(evt == BUTTONS_EVT_LONGPRESS) {
+				m_tracker_active = !m_tracker_active;
+				if(m_tracker_active) {
+					APP_ERROR_CHECK(gps_power_on());
+				} else {
+					APP_ERROR_CHECK(gps_power_off());
+				}
 
-				frame_len = aprs_build_frame(message);
-
-				NRF_LOG_INFO("Generated frame:");
-				NRF_LOG_HEXDUMP_INFO(message, frame_len);
-
-				lora_send_packet(message, frame_len);
+				m_display_state = DISP_STATE_TRACKER;
+				m_epaper_update_requested = true;
 			}
 			break;
 	}
@@ -988,6 +1010,8 @@ static void redraw_display(void)
 		yoffset += line_height + line_height/2;
 	}
 
+	epaper_fb_move_to(0, yoffset);
+
 	switch(m_display_state)
 	{
 		case DISP_STATE_STARTUP:
@@ -1011,8 +1035,6 @@ static void redraw_display(void)
 			break;
 
 		case DISP_STATE_GPS:
-			epaper_fb_move_to(0, yoffset);
-
 			epaper_fb_draw_string("GNSS-Status:", EPAPER_COLOR_BLACK);
 
 			yoffset += line_height;
@@ -1077,9 +1099,58 @@ static void redraw_display(void)
 			epaper_fb_move_to(0, yoffset);
 			break;
 
-		case DISP_STATE_LORA_PACKET:
+		case DISP_STATE_TRACKER:
+			snprintf(s, sizeof(s), "Tracker %s.",
+					m_tracker_active ? "running" : "stopped");
+
+			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+			yoffset += line_height + line_height / 2;
 			epaper_fb_move_to(0, yoffset);
 
+			if(m_nmea_data.pos_valid) {
+				format_float(tmp1, sizeof(tmp1), m_nmea_data.hdop, 1);
+				format_float(tmp2, sizeof(tmp2), m_nmea_data.vdop, 1);
+				format_float(tmp3, sizeof(tmp3), m_nmea_data.pdop, 1);
+
+				snprintf(s, sizeof(s), "DOP H: %s V: %s P: %s",
+						tmp1, tmp2, tmp3);
+
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
+
+				format_float(tmp1, sizeof(tmp1), m_nmea_data.lat, 5);
+				format_float(tmp2, sizeof(tmp2), m_nmea_data.lon, 5);
+
+				snprintf(s, sizeof(s), "%s/%s, %d m",
+						tmp1, tmp2, (int)(m_nmea_data.altitude + 0.5));
+
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+			} else {
+				epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);
+			}
+
+			yoffset += line_height;
+			epaper_fb_move_to(0, yoffset);
+
+			if(m_nmea_data.speed_heading_valid) {
+				format_float(tmp1, sizeof(tmp1), m_nmea_data.speed, 1);
+
+				snprintf(s, sizeof(s), "%s m/s - %d deg",
+						tmp1, (int)(m_nmea_data.heading + 0.5));
+
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+			} else {
+				epaper_fb_draw_string("No speed / heading info.", EPAPER_COLOR_BLACK);
+			}
+
+			yoffset += line_height;
+			epaper_fb_move_to(0, yoffset);
+			break;
+
+		case DISP_STATE_LORA_PACKET:
 			{
 				char line[32];
 				char *lineptr = line;
@@ -1153,10 +1224,12 @@ int main(void)
 	buttons_leds_init();
 
 	periph_pwr_init();
+	time_base_init();
 	epaper_init();
 	gps_init(cb_gps);
 	lora_init(cb_lora);
 	aprs_init();
+	tracker_init(cb_tracker);
 
 	voltage_monitor_init(cb_voltage_monitor);
 
@@ -1172,6 +1245,8 @@ int main(void)
 
 	aprs_clear_path();
 	//aprs_add_path("WIDE2", 2);
+
+	aprs_set_comment("T-Echo test");
 
 	aprs_set_icon(AI_BIKE);
 

@@ -35,8 +35,8 @@ typedef struct
 	float altitude;
 	bool  pos_valid;
 
-	float speed;
-	float heading;
+	float speed;               // meters per second
+	float heading;             // degrees to north (0 - 360°)
 	bool  speed_heading_valid;
 
 	nmea_fix_info_t fix_info[NMEA_NUM_FIX_INFO];
