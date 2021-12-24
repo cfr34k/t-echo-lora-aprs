@@ -156,7 +156,7 @@ static void update_info_field(void)
 	*/
 	// no time at all
 	(void)tms;
-	snprintf((char*)m_info, sizeof(m_info), "!%02i%02i.%02i%cL%03i%02i.%02i%c%c%s /A=%06i",
+	snprintf((char*)m_info, sizeof(m_info), "!%02i%02i.%02i%c/%03i%02i.%02i%c%c%s /A=%06i",
 			lat_deg, lat_min, lat_min_fract, lat_ns,
 			lon_deg, lon_min, lon_min_fract, lon_ew,
 			m_icon_map[m_icon], m_comment, (int)alt_ft);
