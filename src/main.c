@@ -1155,19 +1155,20 @@ static void redraw_display(void)
 				char line[32];
 				char *lineptr = line;
 
-				static const char hexlut[16] = "0123456789ABCDEF";
-
 				size_t len = m_display_message_len;
-				if(len > 7*6) {
-					len = 7*6;
+				if(len > 7*18) {
+					len = 7*18;
 				}
 
 				for(uint8_t i = 0; i < len; i++) {
-					*(lineptr++) = hexlut[ (m_display_message[i] >> 4) & 0x0F ];
-					*(lineptr++) = hexlut[ (m_display_message[i] >> 0) & 0x0F ];
-					*(lineptr++) = ' ';
+					char c = m_display_message[i];
+					if(c < 0x20) {
+						c = '.'; // substitude non-printable characters
+					}
 
-					if((i % 7) == 6) {
+					*(lineptr++) = c;
+
+					if((i % 18) == 17) {
 						*lineptr = '\0';
 
 						epaper_fb_draw_string(line, EPAPER_COLOR_BLACK);
@@ -1246,11 +1247,9 @@ int main(void)
 	aprs_clear_path();
 	//aprs_add_path("WIDE2", 2);
 
-	aprs_set_comment("T-Echo test");
+	aprs_set_comment("T-Echo");
 
-	aprs_set_icon(AI_BIKE);
-
-	//lora_send_packet((const uint8_t*)"Hallo LoRa!", 11);
+	aprs_set_icon(AI_X);
 
 	m_display_state = DISP_STATE_STARTUP;
 	redraw_display();
