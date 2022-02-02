@@ -5,6 +5,8 @@ OUTPUT_DIRECTORY := _build
 SDK_ROOT := ./nrf5-sdk
 PROJ_DIR := .
 
+VERSION := $(shell git describe --dirty --always)
+
 $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
   LINKER_SCRIPT  := t-echo.ld
 
@@ -264,6 +266,7 @@ CFLAGS += -DNRF_SD_BLE_API_VERSION=7
 CFLAGS += -DS140
 CFLAGS += -DSOFTDEVICE_PRESENT
 CFLAGS += -DDEBUG
+CFLAGS += -DVERSION="\"$(VERSION)\""
 CFLAGS += -mcpu=cortex-m4
 CFLAGS += -mthumb -mabi=aapcs
 CFLAGS += -Wall -Werror

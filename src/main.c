@@ -1016,22 +1016,22 @@ static void redraw_display(void)
 	{
 		case DISP_STATE_STARTUP:
 			// some fun
-			epaper_fb_move_to( 50, 160);
-			epaper_fb_line_to(150, 160, EPAPER_COLOR_BLACK); // Das
-			epaper_fb_line_to(150,  80, EPAPER_COLOR_BLACK); // ist
-			epaper_fb_line_to( 50, 160, EPAPER_COLOR_BLACK); // das
-			epaper_fb_line_to( 50,  80, EPAPER_COLOR_BLACK); // Haus
-			epaper_fb_line_to(150,  80, EPAPER_COLOR_BLACK); // vom
-			epaper_fb_line_to(100,  20, EPAPER_COLOR_BLACK); // Ni-
-			epaper_fb_line_to( 50,  80, EPAPER_COLOR_BLACK); // ko-
-			epaper_fb_line_to(150, 160, EPAPER_COLOR_BLACK); // laus
+			epaper_fb_move_to( 50, 150);
+			epaper_fb_line_to(150, 150, EPAPER_COLOR_BLACK); // Das
+			epaper_fb_line_to(150,  70, EPAPER_COLOR_BLACK); // ist
+			epaper_fb_line_to( 50, 150, EPAPER_COLOR_BLACK); // das
+			epaper_fb_line_to( 50,  70, EPAPER_COLOR_BLACK); // Haus
+			epaper_fb_line_to(150,  70, EPAPER_COLOR_BLACK); // vom
+			epaper_fb_line_to(100,  10, EPAPER_COLOR_BLACK); // Ni-
+			epaper_fb_line_to( 50,  70, EPAPER_COLOR_BLACK); // ko-
+			epaper_fb_line_to(150, 150, EPAPER_COLOR_BLACK); // laus
 
-			epaper_fb_move_to(100, 100);
+			epaper_fb_move_to(100, 90);
 			epaper_fb_circle(80, EPAPER_COLOR_BLACK);
 
 			epaper_fb_set_font(&din1451m10pt7b);
 			epaper_fb_move_to(0, 180);
-			epaper_fb_draw_string("Lora-APRS v0.0.1", EPAPER_COLOR_BLACK);
+			epaper_fb_draw_string("Lora-APRS " VERSION, EPAPER_COLOR_BLACK);
 			break;
 
 		case DISP_STATE_GPS:
