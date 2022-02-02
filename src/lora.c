@@ -4,8 +4,15 @@
  *
  * Target modulation:
  * - RF frequency: 434.400 MHz
- * - Bandwidth: 20.83 kHz (0x09)
- * - 
+ * - Bandwidth: 125 kHz (0x04)
+ *
+ * The following power settings were tested:
+ *
+ * Expected Power | Measured Power | PA settings | TX params
+ *            +14 |            +13 | 02 02 00 01 | 0d 04
+ *            +20 |             ?  | 03 05 00 01 | 16 04
+ *            +22 |             ?  | 04 07 00 01 | 16 04
+ *            + 3 |            + 7 | 02 02 00 01 | 16 04
  */
 
 #include <math.h>
@@ -582,10 +589,10 @@ static ret_code_t handle_state_entry(void)
 			break;
 
 		case LORA_STATE_SET_PA_CONFIG:
-			// optimal PA settings for +14 dBm, see datasheet page 77
+			// optimal PA settings for +20 dBm, see datasheet page 77
 			command[0] = SX1262_OPCODE_SET_PA_CONFIG;
-			command[1] = 0x02;
-			command[2] = 0x02;
+			command[1] = 0x03;
+			command[2] = 0x05;
 			command[3] = 0x00;
 			command[4] = 0x01;
 
@@ -595,7 +602,7 @@ static ret_code_t handle_state_entry(void)
 		case LORA_STATE_SET_TX_PARAMS:
 			// TX parameters: "22" dBm, 200 μs ramp time
 			command[0] = SX1262_OPCODE_SET_TX_PARAMS;
-			command[1] = 0x16;
+			command[1] = 0x16; // output power = measured @ 0x16 + x - 22 dBm
 			command[2] = 0x04;
 
 			APP_ERROR_CHECK(send_command(command, 3, &m_status));
