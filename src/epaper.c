@@ -27,10 +27,11 @@ typedef struct
 	uint8_t data[EPD_MAX_COMMAND_LEN];
 } epd_ctrl_entry_t;
 
-#define WAIT_BUSY      0x80  // wait until the busy signal is released after this command
-#define SEND_FRAMEBUF  0x40  // send the framebuffer after this command
-#define DELAY_10MS     0x20  // wait for 10 milliseconds after sending this command
-#define LEN(x)         ((x) & 0x1F)
+#define WAIT_BUSY           0x80  // wait until the busy signal is released after this command
+#define SEND_FRAMEBUF       0x40  // send the framebuffer after this command
+#define DELAY_10MS          0x20  // wait for 10 milliseconds after sending this command
+#define SEND_FRAMEBUF_PREV  0x10  // send the previous framebuffer after this command
+#define LEN(x)              ((x) & 0x0F)
 
 // Sequence for a full update. The display will be in deep sleep afterwards and
 // will require a hardware reset.
@@ -83,8 +84,8 @@ const epd_ctrl_entry_t PARTIAL_UPDATE_SEQUENCE[] = {
 	// send the new image. Due to the size of the image
 	// buffer, the data field is not used regularily here and therefore LEN =
 	// 0. However, the first data byte specifies the command to use.
-	//{LEN(0) | SEND_FRAMEBUF, {0x26}},  // previous image
-	{LEN(0) | SEND_FRAMEBUF, {0x24}},  // current image
+	{LEN(0) | SEND_FRAMEBUF_PREV, {0x26}},  // previous image
+	{LEN(0) | SEND_FRAMEBUF     , {0x24}},  // current image
 
 	{LEN(2),              {0x22, 0xFF}}, // partial update
 	{LEN(1) | WAIT_BUSY,  {0x20}},
@@ -124,6 +125,9 @@ static nrfx_spim_t m_spim = NRFX_SPIM_INSTANCE(0);
 
 static uint8_t  m_frame_command[FRAMEBUFFER_SIZE_BYTES + 1];
 static uint8_t *m_frame_buffer = m_frame_command+1;
+
+static uint8_t  m_frame_command_prev[FRAMEBUFFER_SIZE_BYTES + 1];
+static uint8_t *m_frame_buffer_prev = m_frame_command_prev+1;
 
 static const epd_ctrl_entry_t *m_seq_ptr;
 static const epd_ctrl_entry_t *m_seq_end; // points to the first location beyond the end of the sequence
@@ -187,6 +191,23 @@ static ret_code_t send_command(void)
 				m_frame_command, 1);
 
 		NRF_LOG_DEBUG("epd: sending framebuffer (cmd: 0x%02x, length: %d).", m_frame_command[0], xfer_desc.tx_length);
+
+		return nrfx_spim_xfer(&m_spim, &xfer_desc, 0);
+	} else if(m_seq_ptr->config & SEND_FRAMEBUF_PREV) {
+		// same as for the framebuffer above, but with the previous image buffer
+
+		// set the command byte from the sequence entry.
+		m_frame_command_prev[0] = m_seq_ptr->data[0];
+
+		// prepare the data and size
+		m_spi_data     = m_frame_buffer_prev;
+		m_spi_data_len = FRAMEBUFFER_SIZE_BYTES;
+
+		// send the frame command
+		nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
+				m_frame_command_prev, 1);
+
+		NRF_LOG_DEBUG("epd: sending previous framebuffer (cmd: 0x%02x, length: %d).", m_frame_command_prev[0], xfer_desc.tx_length);
 
 		return nrfx_spim_xfer(&m_spim, &xfer_desc, 0);
 	} else {
@@ -339,6 +360,7 @@ ret_code_t epaper_init(void)
 	nrf_gpio_cfg_default(PIN_EPD_CS);
 
 	m_frame_command[0] = 0x24; // write B/W RAM command
+	m_frame_command_prev[0] = 0x26; // write B/W RAM command (previous image)
 
 	epaper_fb_clear(EPAPER_COLOR_WHITE);
 
@@ -415,6 +437,9 @@ void epaper_loop(void)
 		epaper_config_gpios(true); // safe powered state
 
 		periph_pwr_stop_activity(PERIPH_PWR_FLAG_EPAPER_UPDATE);
+
+		// copy last sent framebuffer to previous image buffer
+		memcpy(m_frame_buffer_prev, m_frame_buffer, FRAMEBUFFER_SIZE_BYTES);
 
 		m_busy = false;
 		m_shutdown_needed = false;
