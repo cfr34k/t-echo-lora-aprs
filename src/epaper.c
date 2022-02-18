@@ -468,7 +468,7 @@ void epaper_fb_set_pixel(uint8_t x, uint8_t y, uint8_t color)
 	// adressing scheme is: first down (LSB first) then left.
 	uint32_t bitidx = (EPAPER_WIDTH - x - 1) * EPAPER_HEIGHT + y;
 
-	if(color) {
+	if(color & EPAPER_COLOR_MASK) {
 		m_frame_buffer[bitidx / 8] |= (1 << (7 - bitidx % 8));
 	} else {
 		m_frame_buffer[bitidx / 8] &= ~(1 << (7 - bitidx % 8));
@@ -486,6 +486,8 @@ void epaper_fb_move_to(uint8_t x, uint8_t y)
 /* Line-drawing using the Bresenham algorithm. */
 void epaper_fb_line_to(uint8_t xe, uint8_t ye, uint8_t color)
 {
+	static uint16_t pixcount = 0;
+
 	bool flip_xy = false; // mirror on the 45°-axis
 	bool neg_x = false; // line moves leftwards (to smaller x)
 	bool neg_y = false; // line moves upwards (to smaller y)
@@ -520,14 +522,18 @@ void epaper_fb_line_to(uint8_t xe, uint8_t ye, uint8_t color)
 	int16_t d_o  = 2*dy;
 	int16_t d_no = 2*(dy - dx);
 
+	bool is_dashed = (color & EPAPER_COLOR_FLAG_DASHED) != 0;
+
 	while(x <= dx) {
 		int16_t tx = neg_x ? -x : x;
 		int16_t ty = neg_y ? -y : y;
 
-		if(flip_xy) {
-			epaper_fb_set_pixel(xa + ty, ya + tx, color);
-		} else {
-			epaper_fb_set_pixel(xa + tx, ya + ty, color);
+		if(!is_dashed || ((pixcount % 5) < 3)) {
+			if(flip_xy) {
+				epaper_fb_set_pixel(xa + ty, ya + tx, color);
+			} else {
+				epaper_fb_set_pixel(xa + tx, ya + ty, color);
+			}
 		}
 
 		x++;
@@ -538,6 +544,8 @@ void epaper_fb_line_to(uint8_t xe, uint8_t ye, uint8_t color)
 			d += d_no;
 			y++;
 		}
+
+		pixcount++;
 	}
 
 	m_cursor.x = xe;
