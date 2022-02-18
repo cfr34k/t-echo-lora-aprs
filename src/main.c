@@ -1051,12 +1051,16 @@ static void redraw_display(bool full_update)
 		// RX status block
 		uint8_t fill_color, line_color;
 
-		if(m_lora_rx_active) {
+		if(m_lora_rx_busy) {
 			fill_color = EPAPER_COLOR_BLACK;
 			line_color = EPAPER_COLOR_WHITE;
 		} else {
 			fill_color = EPAPER_COLOR_WHITE;
 			line_color = EPAPER_COLOR_BLACK;
+		}
+
+		if(!m_lora_rx_active) {
+			line_color |= EPAPER_COLOR_FLAG_DASHED;
 		}
 
 		gleft = EPAPER_WIDTH - 30;
@@ -1071,12 +1075,16 @@ static void redraw_display(bool full_update)
 		epaper_fb_draw_string("RX", line_color);
 
 		// TX status block
-		if(m_tracker_active) {
+		if(m_lora_tx_busy) {
 			fill_color = EPAPER_COLOR_BLACK;
 			line_color = EPAPER_COLOR_WHITE;
 		} else {
 			fill_color = EPAPER_COLOR_WHITE;
 			line_color = EPAPER_COLOR_BLACK;
+		}
+
+		if(!m_tracker_active) {
+			line_color |= EPAPER_COLOR_FLAG_DASHED;
 		}
 
 		gleft = EPAPER_WIDTH - 63;
