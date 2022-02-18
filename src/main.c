@@ -177,6 +177,9 @@ static float m_rssi, m_snr, m_signalRssi;
 static bool m_lora_rx_active = false;
 static bool m_tracker_active = false;
 
+static bool m_lora_rx_busy = false;
+static bool m_lora_tx_busy = false;
+
 BLE_BAS_DEF(m_ble_bas); // battery service
 
 APRS_SERVICE_DEF(m_aprs_service);
@@ -648,8 +651,6 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 			m_signalRssi = data->rx_packet_data.signalRssi;
 			m_snr = data->rx_packet_data.snr;
 
-			m_epaper_update_requested = true;
-
 			err_code = aprs_service_notify_rx_message(
 					&m_aprs_service,
 					m_conn_handle,
@@ -670,6 +671,9 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 					APP_ERROR_CHECK(err_code);
 					break;
 			}
+
+			m_lora_rx_busy = false;
+			m_epaper_update_requested = true;
 			break;
 
 		case LORA_EVT_CONFIGURED_IDLE:
@@ -678,6 +682,27 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 			} else {
 				lora_power_off();
 			}
+			break;
+
+		case LORA_EVT_RX_STARTED:
+			m_lora_rx_busy = true;
+			m_epaper_update_requested = true;
+			break;
+
+		case LORA_EVT_TX_STARTED:
+			m_lora_tx_busy = true;
+			m_epaper_update_requested = true;
+			break;
+
+		case LORA_EVT_TX_COMPLETE:
+			m_lora_tx_busy = false;
+			m_epaper_update_requested = true;
+			break;
+
+		case LORA_EVT_OFF:
+			m_lora_rx_busy = false;
+			m_lora_tx_busy = false;
+			m_epaper_update_requested = true;
 			break;
 
 		default:
@@ -999,15 +1024,71 @@ static void redraw_display(bool full_update)
 
 	epaper_fb_clear(EPAPER_COLOR_WHITE);
 
+	// status line
 	if(m_display_state != DISP_STATE_STARTUP) {
 		epaper_fb_move_to(0, yoffset);
 
-		snprintf(s, sizeof(s), "BAT: %d.%02d V / %d %%",
+		snprintf(s, sizeof(s), "BAT: %d.%02d V",
 				m_bat_millivolt / 1000,
-				(m_bat_millivolt / 10) % 100,
-				m_bat_percent);
+				(m_bat_millivolt / 10) % 100);
 
 		epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+		// battery graph
+		uint8_t gwidth = 28;
+		uint8_t gleft = epaper_fb_get_cursor_pos_x() + 6;
+		uint8_t gright = gleft + gwidth;
+		uint8_t gbottom = yoffset - 2;
+		uint8_t gtop = yoffset + 4 - line_height;
+
+		epaper_fb_draw_rect(gleft, gtop, gright, gbottom, EPAPER_COLOR_BLACK);
+
+		epaper_fb_fill_rect(
+				gleft, gtop,
+				gleft + (uint32_t)gwidth * (uint32_t)m_bat_percent / 100UL, gbottom,
+				EPAPER_COLOR_BLACK);
+
+		// RX status block
+		uint8_t fill_color, line_color;
+
+		if(m_lora_rx_active) {
+			fill_color = EPAPER_COLOR_BLACK;
+			line_color = EPAPER_COLOR_WHITE;
+		} else {
+			fill_color = EPAPER_COLOR_WHITE;
+			line_color = EPAPER_COLOR_BLACK;
+		}
+
+		gleft = EPAPER_WIDTH - 30;
+		gright = EPAPER_WIDTH - 1;
+		gbottom = yoffset;
+		gtop = yoffset - line_height;
+
+		epaper_fb_fill_rect(gleft, gtop, gright, gbottom, fill_color);
+		epaper_fb_draw_rect(gleft, gtop, gright, gbottom, line_color);
+
+		epaper_fb_move_to(gleft + 2, gbottom - 5);
+		epaper_fb_draw_string("RX", line_color);
+
+		// TX status block
+		if(m_tracker_active) {
+			fill_color = EPAPER_COLOR_BLACK;
+			line_color = EPAPER_COLOR_WHITE;
+		} else {
+			fill_color = EPAPER_COLOR_WHITE;
+			line_color = EPAPER_COLOR_BLACK;
+		}
+
+		gleft = EPAPER_WIDTH - 63;
+		gright = EPAPER_WIDTH - 34;
+		gbottom = yoffset;
+		gtop = yoffset - line_height;
+
+		epaper_fb_fill_rect(gleft, gtop, gright, gbottom, fill_color);
+		epaper_fb_draw_rect(gleft, gtop, gright, gbottom, line_color);
+
+		epaper_fb_move_to(gleft + 2, gbottom - 5);
+		epaper_fb_draw_string("TX", line_color);
 
 		yoffset += line_height + line_height/2;
 	}

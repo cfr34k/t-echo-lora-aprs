@@ -127,6 +127,36 @@ void epaper_fb_line_to(uint8_t xe, uint8_t ye, uint8_t color);
  */
 void epaper_fb_circle(uint8_t radius, uint8_t color);
 
+/**@brief Draw a rectangle outline.
+ *
+ * The cursor location will be set to the bottom-left corner.
+ *
+ * Flipped rectangles (right > left or top > bottom) are not supported and will
+ * give undefined results.
+ *
+ * @param left      X position of the left edge.
+ * @param top       Y position of the top edge.
+ * @param right     X position of the right edge.
+ * @param bottom    Y position of the bottom edge.
+ * @param color     The color of the rectangle outline.
+ */
+void epaper_fb_draw_rect(uint8_t left, uint8_t top, uint8_t right, uint8_t bottom, uint8_t color);
+
+/**@brief Draw a filled rectangle.
+ *
+ * The cursor location will not be modified by this function.
+ *
+ * Flipped rectangles (right > left or top > bottom) are not supported and will
+ * give undefined results.
+ *
+ * @param left      X position of the left edge.
+ * @param top       Y position of the top edge.
+ * @param right     X position of the right edge.
+ * @param bottom    Y position of the bottom edge.
+ * @param color     The color of the rectangle.
+ */
+void epaper_fb_fill_rect(uint8_t left, uint8_t top, uint8_t right, uint8_t bottom, uint8_t color);
+
 /**@brief Set the current font.
  *
  * @param font    Pointer to the font to set.
@@ -170,5 +200,17 @@ ret_code_t epaper_fb_draw_string(char *s, uint8_t color);
  * @returns The line height in pixels (zero if no font is set).
  */
 uint8_t epaper_fb_get_line_height(void);
+
+/**@brief Get the current cursor x position.
+ *
+ * @returns The cursor position on the x axis.
+ */
+uint8_t epaper_fb_get_cursor_pos_x(void);
+
+/**@brief Get the current cursor y position.
+ *
+ * @returns The cursor position on the y ayis.
+ */
+uint8_t epaper_fb_get_cursor_pos_y(void);
 
 #endif // EPAPER_H

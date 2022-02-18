@@ -420,7 +420,7 @@ static ret_code_t handle_state_exit(void)
 			break;
 
 		case LORA_STATE_WAIT_PACKET_RECEIVED:
-			led_off(LED_GREEN);
+			//led_off(LED_GREEN);
 			VERIFY_SUCCESS(app_timer_stop(m_sequence_timer));
 			break;
 
@@ -840,6 +840,7 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 
 		case LORA_STATE_START_TX:
 			led_on(LED_RED);
+			m_callback(LORA_EVT_TX_STARTED, NULL);
 			m_next_state = LORA_STATE_WAIT_TX_DONE;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
@@ -865,7 +866,8 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		case LORA_STATE_START_RX:
-			led_on(LED_GREEN);
+			//led_on(LED_GREEN);
+			m_callback(LORA_EVT_RX_STARTED, NULL);
 			m_next_state = LORA_STATE_WAIT_PACKET_RECEIVED;
 			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;

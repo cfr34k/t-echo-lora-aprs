@@ -562,6 +562,24 @@ void epaper_fb_circle(uint8_t radius, uint8_t color)
 	m_cursor = m_center;
 }
 
+void epaper_fb_draw_rect(uint8_t left, uint8_t top, uint8_t right, uint8_t bottom, uint8_t color)
+{
+	epaper_fb_move_to(left, bottom);
+	epaper_fb_line_to(right, bottom, color);
+	epaper_fb_line_to(right, top, color);
+	epaper_fb_line_to(left, top, color);
+	epaper_fb_line_to(left, bottom, color);
+}
+
+void epaper_fb_fill_rect(uint8_t left, uint8_t top, uint8_t right, uint8_t bottom, uint8_t color)
+{
+	for(uint8_t x = left; x <= right; x++) {
+		for(uint8_t y = top; y <= bottom; y++) {
+			epaper_fb_set_pixel(x, y, color);
+		}
+	}
+}
+
 /* Font-drawing functions: These support drawing text from Adafruit GFX fonts.
  * Use the 'fontconvert' utility from Adafruit GFX to generate fonts:
  * https://github.com/adafruit/Adafruit-GFX-Library/tree/master/fontconvert
@@ -636,4 +654,14 @@ uint8_t epaper_fb_get_line_height(void)
 	} else {
 		return 0;
 	}
+}
+
+uint8_t epaper_fb_get_cursor_pos_x(void)
+{
+	return m_cursor.x;
+}
+
+uint8_t epaper_fb_get_cursor_pos_y(void)
+{
+	return m_cursor.y;
 }
