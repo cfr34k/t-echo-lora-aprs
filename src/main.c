@@ -147,10 +147,12 @@ NRF_BLE_QWR_DEF(m_qwr);                                                         
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
 
 APP_TIMER_DEF(m_backlight_timer);
+APP_TIMER_DEF(m_minute_tick_timer);
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
 
 static bool m_epaper_update_requested = false;                                  /**< If set to true, the e-paper display will be redrawn ASAP from the main loop. */
+static bool m_epaper_force_full_refresh = false;                                /**< e-Paper needs a full refresh from time to time to get rid of ghosting. */
 
 static uint8_t  m_bat_percent;
 static uint16_t m_bat_millivolt;
@@ -241,6 +243,27 @@ void cb_backlight_timer(void *arg)
 }
 
 
+/**@brief Timeout handler for the minute tick.
+ *
+ * This timer handles various background jobs that are executed at very low
+ * rate. The timer is executed once per minute.
+ *
+ * Currently implemented jobs are:
+ *
+ * - Trigger a full e-Paper refresh every 1 hour.
+ */
+void cb_minute_tick_timer(void *arg)
+{
+	static uint32_t tick_count = 0;
+
+	if(tick_count % 60 == 0) {
+		m_epaper_force_full_refresh = true;
+	}
+
+	tick_count++;
+}
+
+
 /**@brief Function for the Timer initialization.
  *
  * @details Initializes the timer module. This creates and starts application timers.
@@ -262,6 +285,9 @@ static void timers_init(void)
 	   APP_ERROR_CHECK(err_code); */
 
 	err_code = app_timer_create(&m_backlight_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_backlight_timer);
+	APP_ERROR_CHECK(err_code);
+
+	err_code = app_timer_create(&m_minute_tick_timer, APP_TIMER_MODE_REPEATED, cb_minute_tick_timer);
 	APP_ERROR_CHECK(err_code);
 }
 
@@ -453,11 +479,10 @@ static void conn_params_init(void)
 */
 static void application_timers_start(void)
 {
-	/* YOUR_JOB: Start your timers. below is an example of how to start a timer.
-	   ret_code_t err_code;
-	   err_code = app_timer_start(m_app_timer_id, TIMER_INTERVAL, NULL);
-	   APP_ERROR_CHECK(err_code); */
+	ret_code_t err_code;
 
+	err_code = app_timer_start(m_minute_tick_timer, APP_TIMER_TICKS(60000), NULL);
+	APP_ERROR_CHECK(err_code);
 }
 
 
@@ -1362,7 +1387,8 @@ int main(void)
 				advertising_start(erase_bonds);
 			}
 
-			redraw_display(false);
+			redraw_display(m_epaper_force_full_refresh);
+			m_epaper_force_full_refresh = false;
 		}
 
 		epaper_loop();
