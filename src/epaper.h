@@ -53,9 +53,12 @@ ret_code_t epaper_init(void);
  * The whole sequence will be executed asynchronously and this function will
  * return NRF_ERROR_BUSY until the sequence is complete.
  *
+ * @param full_update   Do a full refresh. If false, partial refresh will be
+ *                      used, which is much faster but may produce display
+ *                      artifacts.
  * @returns    A result code from starting the sequence.
  */
-ret_code_t epaper_update(void);
+ret_code_t epaper_update(bool full_refresh);
 
 /**@brief Get the busy status of the driver.
  *

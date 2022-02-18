@@ -47,23 +47,49 @@ const epd_ctrl_entry_t FULL_UPDATE_SEQUENCE[] = {
 	{LEN(2),              {0x4e, 0 / 8}}, // Set RAM x address counter initial value
 	{LEN(3),              {0x4f, 0 % 256, 0 / 256}}, // Set RAM y address counter initial value
 
-	// power on
-	{LEN(2),              {0x22, 0xF8}},
-	{LEN(1) | WAIT_BUSY,  {0x20}},
-
 	// send the new data, twice for full refresh. Due to the size of the image
 	// buffer, the data field is not used regularily here and therefore LEN =
 	// 0. However, the first data byte specifies the command to use.
 	{LEN(0) | SEND_FRAMEBUF, {0x26}},  // previous image
 	{LEN(0) | SEND_FRAMEBUF, {0x24}},  // current image
 
-	{LEN(2),              {0x22, 0xF4}},
+	{LEN(2),              {0x22, 0xF7}}, // full update
 	{LEN(1) | WAIT_BUSY,  {0x20}},
 
-	// power off and enter deep sleep
-	{LEN(2),              {0x22, 0x83}},
+	// enter deep sleep
+	{LEN(2),              {0x10, 0x01}},   // enter deep sleep mode
+};
+
+
+// Sequence for a partial update. The display will be in deep sleep afterwards and
+// will require a hardware reset.
+const epd_ctrl_entry_t PARTIAL_UPDATE_SEQUENCE[] = {
+	{LEN(1) | DELAY_10MS, {0x12}}, // soft reset + startup delay
+	{LEN(4),              {0x01, 0xC7, 0x00, 0x00}}, // Driver output control
+	{LEN(2),              {0x3C, 0x80}}, // Border Waveform
+	{LEN(2),              {0x18, 0x80}}, // Set temp sensor to built-in
+
+	// set RAM area for 200x200 px at offset (0,0)
+	{LEN(2),              {0x11, 0x03}}, // Set RAM entry mode: x and y increment, update x after RAM data write
+	{LEN(3),              {0x44, 0 / 8, (0 + EPAPER_HEIGHT - 1) / 8}}, // Set RAM x address, start and end
+	{LEN(5),              {0x45, 0 % 256, 0 / 256, (0 + EPAPER_WIDTH - 1) % 256, (0 + EPAPER_WIDTH - 1) / 256}}, // Set RAM y address, start and end
+	{LEN(2),              {0x4e, 0 / 8}}, // Set RAM x address counter initial value
+	{LEN(3),              {0x4f, 0 % 256, 0 / 256}}, // Set RAM y address counter initial value
+
+	// Load LUT
+	//{LEN(2),              {0x22, 0xB9}},
+	//{LEN(1) | WAIT_BUSY,  {0x20}},
+
+	// send the new image. Due to the size of the image
+	// buffer, the data field is not used regularily here and therefore LEN =
+	// 0. However, the first data byte specifies the command to use.
+	//{LEN(0) | SEND_FRAMEBUF, {0x26}},  // previous image
+	{LEN(0) | SEND_FRAMEBUF, {0x24}},  // current image
+
+	{LEN(2),              {0x22, 0xFF}}, // partial update
 	{LEN(1) | WAIT_BUSY,  {0x20}},
 
+	// enter deep sleep
 	{LEN(2),              {0x10, 0x01}},   // enter deep sleep mode
 };
 
@@ -325,7 +351,7 @@ ret_code_t epaper_init(void)
 }
 
 
-ret_code_t epaper_update(void)
+ret_code_t epaper_update(bool full_refresh)
 {
 	if(m_busy) {
 		return NRF_ERROR_BUSY;
@@ -352,8 +378,13 @@ ret_code_t epaper_update(void)
 	nrf_gpio_cfg(PIN_EPD_DC,   NRF_GPIO_PIN_DIR_OUTPUT, NRF_GPIO_PIN_INPUT_DISCONNECT, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_H0H1, NRF_GPIO_PIN_NOSENSE);
 
 	// send the power-on sequence after asserting the hardware reset
-	m_seq_ptr = FULL_UPDATE_SEQUENCE;
-	m_seq_end = FULL_UPDATE_SEQUENCE + (sizeof(FULL_UPDATE_SEQUENCE) / sizeof(FULL_UPDATE_SEQUENCE[0]));
+	if(full_refresh) {
+		m_seq_ptr = FULL_UPDATE_SEQUENCE;
+		m_seq_end = FULL_UPDATE_SEQUENCE + (sizeof(FULL_UPDATE_SEQUENCE) / sizeof(FULL_UPDATE_SEQUENCE[0]));
+	} else {
+		m_seq_ptr = PARTIAL_UPDATE_SEQUENCE;
+		m_seq_end = PARTIAL_UPDATE_SEQUENCE + (sizeof(PARTIAL_UPDATE_SEQUENCE) / sizeof(PARTIAL_UPDATE_SEQUENCE[0]));
+	}
 
 	nrf_gpio_cfg_input(PIN_EPD_RST, NRF_GPIO_PIN_PULLUP);
 

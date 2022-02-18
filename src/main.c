@@ -989,7 +989,7 @@ static void format_float(char *s, size_t s_len, float f, uint8_t decimals)
 
 /**@brief Redraw the e-Paper display.
  */
-static void redraw_display(void)
+static void redraw_display(bool full_update)
 {
 	char s[32];
 	char tmp1[16], tmp2[16], tmp3[16];
@@ -1204,7 +1204,7 @@ static void redraw_display(void)
 			break;
 	}
 
-	epaper_update();
+	epaper_update(full_update);
 }
 
 
@@ -1254,7 +1254,7 @@ int main(void)
 	aprs_set_icon(APRS_SYMBOL);
 
 	m_display_state = DISP_STATE_STARTUP;
-	redraw_display();
+	redraw_display(true);
 
 	m_display_state = DISP_STATE_GPS;
 
@@ -1273,7 +1273,7 @@ int main(void)
 				advertising_start(erase_bonds);
 			}
 
-			redraw_display();
+			redraw_display(false);
 		}
 
 		epaper_loop();
