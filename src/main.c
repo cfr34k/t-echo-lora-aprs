@@ -174,6 +174,8 @@ static display_state_t m_display_state = DISP_STATE_STARTUP;
 static uint8_t m_display_message[256];
 static uint8_t m_display_message_len = 0;
 
+static uint32_t m_tracker_tx_counter = 0;
+
 static float m_rssi, m_snr, m_signalRssi;
 
 static bool m_lora_rx_active = false;
@@ -742,6 +744,7 @@ static void cb_tracker(tracker_evt_t evt)
 {
 	switch(evt) {
 		case TRACKER_EVT_TRANSMISSION_STARTED:
+			m_tracker_tx_counter++;
 			m_epaper_update_requested = true;
 			break;
 	}
@@ -781,6 +784,7 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 			} else if(evt == BUTTONS_EVT_LONGPRESS) {
 				m_tracker_active = !m_tracker_active;
 				if(m_tracker_active) {
+					m_tracker_tx_counter = 0;
 					APP_ERROR_CHECK(gps_power_on());
 				} else {
 					APP_ERROR_CHECK(gps_power_off());
@@ -1261,6 +1265,13 @@ static void redraw_display(bool full_update)
 			} else {
 				epaper_fb_draw_string("No speed / heading info.", EPAPER_COLOR_BLACK);
 			}
+
+			yoffset += line_height;
+			epaper_fb_move_to(0, yoffset);
+
+			snprintf(s, sizeof(s), "TX count: %lu", m_tracker_tx_counter);
+
+			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 			yoffset += line_height;
 			epaper_fb_move_to(0, yoffset);
