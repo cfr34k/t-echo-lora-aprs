@@ -102,6 +102,8 @@
 
 #include "aprs.h"
 
+#include "config.h"
+
 #define PROGMEM
 #include "fonts/Font_DIN1451Mittel_10.h"
 
@@ -1235,21 +1237,21 @@ int main(void)
 	voltage_monitor_init(cb_voltage_monitor);
 
 	// Start execution.
-	NRF_LOG_INFO("Template example started.");
+	NRF_LOG_INFO("LoRa-APRS started.");
 	application_timers_start();
 
 	voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 
 	// Initial APRS setup
-	aprs_set_source("DL5TKL", 4);
-	aprs_set_dest("APLT01", 0);
+	aprs_set_source(APRS_SOURCE_CALL, APRS_SOURCE_SSID);
+	aprs_set_dest(APRS_DESTINATION_CALL, APRS_DESTINATION_SSID);
 
 	aprs_clear_path();
-	//aprs_add_path("WIDE2", 2);
+	aprs_add_path("WIDE1", 1);
 
-	aprs_set_comment("T-Echo");
+	aprs_set_comment(APRS_COMMENT);
 
-	aprs_set_icon(AI_X);
+	aprs_set_icon(APRS_SYMBOL);
 
 	m_display_state = DISP_STATE_STARTUP;
 	redraw_display();

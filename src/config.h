@@ -1,0 +1,14 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define APRS_SOURCE_CALL "DL5TKL"
+#define APRS_SOURCE_SSID 4
+
+#define APRS_DESTINATION_CALL "APZTK1"
+#define APRS_DESTINATION_SSID 0
+
+#define APRS_COMMENT "Thomas mit T-Echo"
+
+#define APRS_SYMBOL AI_BIKE
+
+#endif // CONFIG_H
