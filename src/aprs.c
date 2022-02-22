@@ -259,8 +259,6 @@ size_t aprs_build_frame(uint8_t *frame)
 		infoptr++;
 	}
 
-	*(frameptr++) = '\n';
-
 #if 0
 	fcs = calculate_fcs(frame, (frameptr-frame));
 
