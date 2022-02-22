@@ -15,6 +15,8 @@ void gps_loop(void);
 
 void gps_config_gpios(bool power_supplied);
 
+ret_code_t gps_reset(void);
+
 ret_code_t gps_power_on(void);
 ret_code_t gps_power_off(void);
 

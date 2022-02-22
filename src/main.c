@@ -1355,6 +1355,7 @@ int main(void)
 	time_base_init();
 	epaper_init();
 	gps_init(cb_gps);
+	gps_reset();
 	lora_init(cb_lora);
 	aprs_init();
 	tracker_init(cb_tracker);

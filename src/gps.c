@@ -4,13 +4,29 @@
 #include <sdk_macros.h>
 #include <nrf_log.h>
 
+#include <app_timer.h>
+
 #include "pinout.h"
 #include "periph_pwr.h"
 #include "nmea.h"
 
 #include "gps.h"
 
+typedef enum {
+	GPS_RESET_WAIT1,
+	GPS_RESET_ACTIVE,
+	GPS_RESET_WAIT2,
+	GPS_RESET_COMPLETE
+} gps_reset_state_t;
+
+#define GPS_RESET_MS_WAIT1      10  // power-on delay
+#define GPS_RESET_MS_ACTIVE   1000  // apply reset for this duration
+#define GPS_RESET_MS_WAIT2    1000  // time to leave the GPS on after reset
+
+
 static nrfx_uarte_t m_uarte = NRFX_UARTE_INSTANCE(0);
+
+APP_TIMER_DEF(m_gps_reset_timer);
 
 static gps_callback_t m_callback;
 
@@ -25,6 +41,8 @@ static uint8_t m_rx_buffer_complete_idx;
 static bool    m_rx_buffer_complete;
 
 static nmea_data_t m_nmea_data;
+
+static gps_reset_state_t m_reset_state;
 
 static void cb_uarte(nrfx_uarte_event_t const * p_event, void *p_context)
 {
@@ -73,11 +91,53 @@ static void cb_uarte(nrfx_uarte_event_t const * p_event, void *p_context)
 }
 
 
+void cb_gps_reset_timer(void *p_context)
+{
+	ret_code_t err_code;
+
+	switch(m_reset_state)
+	{
+		case GPS_RESET_WAIT1:
+			nrf_gpio_pin_clear(PIN_GPS_RESET_N);
+			nrf_gpio_cfg_output(PIN_GPS_RESET_N);
+
+			m_reset_state = GPS_RESET_ACTIVE;
+
+			err_code = app_timer_start(m_gps_reset_timer, APP_TIMER_TICKS(GPS_RESET_MS_ACTIVE), NULL);
+			APP_ERROR_CHECK(err_code);
+			break;
+
+		case GPS_RESET_ACTIVE:
+			nrf_gpio_cfg_default(PIN_GPS_RESET_N); // let the pullup do it's work again
+
+			m_reset_state = GPS_RESET_WAIT2;
+
+			err_code = app_timer_start(m_gps_reset_timer, APP_TIMER_TICKS(GPS_RESET_MS_WAIT2), NULL);
+			APP_ERROR_CHECK(err_code);
+			break;
+
+		case GPS_RESET_WAIT2:
+			m_reset_state = GPS_RESET_COMPLETE;
+			break;
+
+		case GPS_RESET_COMPLETE:
+			// this state should never be reached
+			APP_ERROR_CHECK(NRF_ERROR_INVALID_STATE);
+			break;
+	}
+}
+
+
 ret_code_t gps_init(gps_callback_t callback)
 {
+	ret_code_t err_code;
+
 	m_callback = callback;
 
 	gps_config_gpios(false);
+
+	err_code = app_timer_create(&m_gps_reset_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_gps_reset_timer);
+	VERIFY_SUCCESS(err_code);
 
 	return NRF_SUCCESS;
 }
@@ -93,9 +153,28 @@ void gps_config_gpios(bool power_supplied)
 }
 
 
+ret_code_t gps_reset(void)
+{
+	ret_code_t err_code;
+
+	// power on
+	err_code = periph_pwr_start_activity(PERIPH_PWR_FLAG_GPS);
+	VERIFY_SUCCESS(err_code);
+
+	m_reset_state = GPS_RESET_WAIT1;
+
+	return app_timer_start(m_gps_reset_timer, APP_TIMER_TICKS(GPS_RESET_MS_WAIT1), NULL);
+}
+
+
 ret_code_t gps_power_on(void)
 {
 	ret_code_t err_code;
+
+	if(m_reset_state != GPS_RESET_COMPLETE) {
+		// can only power on if the reset is currently not active
+		return NRF_ERROR_INVALID_STATE;
+	}
 
 	// prepare buffers
 	m_rx_buffer_used[0] = 0;
