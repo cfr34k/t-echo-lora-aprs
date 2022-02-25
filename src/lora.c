@@ -3,7 +3,7 @@
  * @details
  *
  * Target modulation:
- * - RF frequency: 434.400 MHz
+ * - RF frequency: 433.775 MHz
  * - Bandwidth: 125 kHz (0x04)
  *
  * The following power settings were tested:

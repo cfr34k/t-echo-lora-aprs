@@ -19,4 +19,8 @@ ret_code_t tracker_init(tracker_callback callback);
  */
 ret_code_t tracker_run(const nmea_data_t *data);
 
+/**@brief Force a transmission on the next valid GPS update.
+ */
+void tracker_force_tx(void);
+
 #endif // TRACKER_H

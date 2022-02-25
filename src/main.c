@@ -785,6 +785,7 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 				m_tracker_active = !m_tracker_active;
 				if(m_tracker_active) {
 					m_tracker_tx_counter = 0;
+					tracker_force_tx();
 					APP_ERROR_CHECK(gps_power_on());
 				} else {
 					APP_ERROR_CHECK(gps_power_off());

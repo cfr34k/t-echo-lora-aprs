@@ -12,8 +12,8 @@
 #define HEADING_CHECK_MIN_SPEED   1.0f // m/s
 #define MAX_HEADING_DELTA_DEG    45.0f
 
-#define MIN_TX_INTERVAL_MS      30000
-#define MAX_TX_INTERVAL_MS     600000
+#define MIN_TX_INTERVAL_MS      15000
+#define MAX_TX_INTERVAL_MS     180000
 
 #define MAX_DISTANCE_M         2000
 
@@ -136,4 +136,11 @@ ret_code_t tracker_run(const nmea_data_t *data)
 	}
 
 	return NRF_SUCCESS;
+}
+
+
+void tracker_force_tx(void)
+{
+	// force transmission by resetting the last transmission time.
+	m_last_tx_time = 0;
 }
