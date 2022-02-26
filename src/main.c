@@ -372,6 +372,16 @@ static void cb_aprs_service(aprs_service_evt_t evt)
 				aprs_set_comment(comment);
 			}
 			break;
+
+		case APRS_SERVICE_EVT_SYMBOL_CHANGED:
+			{
+				char table, symbol;
+
+				APP_ERROR_CHECK(aprs_service_get_symbol(&m_aprs_service, &table, &symbol));
+
+				aprs_set_icon(table, symbol);
+			}
+			break;
 	}
 }
 

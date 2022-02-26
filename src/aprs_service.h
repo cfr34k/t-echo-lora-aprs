@@ -41,7 +41,8 @@ NRF_SDH_BLE_OBSERVER(_name ## _obs,                                             
 #define APRS_SERVICE_UUID_SERVICE            0x0001
 #define APRS_SERVICE_UUID_MYCALL             0x0101      // Call sign of the user
 #define APRS_SERVICE_UUID_COMMENT            0x0102      // Comment
-#define APRS_SERVICE_UUID_RX_MESSAGE         0x0103      // The last received message
+#define APRS_SERVICE_UUID_SYMBOL             0x0103      // Symbol code
+#define APRS_SERVICE_UUID_RX_MESSAGE         0x0104      // The last received message
 
 // Forward declaration of the aprs_service_t type.
 typedef struct aprs_service_s aprs_service_t;
@@ -49,6 +50,7 @@ typedef struct aprs_service_s aprs_service_t;
 typedef enum {
 	APRS_SERVICE_EVT_MYCALL_CHANGED,
 	APRS_SERVICE_EVT_COMMENT_CHANGED,
+	APRS_SERVICE_EVT_SYMBOL_CHANGED,
 } aprs_service_evt_t;
 
 /**@brief Callback function type.
@@ -70,6 +72,7 @@ struct aprs_service_s
 	uint16_t                    service_handle;               /**< Handle of Service (as provided by the BLE stack). */
 	ble_gatts_char_handles_t    mycall_char_handles;          /**< Handles related to the My Call Characteristic. */
 	ble_gatts_char_handles_t    comment_char_handles;         /**< Handles related to the Comment Characteristic. */
+	ble_gatts_char_handles_t    symbol_char_handles;          /**< Handles related to the Symbol Characteristic. */
 	ble_gatts_char_handles_t    rx_message_char_handles;      /**< Handles related to the RX Message Characteristic. */
 	uint8_t                     uuid_type;                    /**< UUID type for the APRS Service. */
 	aprs_service_callback_t     callback;                     /**< Pointer to the callback function. */
@@ -116,6 +119,21 @@ ret_code_t aprs_service_get_mycall(aprs_service_t * p_srv, char *p_mycall, uint8
  * @returns                The result code from the BLE stack.
  */
 ret_code_t aprs_service_get_comment(aprs_service_t * p_srv, char *p_comment, uint8_t comment_len);
+
+
+/**@brief Get the current symbol code.
+ *
+ * The symbol is specified as table and symbol identifier. Each is a single
+ * character that is directly inserted into the transmitted message.
+ *
+ * For example, table = '/' and symbol = 'b' results in a Bike symbol on the map.
+ *
+ * @param[in]  p_srv       Service structure (as returned by aprs_service_init()).
+ * @param[out] p_table     Pointer to the single table character.
+ * @param[out] p_symbol    Pointer to the single symbol character.
+ * @returns                The result code from the BLE stack.
+ */
+ret_code_t aprs_service_get_symbol(aprs_service_t * p_srv, char *p_table, char *p_symbol);
 
 
 /**@brief Set the received message and send a notification.

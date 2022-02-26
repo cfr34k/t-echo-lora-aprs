@@ -12,6 +12,8 @@
 #include "ble_srv_common.h"
 #include "ble_conn_state.h"
 
+#include "config.h"
+
 /**@brief Function for handling the Write event.
  *
  * @param[in] p_srv      Service structure.
@@ -28,6 +30,10 @@ static void on_write(aprs_service_t * p_srv, ble_evt_t const * p_ble_evt)
 	else if (p_evt_write->handle == p_srv->comment_char_handles.value_handle)
 	{
 		p_srv->callback(APRS_SERVICE_EVT_COMMENT_CHANGED);
+	}
+	else if (p_evt_write->handle == p_srv->symbol_char_handles.value_handle)
+	{
+		p_srv->callback(APRS_SERVICE_EVT_SYMBOL_CHANGED);
 	}
 }
 
@@ -72,6 +78,8 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 	ble_uuid_t               ble_uuid;
 	ble_add_char_params_t    add_char_params;
 	ble_add_char_user_desc_t add_user_desc;
+	uint8_t                  init_val[16];
+	size_t                   len;
 
 	// Initialize service structure.
 	p_srv->callback  = p_srv_init->callback;
@@ -88,17 +96,21 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 	VERIFY_SUCCESS(err_code);
 
 	/* Add my call characteristic. */
+	strcpy((char*)init_val, APRS_SOURCE);
+	len = strlen((char*)init_val);
+
 	memset(&add_char_params, 0, sizeof(add_char_params));
 	add_char_params.uuid              = APRS_SERVICE_UUID_MYCALL;
 	add_char_params.uuid_type         = p_srv->uuid_type;
-	add_char_params.init_len          = 0;
+	add_char_params.init_len          = len;
 	add_char_params.max_len           = 16;
+	add_char_params.p_init_value      = init_val;
 	add_char_params.is_var_len        = 1;
 	add_char_params.char_props.read   = 1;
 	add_char_params.char_props.write  = 1;
 
 	add_char_params.read_access       = SEC_OPEN;
-	add_char_params.write_access      = SEC_OPEN;
+	add_char_params.write_access      = SEC_JUST_WORKS;
 
 	fill_user_desc(&add_user_desc, "My Call");
 	add_char_params.p_user_descr = &add_user_desc;
@@ -117,12 +129,35 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 	add_char_params.char_props.write  = 1;
 
 	add_char_params.read_access       = SEC_OPEN;
-	add_char_params.write_access      = SEC_OPEN;
+	add_char_params.write_access      = SEC_JUST_WORKS;
 
 	fill_user_desc(&add_user_desc, "Comment");
 	add_char_params.p_user_descr = &add_user_desc;
 
 	err_code = characteristic_add(p_srv->service_handle, &add_char_params, &p_srv->comment_char_handles);
+	VERIFY_SUCCESS(err_code);
+
+	/* Add symbol code characteristic. */
+	init_val[0] = APRS_SYMBOL_TABLE;
+	init_val[1] = APRS_SYMBOL_ICON;
+
+	memset(&add_char_params, 0, sizeof(add_char_params));
+	add_char_params.uuid              = APRS_SERVICE_UUID_SYMBOL;
+	add_char_params.uuid_type         = p_srv->uuid_type;
+	add_char_params.init_len          = 2;
+	add_char_params.max_len           = 2;
+	add_char_params.is_var_len        = 0;
+	add_char_params.p_init_value      = init_val;
+	add_char_params.char_props.read   = 1;
+	add_char_params.char_props.write  = 1;
+
+	add_char_params.read_access       = SEC_OPEN;
+	add_char_params.write_access      = SEC_JUST_WORKS;
+
+	fill_user_desc(&add_user_desc, "Symbol code");
+	add_char_params.p_user_descr = &add_user_desc;
+
+	err_code = characteristic_add(p_srv->service_handle, &add_char_params, &p_srv->symbol_char_handles);
 	VERIFY_SUCCESS(err_code);
 
 	/* Add rx message characteristic. */
@@ -170,6 +205,22 @@ ret_code_t aprs_service_get_comment(aprs_service_t * p_srv, char *p_comment, uin
 
 	if(err_code == NRF_SUCCESS) {
 		p_comment[value.len] = '\0';
+	}
+
+	return err_code;
+}
+
+
+ret_code_t aprs_service_get_symbol(aprs_service_t * p_srv, char *p_table, char *p_symbol)
+{
+	uint8_t buf[2];
+	ble_gatts_value_t value = {sizeof(buf), 0, buf};
+
+	ret_code_t err_code = sd_ble_gatts_value_get(BLE_CONN_HANDLE_INVALID, p_srv->symbol_char_handles.value_handle, &value);
+
+	if(err_code == NRF_SUCCESS) {
+		*p_table = buf[0];
+		*p_symbol = buf[1];
 	}
 
 	return err_code;
