@@ -359,7 +359,7 @@ static void cb_aprs_service(aprs_service_evt_t evt)
 
 				APP_ERROR_CHECK(aprs_service_get_mycall(&m_aprs_service, mycall, sizeof(mycall)));
 
-				aprs_set_source(mycall, 0);
+				aprs_set_source(mycall);
 			}
 			break;
 
@@ -1370,15 +1370,15 @@ int main(void)
 	voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 
 	// Initial APRS setup
-	aprs_set_source(APRS_SOURCE_CALL, APRS_SOURCE_SSID);
-	aprs_set_dest(APRS_DESTINATION_CALL, APRS_DESTINATION_SSID);
+	aprs_set_source(APRS_SOURCE);
+	aprs_set_dest(APRS_DESTINATION);
 
 	aprs_clear_path();
-	aprs_add_path("WIDE1", 1);
+	aprs_add_path("WIDE1-1");
 
 	aprs_set_comment(APRS_COMMENT);
 
-	aprs_set_icon(APRS_SYMBOL);
+	aprs_set_icon(APRS_SYMBOL_TABLE, APRS_SYMBOL_ICON);
 
 	m_display_state = DISP_STATE_STARTUP;
 	redraw_display(true);

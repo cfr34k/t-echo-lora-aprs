@@ -31,21 +31,15 @@ typedef enum
 	APRS_NUM_ICONS
 } aprs_icon_t;
 
-typedef struct
-{
-	char call[7]; // 6 characters + \0
-	uint8_t ssid;
-} aprs_addr_t;
-
-
 
 void aprs_init(void);
-void aprs_set_dest(const char *dest, uint8_t ssid);
-void aprs_set_source(const char *call, uint8_t ssid);
+void aprs_set_dest(const char *dest);
+void aprs_set_source(const char *call);
 void aprs_clear_path();
-uint8_t aprs_add_path(const char *call, uint8_t ssid);
+uint8_t aprs_add_path(const char *call);
 void aprs_update_pos_time(float lat, float lon, float alt_m, time_t t);
-void aprs_set_icon(aprs_icon_t icon);
+void aprs_set_icon(char table, char icon);
+void aprs_set_icon_default(aprs_icon_t icon);
 void aprs_set_comment(const char *comment);
 size_t aprs_build_frame(uint8_t *frame);
 

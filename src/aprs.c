@@ -27,15 +27,16 @@ float m_lon;
 float m_alt_m;
 time_t m_time;
 
-aprs_addr_t m_dest;
-aprs_addr_t m_src;
+char m_dest[16];
+char m_src[16];
 
-aprs_addr_t m_path[8];
+char    m_path[8][16];
 uint8_t m_npath;
 
 uint8_t m_info[APRS_MAX_INFO_LEN];
 
-aprs_icon_t m_icon;
+char m_table;
+char m_icon;
 char m_comment[APRS_MAX_COMMENT_LEN+1];
 
 
@@ -72,18 +73,11 @@ static uint16_t calculate_fcs(uint8_t *data, size_t len)
 }
 #endif
 
-static void append_address(uint8_t **frameptr, aprs_addr_t *addr, uint8_t is_last)
+static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
 {
-	if(addr->ssid != 0) {
-		int ret = sprintf((char*)*frameptr, "%s-%d", addr->call, addr->ssid);
-		if(ret > 0) {
-			*frameptr += ret;
-		}
-	} else {
-		size_t len = strlen(addr->call);
-		strncpy((char*)*frameptr, addr->call, len);
-		*frameptr += len;
-	}
+	size_t len = strlen(addr);
+	strncpy((char*)*frameptr, addr, len);
+	*frameptr += len;
 
 	if(!is_last) {
 		**frameptr = ',';
@@ -156,41 +150,40 @@ static void update_info_field(void)
 	*/
 	// no time at all
 	(void)tms;
-	snprintf((char*)m_info, sizeof(m_info), "!%02i%02i.%02i%c/%03i%02i.%02i%c%c%s /A=%06i",
-			lat_deg, lat_min, lat_min_fract, lat_ns,
-			lon_deg, lon_min, lon_min_fract, lon_ew,
-			m_icon_map[m_icon], m_comment, (int)alt_ft);
+	snprintf((char*)m_info, sizeof(m_info), "!%02i%02i.%02i%c%c%03i%02i.%02i%c%c%s /A=%06i",
+			lat_deg, lat_min, lat_min_fract, lat_ns, m_table,
+			lon_deg, lon_min, lon_min_fract, lon_ew, m_icon,
+			m_comment, (int)alt_ft);
 }
 
 // PUBLIC FUNCTIONS
 
 void aprs_init(void)
 {
-	m_dest.call[6] = '\0';
-	m_src.call[6] = '\0';
+	m_dest[0] = '\0';
+	m_src[0] = '\0';
 
 	for(uint8_t i = 0; i < 8; i++) {
-		m_path[i].call[6] = '\0';
+		m_path[i][0] = '\0';
 	}
 
 	m_npath = 0;
 
-	m_icon = AI_X;
+	m_table = '/'; // default table
+	m_icon = m_icon_map[AI_X];
 
 	m_comment[0] = '\0';
 	m_comment[APRS_MAX_COMMENT_LEN] = '\0';
 }
 
-void aprs_set_dest(const char *dest, uint8_t ssid)
+void aprs_set_dest(const char *dest)
 {
-	strncpy(m_dest.call, dest, 6);
-	m_dest.ssid = ssid;
+	strncpy(m_dest, dest, sizeof(m_dest));
 }
 
-void aprs_set_source(const char *call, uint8_t ssid)
+void aprs_set_source(const char *call)
 {
-	strncpy(m_src.call, call, 6);
-	m_src.ssid = ssid;
+	strncpy(m_src, call, sizeof(m_src));
 }
 
 void aprs_clear_path()
@@ -198,13 +191,12 @@ void aprs_clear_path()
 	m_npath = 0;
 }
 
-uint8_t aprs_add_path(const char *call, uint8_t ssid)
+uint8_t aprs_add_path(const char *call)
 {
 	if(m_npath == 8) {
 		return 0;
 	} else {
-		strncpy(m_path[m_npath].call, call, 6);
-		m_path[m_npath].ssid = ssid;
+		strncpy(m_path[m_npath], call, sizeof(m_path[0]));
 
 		m_npath++;
 
@@ -220,9 +212,16 @@ void aprs_update_pos_time(float lat, float lon, float alt_m, time_t t)
 	m_time = t;
 }
 
-void aprs_set_icon(aprs_icon_t icon)
+void aprs_set_icon(char table, char icon)
 {
-	m_icon = icon;
+	m_table = table;
+	m_icon  = icon;
+}
+
+void aprs_set_icon_default(aprs_icon_t icon)
+{
+	m_table = '/';
+	m_icon  = m_icon_map[icon];
 }
 
 void aprs_set_comment(const char *comment)
@@ -240,12 +239,12 @@ size_t aprs_build_frame(uint8_t *frame)
 	*(frameptr++) = 0xFF;
 	*(frameptr++) = 0x01;
 
-	append_address(&frameptr, &(m_src), 1);
+	append_address(&frameptr, m_src, 1);
 	*(frameptr++) = '>';
-	append_address(&frameptr, &(m_dest), (m_npath == 0) ? 1 : 0);
+	append_address(&frameptr, m_dest, (m_npath == 0) ? 1 : 0);
 
 	for(uint8_t i = 0; i < m_npath; i++) {
-		append_address(&frameptr, &(m_path[i]), (m_npath == (i+1)) ? 1 : 0);
+		append_address(&frameptr, m_path[i], (m_npath == (i+1)) ? 1 : 0);
 	}
 
 	*(frameptr++) = ':';
