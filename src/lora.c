@@ -578,8 +578,11 @@ static ret_code_t handle_state_entry(void)
 
 		case LORA_STATE_SET_TX_PACKET_PARAMS:
 			command[0] = SX1262_OPCODE_SET_PACKET_PARAMS;
-			command[1] = 0x00; // 16 preamble symbols: MSB
-			command[2] = 0x10; // 16 preamble symbols: LSB
+
+			// IMPORTANT! The preamble *must* be exactly 8 symbols long to make the
+			// ESP32/SX127x devices receive the message correctly.
+			command[1] = 0x00; // 8 preamble symbols: MSB
+			command[2] = 0x08; // 8 preamble symbols: LSB
 			command[3] = SX1262_LORA_HEADER_TYPE_EXPLICIT;
 			command[4] = m_payload_length;
 			command[5] = SX1262_LORA_CRC_TYPE_ON;
@@ -666,8 +669,11 @@ static ret_code_t handle_state_entry(void)
 
 		case LORA_STATE_SET_RX_PACKET_PARAMS:
 			command[0] = SX1262_OPCODE_SET_PACKET_PARAMS;
-			command[1] = 0x00; // 16 preamble symbols: MSB
-			command[2] = 0x10; // 16 preamble symbols: LSB
+
+			// IMPORTANT! For best compatibility with the ESP32/SX127x devices we
+			// also use 8 preamble symbols here.
+			command[1] = 0x00; // 8 preamble symbols: MSB
+			command[2] = 0x08; // 8 preamble symbols: LSB
 			command[3] = SX1262_LORA_HEADER_TYPE_EXPLICIT;
 			command[4] = 0xFF; // expect up to 255 bytes
 			command[5] = SX1262_LORA_CRC_TYPE_ON;
