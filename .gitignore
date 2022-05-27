@@ -1,2 +1,3 @@
 compile_flags.txt
 _build/
+src/config.h
