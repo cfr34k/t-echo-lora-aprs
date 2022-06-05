@@ -6,6 +6,7 @@
 #include "aprs.h"
 #include "lora.h"
 #include "time_base.h"
+#include "utils.h"
 
 #include "tracker.h"
 
@@ -25,31 +26,6 @@ static float m_last_tx_lon = 0.0f;
 static uint64_t m_last_tx_time = 0;
 
 static tracker_callback m_callback;
-
-#define EARTH_RADIUS_M   6371000
-static float great_circle_distance_m(float lat1, float lon1, float lat2, float lon2)
-{
-	// convert to radians
-	lat1 *= 3.141593f / 180.0f;
-	lon1 *= 3.141593f / 180.0f;
-	lat2 *= 3.141593f / 180.0f;
-	lon2 *= 3.141593f / 180.0f;
-
-	// calculation using the haversine formula from
-	// https://en.wikipedia.org/wiki/Great-circle_distance
-	float sin_dlat_over_2 = sinf((lat2 - lat1) * 0.5f);
-	float sin_dlon_over_2 = sinf((lon2 - lon1) * 0.5f);
-	float sin_sumlat_over_2 = sinf((lat2 + lat1) * 0.5f);
-
-	float sin_sq_dlat_over_2 = sin_dlat_over_2 * sin_dlat_over_2;
-	float sin_sq_dlon_over_2 = sin_dlon_over_2 * sin_dlon_over_2;
-	float sin_sq_sumlat_over_2 = sin_sumlat_over_2 * sin_sumlat_over_2;
-
-	float arg = sqrtf(sin_sq_dlat_over_2 + (1 - sin_sq_dlat_over_2 - sin_sq_sumlat_over_2) * sin_sq_dlon_over_2);
-	float angle = 2.0f * asinf(arg);
-	return angle * EARTH_RADIUS_M;
-}
-
 
 ret_code_t tracker_init(tracker_callback callback)
 {
