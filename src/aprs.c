@@ -22,6 +22,24 @@ const char m_icon_map[APRS_NUM_ICONS] = {
 	's', // AI_SHIP
 };
 
+const char * const m_icon_names[APRS_NUM_ICONS] = {
+	"X",            // AI_X
+	"Jogger",       // AI_JOGGER
+	"Bike",         // AI_BIKE
+	"Car",          // AI_CAR
+	"Jeep",         // AI_JEEP
+	"Van",          // AI_VAN
+	"Truck",        // AI_TRUCK
+	"Bus",          // AI_BUS
+	"Balloon",      // AI_BALLOON
+	"Rec. Vehicle", // AI_RECREATIONAL_VEHICLE
+	"Helicopter",   // AI_HELICOPTER
+	"Yacht",        // AI_YACHT
+	"Ambulance",    // AI_AMBULANCE
+	"Fire Truck",   // AI_FIRE_TRUCK
+	"Ship",         // AI_SHIP
+};
+
 float m_lat;
 float m_lon;
 float m_alt_m;
@@ -39,39 +57,6 @@ char m_table;
 char m_icon;
 char m_comment[APRS_MAX_COMMENT_LEN+1];
 
-
-#if 0
-/*
- * http://n1vg.net/packet/
- *
- * "Start with the 16-bit FCS set to 0xffff. For each data bit sent, shift the
- * FCS value right one bit. If the bit that was shifted off (formerly bit 1)
- * was not equal to the bit being sent, exclusive-OR the FCS value with 0x8408.
- * After the last data bit, take the ones complement (inverse) of the FCS value
- * and send it low-byte first."
- */
-static uint16_t calculate_fcs(uint8_t *data, size_t len)
-{
-	const uint16_t poly = 0x8408;
-
-	uint16_t lfsr = 0xFFFF;
-
-	for(size_t i = 0; i < len; i++) {
-		for(int j = 0; j < 8; j++) {
-			uint8_t b = (data[i] >> j) & 0x01;
-			uint8_t o = lfsr & 0x0001;
-
-			lfsr >>= 1;
-
-			if(b != o) {
-				lfsr ^= poly;
-			}
-		}
-	}
-
-	return ~lfsr; // invert all bits in the end
-}
-#endif
 
 static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
 {
@@ -270,4 +255,212 @@ size_t aprs_build_frame(uint8_t *frame)
 	*frameptr = '\0';
 
 	return (size_t)(frameptr - frame);
+}
+
+
+static int extract_text_until(const char *start, char marker, char *dest, size_t dest_len)
+{
+	const char *tmpptr = strchr(start, marker);
+	if(!tmpptr) {
+		return -1;
+	}
+
+	size_t size = tmpptr - start; // size of field
+
+	if(size >= dest_len) {
+		size = dest_len - 1;
+	}
+
+	memcpy(dest, start, size);
+	dest[size] = '\0';
+
+	return size;
+}
+
+
+static int parse_location_and_symbol(const char *start, float *lat, float *lon, char *table, char *symbol)
+{
+	const char *orig_start = start;
+
+	char buf[8];
+
+	// parse degrees (integer)
+	memcpy(buf, start, 2);
+	buf[2] = '\0';
+
+	char *endptr;
+	unsigned long deg = strtoul(buf, &endptr, 10);
+	if(endptr == buf) {
+		return -1;
+	}
+
+	start += 2;
+
+	// parse minutes (with two fractional digits)
+	memcpy(buf, start, 5);
+	buf[5] = '\0';
+
+	float minutes = strtof(buf, &endptr);
+	if(endptr == buf) {
+		return -1;
+	}
+
+	start += 5;
+
+	*lat = (float)deg + minutes / 60.0f;
+
+	if(*start == 'S') {
+		*lat = -*lat;
+	} else if(*start != 'N') {
+		return -1;
+	}
+
+	start++;
+
+	*table = *start;
+	start++;
+
+	// same as above for the longitude
+
+	// parse degrees (integer)
+	memcpy(buf, start, 3);
+	buf[3] = '\0';
+
+	deg = strtoul(buf, &endptr, 10);
+	if(endptr == buf) {
+		return -1;
+	}
+
+	start += 3;
+
+	// parse minutes (with two fractional digits)
+	memcpy(buf, start, 5);
+	buf[5] = '\0';
+
+	minutes = strtof(buf, &endptr);
+	if(endptr == buf) {
+		return -1;
+	}
+
+	start += 5;
+
+	*lon = (float)deg + minutes / 60.0f;
+
+	if(*start == 'W') {
+		*lon = -*lon;
+	} else if(*start != 'E') {
+		return -1;
+	}
+
+	start++;
+
+	*symbol = *start;
+	start++;
+
+	return start - orig_start; // number of parsed characters
+}
+
+
+static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t *result)
+{
+	char buf[64];
+	size_t size;
+
+	// convert the input pointer to a string
+	const char *textframe = (const char*)frame;
+	const char *endptr = (const char*)frame + len;
+
+	// extract the source call
+	int ret = extract_text_until(textframe, '>', result->source, sizeof(result->source));
+	if(ret <= 0) {
+		return false;
+	}
+
+	textframe += ret + 1; // “remove” the processed text from the buffer
+
+	// extract the destination call (variant 1: path appended)
+	ret = extract_text_until(textframe, ',', result->dest, sizeof(result->dest));
+	if(ret >= 0) {
+		// destination successfully extracted => extract path
+		textframe += ret + 1; // “remove” the processed text from the buffer
+
+		ret = extract_text_until(textframe, ':', result->via, sizeof(result->via));
+		if(ret <= 0) {
+			return false;
+		}
+	} else {
+		// there is no path appended, so destination is everything until ':'
+		ret = extract_text_until(textframe, ':', result->dest, sizeof(result->dest));
+		if(ret <= 0) {
+			return false;
+		}
+	}
+
+	textframe += ret + 1; // “remove” the processed text from the buffer
+	
+	char type = *textframe;
+	textframe++;
+
+	switch(type) {
+		case '!':
+		case '=':
+			// position without timestamp
+			ret = parse_location_and_symbol(textframe, &result->lat, &result->lon, &result->table, &result->symbol);
+			break;
+
+		case '/':
+		case '@':
+			// position with timestamp
+			textframe += 7; // skip the timestamp for now
+
+			ret = parse_location_and_symbol(textframe, &result->lat, &result->lon, &result->table, &result->symbol);
+			break;
+
+		default:
+			// cannot parse this type
+			return false;
+	}
+
+	if(ret < 0) {
+		return false;
+	}
+
+	textframe += ret; // “remove” the processed text from the buffer
+
+	// check if altitude is in remaining data
+	char *ptr = strstr(textframe, "/A=");
+	if(ptr) {
+		memcpy(buf, ptr + 3, 6);
+
+		char *endptr;
+		long alt = strtol(buf, &endptr, 10);
+		result->alt = (float)alt * 0.3048f; // convert to meters
+	} else {
+		result->alt = 0.0f;
+	}
+
+	// fill comment
+	if(textframe < endptr) {
+		size = endptr - textframe - 1;
+		if(size > sizeof(result->comment)) {
+			size = sizeof(result->comment) - 1;
+		}
+
+		memcpy(result->comment, textframe, size);
+		result->comment[size] = '\0';
+	} else {
+		result->comment[0] = '\0';
+	}
+
+	return true;
+}
+
+
+bool aprs_parse_frame(const uint8_t *frame, size_t len, aprs_frame_t *result)
+{
+	if(len > 3 && frame[0] == '<' && frame[1] == 0xFF && frame[2] == 0x01) {
+		return aprs_parse_text_frame(frame + 3, len - 3, result);
+	} else {
+		return false;
+	}
 }

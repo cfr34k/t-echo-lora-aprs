@@ -2,6 +2,7 @@
 #define APRS_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <time.h>
 
 // normal AX.25 frame length, not applicable for LoRa APRS
@@ -32,6 +33,22 @@ typedef enum
 } aprs_icon_t;
 
 
+typedef struct {
+	char source[16];
+	char dest[16];
+	char via[32];
+
+	float lat; // in degrees
+	float lon; // in degrees
+	float alt; // in meters
+
+	char comment[64];
+
+	char table;
+	char symbol;
+} aprs_frame_t;
+
+
 void aprs_init(void);
 void aprs_set_dest(const char *dest);
 void aprs_set_source(const char *call);
@@ -42,5 +59,7 @@ void aprs_set_icon(char table, char icon);
 void aprs_set_icon_default(aprs_icon_t icon);
 void aprs_set_comment(const char *comment);
 size_t aprs_build_frame(uint8_t *frame);
+
+bool aprs_parse_frame(const uint8_t *frame, size_t len, aprs_frame_t *result);
 
 #endif // APRS_H
