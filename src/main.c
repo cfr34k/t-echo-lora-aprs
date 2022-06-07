@@ -101,6 +101,7 @@
 #include "buttons.h"
 #include "tracker.h"
 #include "utils.h"
+#include "settings.h"
 
 #include "aprs.h"
 
@@ -366,6 +367,7 @@ static void cb_aprs_service(aprs_service_evt_t evt)
 
 				APP_ERROR_CHECK(aprs_service_get_mycall(&m_aprs_service, mycall, sizeof(mycall)));
 
+				settings_write(SETTINGS_ID_SOURCE_CALL, (const uint8_t *)mycall, strlen(mycall)+1);
 				aprs_set_source(mycall);
 			}
 			break;
@@ -376,6 +378,7 @@ static void cb_aprs_service(aprs_service_evt_t evt)
 
 				APP_ERROR_CHECK(aprs_service_get_comment(&m_aprs_service, comment, sizeof(comment)));
 
+				settings_write(SETTINGS_ID_COMMENT, (const uint8_t *)comment, strlen(comment)+1);
 				aprs_set_comment(comment);
 			}
 			break;
@@ -385,6 +388,9 @@ static void cb_aprs_service(aprs_service_evt_t evt)
 				char table, symbol;
 
 				APP_ERROR_CHECK(aprs_service_get_symbol(&m_aprs_service, &table, &symbol));
+
+				uint8_t buf[2] = {table, symbol};
+				settings_write(SETTINGS_ID_SYMBOL_CODE, buf, sizeof(buf));
 
 				aprs_set_icon(table, symbol);
 			}
@@ -823,6 +829,52 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 				m_display_state = DISP_STATE_TRACKER;
 				m_epaper_update_requested = true;
 			}
+			break;
+	}
+}
+
+
+/**@brief Settings callback.
+ */
+void cb_settings(settings_evt_t evt, settings_id_t id)
+{
+	uint8_t buffer[64];
+	size_t  len;
+
+	ret_code_t err_code;
+
+	switch(evt) {
+		case SETTINGS_EVT_INIT:
+			// read all settings and forward them to the relevant modules
+			len = sizeof(buffer);
+			err_code = settings_query(SETTINGS_ID_SOURCE_CALL, buffer, &len);
+			if(err_code == NRF_SUCCESS) {
+				aprs_service_set_mycall(&m_aprs_service, (const char *)buffer);
+				aprs_set_source((const char *)buffer);
+			} else {
+				aprs_set_source(APRS_SOURCE);
+			}
+
+			len = sizeof(buffer);
+			err_code = settings_query(SETTINGS_ID_SYMBOL_CODE, buffer, &len);
+			if(err_code == NRF_SUCCESS) {
+				aprs_service_set_symbol(&m_aprs_service, buffer[0], buffer[1]);
+				aprs_set_icon(buffer[0], buffer[1]);
+			} else {
+				aprs_set_icon(APRS_SYMBOL_TABLE, APRS_SYMBOL_ICON);
+			}
+
+			len = sizeof(buffer);
+			err_code = settings_query(SETTINGS_ID_COMMENT, buffer, &len);
+			if(err_code == NRF_SUCCESS) {
+				aprs_service_set_comment(&m_aprs_service, (const char *)buffer);
+				aprs_set_comment((const char *)buffer);
+			} else {
+				aprs_set_comment(APRS_COMMENT);
+			}
+			break;
+
+		case SETTINGS_EVT_UPDATE_COMPLETE:
 			break;
 	}
 }
@@ -1459,6 +1511,10 @@ int main(void)
 	services_init();
 	conn_params_init();
 	peer_manager_init();
+
+	// load the settings
+	settings_init(cb_settings);
+
 	buttons_leds_init();
 
 	periph_pwr_init();
@@ -1478,16 +1534,11 @@ int main(void)
 
 	voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 
-	// Initial APRS setup
-	aprs_set_source(APRS_SOURCE);
+	// Initial APRS setup (values not read from flash only)
 	aprs_set_dest(APRS_DESTINATION);
 
 	aprs_clear_path();
 	aprs_add_path("WIDE1-1");
-
-	aprs_set_comment(APRS_COMMENT);
-
-	aprs_set_icon(APRS_SYMBOL_TABLE, APRS_SYMBOL_ICON);
 
 	m_display_state = DISP_STATE_STARTUP;
 	redraw_display(true);

@@ -1,0 +1,134 @@
+#include <string.h>
+
+#include <fds.h>
+#include <sdk_macros.h>
+
+#include "nrf_error.h"
+#include "settings.h"
+
+#define SETTINGS_FDS_FILE_ID  0x0001
+
+settings_callback m_callback;
+settings_id_t     m_pending_id = SETTINGS_ID_INVALID;
+
+static void cb_fds(fds_evt_t const * p_evt)
+{
+	bool op_done = false;
+
+	switch(p_evt->id) {
+		case FDS_EVT_INIT:
+			m_callback(SETTINGS_EVT_INIT, SETTINGS_ID_INVALID);
+
+		case FDS_EVT_UPDATE:
+		case FDS_EVT_WRITE:
+			op_done = (p_evt->write.record_id == m_pending_id);
+			break;
+
+		case FDS_EVT_DEL_RECORD:
+			op_done = (p_evt->del.record_id == m_pending_id);
+			break;
+
+		default:
+			break;
+	}
+
+	if(op_done) {
+		m_callback(SETTINGS_EVT_UPDATE_COMPLETE, m_pending_id);
+		m_pending_id = SETTINGS_ID_INVALID;
+	}
+}
+
+
+ret_code_t settings_init(settings_callback callback)
+{
+	ret_code_t err_code;
+
+	m_callback = callback;
+
+	err_code = fds_register(cb_fds);
+	VERIFY_SUCCESS(err_code);
+
+	return fds_init();
+}
+
+
+ret_code_t settings_query(settings_id_t id, uint8_t *data, size_t *data_len)
+{
+	fds_flash_record_t  flash_record;
+	fds_record_desc_t   record_desc;
+	fds_find_token_t    token;
+
+	ret_code_t err_code;
+
+	if(id == SETTINGS_ID_INVALID) {
+		return NRF_ERROR_INVALID_PARAM;
+	}
+
+	memset(&token, 0x00, sizeof(fds_find_token_t));
+
+	err_code = fds_record_find(SETTINGS_FDS_FILE_ID, id, &record_desc, &token);
+	VERIFY_SUCCESS(err_code);
+
+	err_code = fds_record_open(&record_desc, &flash_record);
+	VERIFY_SUCCESS(err_code);
+
+	size_t record_size_bytes = flash_record.p_header->length_words * 4;
+	if(*data_len < record_size_bytes) {
+		// insufficient memory provided for this record
+		*data_len = record_size_bytes;
+		fds_record_close(&record_desc);
+		return NRF_ERROR_NO_MEM;
+	}
+
+	*data_len = record_size_bytes;
+	memcpy(data, flash_record.p_data, record_size_bytes);
+
+	return fds_record_close(&record_desc);
+}
+
+
+ret_code_t settings_write(settings_id_t id, const uint8_t *data, size_t data_len)
+{
+	fds_record_desc_t   record_desc;
+	fds_find_token_t    token;
+	fds_record_t        record;
+
+	bool record_exists;
+
+	ret_code_t err_code;
+
+	if(id == SETTINGS_ID_INVALID) {
+		return NRF_ERROR_INVALID_PARAM;
+	}
+
+	if(m_pending_id != SETTINGS_ID_INVALID) {
+		return NRF_ERROR_BUSY;
+	}
+
+	memset(&token, 0x00, sizeof(fds_find_token_t));
+
+	err_code = fds_record_find(SETTINGS_FDS_FILE_ID, id, &record_desc, &token);
+	record_exists = (err_code == NRF_SUCCESS);
+
+	m_pending_id = id;
+
+	if(record_exists && data_len == 0) {
+		// delete the existing record
+		return fds_record_delete(&record_desc);
+	}
+
+	// fill the record structure to write
+	record.file_id           = SETTINGS_FDS_FILE_ID;
+	record.key               = id;
+	record.data.p_data       = data;
+	/* The following calculation takes into account any eventual remainder of the division. */
+	record.data.length_words = (data_len + 3) / 4;
+
+	if(record_exists) {
+		// write new record and erase the old one
+		return fds_record_update(&record_desc, &record);
+	} else {
+		// just create the new record
+		return fds_record_write(NULL, &record);
+	}
+}

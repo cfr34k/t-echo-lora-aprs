@@ -183,6 +183,14 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 }
 
 
+ret_code_t aprs_service_set_mycall(aprs_service_t * p_srv, const char *p_mycall)
+{
+	ble_gatts_value_t value = {strlen(p_mycall), 0, (uint8_t*)p_mycall};
+
+	return sd_ble_gatts_value_set(BLE_CONN_HANDLE_INVALID, p_srv->mycall_char_handles.value_handle, &value);
+}
+
+
 ret_code_t aprs_service_get_mycall(aprs_service_t * p_srv, char *p_mycall, uint8_t mycall_len)
 {
 	ble_gatts_value_t value = {mycall_len-1, 0, (uint8_t*)p_mycall};
@@ -197,6 +205,14 @@ ret_code_t aprs_service_get_mycall(aprs_service_t * p_srv, char *p_mycall, uint8
 }
 
 
+ret_code_t aprs_service_set_comment(aprs_service_t * p_srv, const char *p_comment)
+{
+	ble_gatts_value_t value = {strlen(p_comment), 0, (uint8_t*)p_comment};
+
+	return sd_ble_gatts_value_set(BLE_CONN_HANDLE_INVALID, p_srv->comment_char_handles.value_handle, &value);
+}
+
+
 ret_code_t aprs_service_get_comment(aprs_service_t * p_srv, char *p_comment, uint8_t comment_len)
 {
 	ble_gatts_value_t value = {comment_len-1, 0, (uint8_t*)p_comment};
@@ -208,6 +224,15 @@ ret_code_t aprs_service_get_comment(aprs_service_t * p_srv, char *p_comment, uin
 	}
 
 	return err_code;
+}
+
+
+ret_code_t aprs_service_set_symbol(aprs_service_t * p_srv, char table, char symbol)
+{
+	uint8_t buf[2] = {table, symbol};
+	ble_gatts_value_t value = {sizeof(buf), 0, buf};
+
+	return sd_ble_gatts_value_get(BLE_CONN_HANDLE_INVALID, p_srv->symbol_char_handles.value_handle, &value);
 }
 
 

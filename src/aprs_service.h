@@ -101,6 +101,15 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 void aprs_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
 
 
+/**@brief Set the current user call sign.
+ *
+ * @param[in]  p_srv      Service structure (as returned by aprs_service_init()).
+ * @param[in]  p_mycall   Pointer to the buffer that contains the call sign.
+ * @returns               The result code from the BLE stack.
+ */
+ret_code_t aprs_service_set_mycall(aprs_service_t * p_srv, const char *p_mycall);
+
+
 /**@brief Get the current user call sign.
  *
  * @param[in]  p_srv      Service structure (as returned by aprs_service_init()).
@@ -111,6 +120,15 @@ void aprs_service_on_ble_evt(ble_evt_t const * p_ble_evt, void * p_context);
 ret_code_t aprs_service_get_mycall(aprs_service_t * p_srv, char *p_mycall, uint8_t mycall_len);
 
 
+/**@brief Set the current user comment.
+ *
+ * @param[in]  p_srv       Service structure (as returned by aprs_service_init()).
+ * @param[in]  p_comment   Pointer to the buffer that contains the comment.
+ * @returns                The result code from the BLE stack.
+ */
+ret_code_t aprs_service_set_comment(aprs_service_t * p_srv, const char *p_comment);
+
+
 /**@brief Get the current user comment.
  *
  * @param[in]  p_srv       Service structure (as returned by aprs_service_init()).
@@ -119,6 +137,21 @@ ret_code_t aprs_service_get_mycall(aprs_service_t * p_srv, char *p_mycall, uint8
  * @returns                The result code from the BLE stack.
  */
 ret_code_t aprs_service_get_comment(aprs_service_t * p_srv, char *p_comment, uint8_t comment_len);
+
+
+/**@brief Set the current symbol code.
+ *
+ * The symbol is specified as table and symbol identifier. Each is a single
+ * character that is directly inserted into the transmitted message.
+ *
+ * For example, table = '/' and symbol = 'b' results in a Bike symbol on the map.
+ *
+ * @param[in]  p_srv       Service structure (as returned by aprs_service_init()).
+ * @param[in]  table       The single table character.
+ * @param[in]  symbol      The single symbol character.
+ * @returns                The result code from the BLE stack.
+ */
+ret_code_t aprs_service_set_symbol(aprs_service_t * p_srv, char table, char symbol);
 
 
 /**@brief Get the current symbol code.
