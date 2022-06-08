@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdio.h>
 
 #include "utils.h"
 
@@ -29,6 +30,7 @@ float great_circle_distance_m(float lat1, float lon1, float lat2, float lon2)
 	return angle * EARTH_RADIUS_M;
 }
 
+
 float direction_angle(float lat1, float lon1, float lat2, float lon2)
 {
 	// convert to radians
@@ -49,4 +51,23 @@ float direction_angle(float lat1, float lon1, float lat2, float lon2)
 	}
 
 	return angle;
+}
+
+
+void format_float(char *s, size_t s_len, float f, uint8_t decimals)
+{
+	char fmt[32];
+
+	int32_t factor = 1;
+
+	for(uint8_t i = 0; i < decimals; i++) {
+		factor *= 10;
+	}
+
+	snprintf(fmt, sizeof(fmt), "%%s%%d.%%0%dd", decimals);
+
+	snprintf(s, s_len, fmt,
+	         (f < 0 && f > -1.0) ? "-" : "",
+	         (int32_t)f,
+	         (int32_t)(((f > 0) ? (f - (int32_t)f) : ((int32_t)f - f)) * factor));
 }

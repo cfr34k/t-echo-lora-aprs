@@ -39,16 +39,9 @@
  */
 /** @file
  *
- * @defgroup ble_sdk_app_template_main main.c
- * @{
- * @ingroup ble_sdk_app_template
- * @brief Template project main file.
- *
- * This file contains a template for creating a new application. It has the code necessary to wakeup
- * from button, advertise, get a connection restart advertising on disconnect and if no new
- * connection created go back to system-off mode.
- * It can easily be used as a starting point for creating a new application, the comments identified
- * with 'YOUR_JOB' indicates where and how you can customize.
+ * @author Thomas Kolb <cfr34k-git@tkolb.de>
+ * @date   2022-06-08
+ * @brief Main file for the T-Echo LoRa-APRS tracker firmware.
  */
 
 #include <stdbool.h>
@@ -285,14 +278,6 @@ static void timers_init(void)
 	APP_ERROR_CHECK(err_code);
 
 	// Create timers.
-
-	/* YOUR_JOB: Create any timers to be used by the application.
-	   Below is an example of how to create a timer.
-	   For every new timer needed, increase the value of the macro APP_TIMER_MAX_TIMERS by
-	   one.
-	   ret_code_t err_code;
-	   err_code = app_timer_create(&m_app_timer_id, APP_TIMER_MODE_REPEATED, timer_timeout_handler);
-	   APP_ERROR_CHECK(err_code); */
 
 	err_code = app_timer_create(&m_backlight_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_backlight_timer);
 	APP_ERROR_CHECK(err_code);
@@ -1109,25 +1094,6 @@ static void gpio_init(void)
 	nrf_gpio_cfg_default(PIN_BUTTON_1);
 	//nrf_gpio_cfg_default(PIN_BUTTON_2); // not sure about this, because it is the reset pin
 	nrf_gpio_cfg_default(PIN_BUTTON_3);
-}
-
-
-static void format_float(char *s, size_t s_len, float f, uint8_t decimals)
-{
-	char fmt[32];
-
-	int32_t factor = 1;
-
-	for(uint8_t i = 0; i < decimals; i++) {
-		factor *= 10;
-	}
-
-	snprintf(fmt, sizeof(fmt), "%%s%%d.%%0%dd", decimals);
-
-	snprintf(s, s_len, fmt,
-			(f < 0 && f > -1.0) ? "-" : "",
-			(int32_t)f,
-			(int32_t)(((f > 0) ? (f - (int32_t)f) : ((int32_t)f - f)) * factor));
 }
 
 
