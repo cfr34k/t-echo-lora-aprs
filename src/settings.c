@@ -2,14 +2,17 @@
 
 #include <fds.h>
 #include <sdk_macros.h>
+#include <nrf_log.h>
 
 #include "nrf_error.h"
 #include "settings.h"
 
 #define SETTINGS_FDS_FILE_ID  0x0001
 
-settings_callback m_callback;
-settings_id_t     m_pending_id = SETTINGS_ID_INVALID;
+static settings_callback m_callback;
+static settings_id_t     m_pending_id = SETTINGS_ID_INVALID;
+
+static uint8_t m_write_cache[64];
 
 static void cb_fds(fds_evt_t const * p_evt)
 {
@@ -17,15 +20,19 @@ static void cb_fds(fds_evt_t const * p_evt)
 
 	switch(p_evt->id) {
 		case FDS_EVT_INIT:
+			NRF_LOG_INFO("settings: callback: INIT");
 			m_callback(SETTINGS_EVT_INIT, SETTINGS_ID_INVALID);
+			break;
 
 		case FDS_EVT_UPDATE:
 		case FDS_EVT_WRITE:
-			op_done = (p_evt->write.record_id == m_pending_id);
+			NRF_LOG_INFO("settings: callback: WRITE/UPDATE %04x", p_evt->write.record_key);
+			op_done = (p_evt->write.record_key == m_pending_id);
 			break;
 
 		case FDS_EVT_DEL_RECORD:
-			op_done = (p_evt->del.record_id == m_pending_id);
+			NRF_LOG_INFO("settings: callback: DEL %04x", p_evt->del.record_key);
+			op_done = (p_evt->del.record_key == m_pending_id);
 			break;
 
 		default:
@@ -33,6 +40,7 @@ static void cb_fds(fds_evt_t const * p_evt)
 	}
 
 	if(op_done) {
+		NRF_LOG_INFO("settings: callback: write operation on %04x complete!", m_pending_id);
 		m_callback(SETTINGS_EVT_UPDATE_COMPLETE, m_pending_id);
 		m_pending_id = SETTINGS_ID_INVALID;
 	}
@@ -73,8 +81,10 @@ ret_code_t settings_query(settings_id_t id, uint8_t *data, size_t *data_len)
 	VERIFY_SUCCESS(err_code);
 
 	size_t record_size_bytes = flash_record.p_header->length_words * 4;
+	NRF_LOG_INFO("settings: size of record %04x = %d bytes", id, record_size_bytes);
 	if(*data_len < record_size_bytes) {
 		// insufficient memory provided for this record
+		NRF_LOG_INFO("settings: insufficient memory to read record %04x: %d < %d bytes", id, *data_len, record_size_bytes);
 		*data_len = record_size_bytes;
 		fds_record_close(&record_desc);
 		return NRF_ERROR_NO_MEM;
@@ -105,30 +115,42 @@ ret_code_t settings_write(settings_id_t id, const uint8_t *data, size_t data_len
 		return NRF_ERROR_BUSY;
 	}
 
+	if(data_len > sizeof(m_write_cache)) {
+		return NRF_ERROR_NO_MEM;
+	}
+
 	memset(&token, 0x00, sizeof(fds_find_token_t));
 
 	err_code = fds_record_find(SETTINGS_FDS_FILE_ID, id, &record_desc, &token);
 	record_exists = (err_code == NRF_SUCCESS);
 
-	m_pending_id = id;
+	NRF_LOG_INFO("settings: record %04x exists? %d", id, record_exists);
+
+	m_pending_id = id; // for completion check. Also marks the settings module as busy.
 
 	if(record_exists && data_len == 0) {
 		// delete the existing record
+		NRF_LOG_INFO("settings: deleting record %04x", id);
 		return fds_record_delete(&record_desc);
 	}
+
+	// copy the data into the write cache
+	memcpy(m_write_cache, data, data_len);
 
 	// fill the record structure to write
 	record.file_id           = SETTINGS_FDS_FILE_ID;
 	record.key               = id;
-	record.data.p_data       = data;
+	record.data.p_data       = m_write_cache;
 	/* The following calculation takes into account any eventual remainder of the division. */
 	record.data.length_words = (data_len + 3) / 4;
 
 	if(record_exists) {
 		// write new record and erase the old one
+		NRF_LOG_INFO("settings: updating record %04x", id);
 		return fds_record_update(&record_desc, &record);
 	} else {
 		// just create the new record
+		NRF_LOG_INFO("settings: creating record %04x", id);
 		return fds_record_write(NULL, &record);
 	}
 }

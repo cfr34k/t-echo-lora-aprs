@@ -845,31 +845,39 @@ void cb_settings(settings_evt_t evt, settings_id_t id)
 
 	switch(evt) {
 		case SETTINGS_EVT_INIT:
+			NRF_LOG_INFO("Settings initialized. Loading...");
+
 			// read all settings and forward them to the relevant modules
 			len = sizeof(buffer);
 			err_code = settings_query(SETTINGS_ID_SOURCE_CALL, buffer, &len);
 			if(err_code == NRF_SUCCESS) {
+				NRF_LOG_INFO("Source call loaded: %s", NRF_LOG_PUSH((char*)buffer));
 				aprs_service_set_mycall(&m_aprs_service, (const char *)buffer);
 				aprs_set_source((const char *)buffer);
 			} else {
+				NRF_LOG_WARNING("Error while loading source call: 0x%08x", err_code);
 				aprs_set_source(APRS_SOURCE);
 			}
 
 			len = sizeof(buffer);
 			err_code = settings_query(SETTINGS_ID_SYMBOL_CODE, buffer, &len);
 			if(err_code == NRF_SUCCESS) {
+				NRF_LOG_INFO("Symbol code loaded: %c%c", buffer[0], buffer[1]);
 				aprs_service_set_symbol(&m_aprs_service, buffer[0], buffer[1]);
 				aprs_set_icon(buffer[0], buffer[1]);
 			} else {
+				NRF_LOG_WARNING("Error while loading symbol code: 0x%08x", err_code);
 				aprs_set_icon(APRS_SYMBOL_TABLE, APRS_SYMBOL_ICON);
 			}
 
 			len = sizeof(buffer);
 			err_code = settings_query(SETTINGS_ID_COMMENT, buffer, &len);
 			if(err_code == NRF_SUCCESS) {
+				NRF_LOG_INFO("Comment loaded: %s", NRF_LOG_PUSH((char*)buffer));
 				aprs_service_set_comment(&m_aprs_service, (const char *)buffer);
 				aprs_set_comment((const char *)buffer);
 			} else {
+				NRF_LOG_WARNING("Error while loading comment: 0x%08x", err_code);
 				aprs_set_comment(APRS_COMMENT);
 			}
 			break;
