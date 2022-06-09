@@ -1486,6 +1486,9 @@ int main(void)
 	conn_params_init();
 	peer_manager_init();
 
+	// settings set some values in this module, so we must initialize it first.
+	aprs_init();
+
 	// load the settings
 	settings_init(cb_settings);
 
@@ -1497,7 +1500,6 @@ int main(void)
 	gps_init(cb_gps);
 	gps_reset();
 	lora_init(cb_lora);
-	aprs_init();
 	tracker_init(cb_tracker);
 
 	voltage_monitor_init(cb_voltage_monitor);
