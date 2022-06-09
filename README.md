@@ -114,3 +114,11 @@ You can flash a bootloader to your T-Echo to be able to update the firmware usin
 A compatible bootloader can be found [in a separate
 repository](../t-echo-bootloader). See the documentation there for more
 information.
+
+## License
+
+Most code in this repository is licensed under the MIT license.
+
+The notable exception is `main.c`, which still contains a lot of code from an
+example by Nordic Semiconductor and is therefore distributed under Nordic’s
+license.
