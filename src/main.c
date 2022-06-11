@@ -1372,7 +1372,7 @@ static void redraw_display(bool full_update)
 						m_nmea_data.lat, m_nmea_data.lon,
 						m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
 
-				yoffset += line_height/4; // quarter-line extra spacing
+				yoffset += line_height/8; // quarter-line extra spacing
 				epaper_fb_move_to(0, yoffset);
 
 				format_float(tmp1, sizeof(tmp1), distance / 1000.0f, 2);
@@ -1405,7 +1405,7 @@ static void redraw_display(bool full_update)
 				epaper_fb_move_to(arrow_start_x, arrow_start_y);
 				epaper_fb_line_to(arrow_end_x, arrow_end_y, EPAPER_COLOR_BLACK);
 
-				epaper_fb_move_to(r - 5, center_y - r + line_height/2);
+				epaper_fb_move_to(center_x - 5, center_y - r + line_height/2);
 				epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
 			}
 			break;
