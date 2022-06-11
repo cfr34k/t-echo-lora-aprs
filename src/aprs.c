@@ -94,7 +94,7 @@ static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
 	}
 }
 
-static void update_info_field(void)
+static void update_info_field(uint32_t frame_id)
 {
 	float lat = m_lat;
 	float lon = m_lon;
@@ -105,6 +105,8 @@ static void update_info_field(void)
 	int lat_min_fract, lon_min_fract;
 
 	float alt_ft;
+
+	char frame_id_str[9];
 
 	struct tm *tms;
 
@@ -138,6 +140,13 @@ static void update_info_field(void)
 	// convert meters to feet
 	alt_ft = m_alt_m / 0.3048;
 
+	// include frame id if it is not 0
+	if(frame_id != 0) {
+		snprintf(frame_id_str, sizeof(frame_id_str), "#%lu", frame_id);
+	} else {
+		frame_id_str[0] = '\0';
+	}
+
 	// generate time string from timestamp
 	tms = gmtime(&m_time);
 
@@ -159,10 +168,10 @@ static void update_info_field(void)
 	*/
 	// no time at all
 	(void)tms;
-	snprintf((char*)m_info, sizeof(m_info), "!%02i%02i.%02i%c%c%03i%02i.%02i%c%c%s /A=%06i",
+	snprintf((char*)m_info, sizeof(m_info), "!%02i%02i.%02i%c%c%03i%02i.%02i%c%c%s %s/A=%06i",
 			lat_deg, lat_min, lat_min_fract, lat_ns, m_table,
 			lon_deg, lon_min, lon_min_fract, lon_ew, m_icon,
-			m_comment, (int)alt_ft);
+			m_comment, frame_id_str, (int)alt_ft);
 }
 
 // PUBLIC FUNCTIONS
@@ -238,7 +247,7 @@ void aprs_set_comment(const char *comment)
 	strncpy(m_comment, comment, APRS_MAX_COMMENT_LEN);
 }
 
-size_t aprs_build_frame(uint8_t *frame)
+size_t aprs_build_frame(uint8_t *frame, uint32_t frame_id)
 {
 	uint8_t *frameptr = frame;
 	uint8_t *infoptr = m_info;
@@ -258,7 +267,7 @@ size_t aprs_build_frame(uint8_t *frame)
 
 	*(frameptr++) = ':';
 
-	update_info_field();
+	update_info_field(frame_id);
 
 	while(*infoptr != '\0') {
 		*frameptr = *infoptr;

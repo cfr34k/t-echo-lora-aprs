@@ -47,4 +47,12 @@ ret_code_t tracker_run(const nmea_data_t *data);
  */
 void tracker_force_tx(void);
 
+/**@brief Get the value of the transmission counter.
+ */
+uint32_t tracker_get_tx_counter(void);
+
+/**@brief Reset the transmission counter.
+ */
+void tracker_reset_tx_counter(void);
+
 #endif // TRACKER_H

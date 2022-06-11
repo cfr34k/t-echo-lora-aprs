@@ -49,6 +49,8 @@ static float m_last_tx_lon = 0.0f;
 
 static uint64_t m_last_tx_time = 0;
 
+static uint32_t m_tx_counter = 0;
+
 static tracker_callback m_callback;
 
 ret_code_t tracker_init(tracker_callback callback)
@@ -125,7 +127,7 @@ ret_code_t tracker_run(const nmea_data_t *data)
 
 		aprs_update_pos_time(data->lat, data->lon, data->altitude, now / 1000);
 
-		frame_len = aprs_build_frame(message);
+		frame_len = aprs_build_frame(message, ++m_tx_counter);
 
 		NRF_LOG_INFO("Generated frame:");
 		NRF_LOG_HEXDUMP_INFO(message, frame_len);
@@ -143,4 +145,16 @@ void tracker_force_tx(void)
 {
 	// force transmission by resetting the last transmission time.
 	m_last_tx_time = 0;
+}
+
+
+uint32_t tracker_get_tx_counter(void)
+{
+	return m_tx_counter;
+}
+
+
+void tracker_reset_tx_counter(void)
+{
+	m_tx_counter = 0;
 }
