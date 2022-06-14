@@ -85,5 +85,6 @@ void aprs_set_comment(const char *comment);
 size_t aprs_build_frame(uint8_t *frame, uint32_t frame_id);
 
 bool aprs_parse_frame(const uint8_t *frame, size_t len, aprs_frame_t *result);
+const char* aprs_get_parser_error(void);
 
 #endif // APRS_H

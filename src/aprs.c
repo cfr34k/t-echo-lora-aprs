@@ -81,6 +81,8 @@ char m_table;
 char m_icon;
 char m_comment[APRS_MAX_COMMENT_LEN+1];
 
+char m_error_message[256];
+
 
 static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
 {
@@ -324,6 +326,7 @@ static int parse_location_and_symbol(const char *start, float *lat, float *lon, 
 	char *endptr;
 	unsigned long deg = strtoul(buf, &endptr, 10);
 	if(endptr == buf) {
+		snprintf(m_error_message, sizeof(m_error_message), "Location error: Lat. degrees is not an integer: '%s'.", buf);
 		return -1;
 	}
 
@@ -335,6 +338,7 @@ static int parse_location_and_symbol(const char *start, float *lat, float *lon, 
 
 	float minutes = strtof(buf, &endptr);
 	if(endptr == buf) {
+		snprintf(m_error_message, sizeof(m_error_message), "Location error: Lat. minutes is not a float: '%s'.", buf);
 		return -1;
 	}
 
@@ -345,6 +349,7 @@ static int parse_location_and_symbol(const char *start, float *lat, float *lon, 
 	if(*start == 'S') {
 		*lat = -*lat;
 	} else if(*start != 'N') {
+		snprintf(m_error_message, sizeof(m_error_message), "Location error: Invalid latitude polarity: '%c'.", *start);
 		return -1;
 	}
 
@@ -361,6 +366,7 @@ static int parse_location_and_symbol(const char *start, float *lat, float *lon, 
 
 	deg = strtoul(buf, &endptr, 10);
 	if(endptr == buf) {
+		snprintf(m_error_message, sizeof(m_error_message), "Location error: Lon. degrees is not an integer: '%s'.", buf);
 		return -1;
 	}
 
@@ -372,6 +378,7 @@ static int parse_location_and_symbol(const char *start, float *lat, float *lon, 
 
 	minutes = strtof(buf, &endptr);
 	if(endptr == buf) {
+		snprintf(m_error_message, sizeof(m_error_message), "Location error: Lon. minutes is not a float: '%s'.", buf);
 		return -1;
 	}
 
@@ -382,6 +389,7 @@ static int parse_location_and_symbol(const char *start, float *lat, float *lon, 
 	if(*start == 'W') {
 		*lon = -*lon;
 	} else if(*start != 'E') {
+		snprintf(m_error_message, sizeof(m_error_message), "Location error: Invalid longitude polarity: '%c'.", *start);
 		return -1;
 	}
 
@@ -406,25 +414,42 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 	// extract the source call
 	int ret = extract_text_until(textframe, '>', result->source, sizeof(result->source));
 	if(ret <= 0) {
+		strcpy(m_error_message, "End of source not found.");
 		return false;
 	}
 
 	textframe += ret + 1; // “remove” the processed text from the buffer
+	
+	// find end of path character
+	const char *end_of_path = strchr(textframe, ':');
+	if(!end_of_path) {
+		strcpy(m_error_message, "End of path not found.");
+		return false;
+	}
 
-	// extract the destination call (variant 1: path appended)
-	ret = extract_text_until(textframe, ',', result->dest, sizeof(result->dest));
-	if(ret >= 0) {
-		// destination successfully extracted => extract path
+	// find end of destination
+	const char *end_of_dest = strchr(textframe, ',');
+
+	if(!end_of_dest || (end_of_dest > end_of_path)) {
+		// There is no path in this message, only the destination
+		ret = extract_text_until(textframe, ':', result->dest, sizeof(result->dest));
+		if(ret <= 0) {
+			strcpy(m_error_message, "End of destination marker not found.");
+			return false;
+		}
+	} else {
+		// Message contains the destination as well as additional path entries
+		ret = extract_text_until(textframe, ',', result->dest, sizeof(result->dest));
+		if(ret <= 0) {
+			strcpy(m_error_message, "End of destination marker not found.");
+			return false;
+		}
+
 		textframe += ret + 1; // “remove” the processed text from the buffer
 
 		ret = extract_text_until(textframe, ':', result->via, sizeof(result->via));
 		if(ret <= 0) {
-			return false;
-		}
-	} else {
-		// there is no path appended, so destination is everything until ':'
-		ret = extract_text_until(textframe, ':', result->dest, sizeof(result->dest));
-		if(ret <= 0) {
+			strcpy(m_error_message, "End of path not found.");
 			return false;
 		}
 	}
@@ -451,6 +476,7 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 
 		default:
 			// cannot parse this type
+			snprintf(m_error_message, sizeof(m_error_message), "Unknown message type: '%c'", type);
 			return false;
 	}
 
@@ -494,6 +520,13 @@ bool aprs_parse_frame(const uint8_t *frame, size_t len, aprs_frame_t *result)
 	if(len > 3 && frame[0] == '<' && frame[1] == 0xFF && frame[2] == 0x01) {
 		return aprs_parse_text_frame(frame + 3, len - 3, result);
 	} else {
+		strcpy(m_error_message, "Invalid header");
 		return false;
 	}
+}
+
+
+const char* aprs_get_parser_error(void)
+{
+	return m_error_message;
 }
