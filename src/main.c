@@ -792,9 +792,6 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 					m_display_state = DISP_CYCLE_FIRST;
 				} else {
 					m_display_state++;
-					if(m_display_state == DISP_STATE_LORA_PACKET_DECODED && !m_aprs_decode_ok) {
-						m_display_state++;
-					}
 				}
 
 				m_epaper_update_requested = true;
@@ -1331,134 +1328,111 @@ static void redraw_display(bool full_update)
 			break;
 
 		case DISP_STATE_LORA_PACKET_DECODED:
-			epaper_fb_draw_string(m_aprs_decoded_message.source, EPAPER_COLOR_BLACK);
+			if(m_aprs_decode_ok) {
+				epaper_fb_draw_string(m_aprs_decoded_message.source, EPAPER_COLOR_BLACK);
 
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-
-			format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lat, 5);
-			snprintf(s, sizeof(s), "Lat: %s", tmp1);
-			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-
-			format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lon, 5);
-			snprintf(s, sizeof(s), "Lon: %s", tmp1);
-			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-
-			format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.alt, 1);
-			snprintf(s, sizeof(s), "Alt: %s m", tmp1);
-			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-
-			strncpy(s, m_aprs_decoded_message.comment, sizeof(s));
-			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-
-			if(m_nmea_has_position) {
-				float distance = great_circle_distance_m(
-						m_nmea_data.lat, m_nmea_data.lon,
-						m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
-
-				float direction = direction_angle(
-						m_nmea_data.lat, m_nmea_data.lon,
-						m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
-
-				yoffset += line_height/8; // quarter-line extra spacing
+				yoffset += line_height;
 				epaper_fb_move_to(0, yoffset);
 
-				format_float(tmp1, sizeof(tmp1), distance / 1000.0f, 2);
-				snprintf(s, sizeof(s), "Distance: %s km", tmp1);
+				format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lat, 5);
+				snprintf(s, sizeof(s), "Lat: %s", tmp1);
 				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 				yoffset += line_height;
 				epaper_fb_move_to(0, yoffset);
 
-				format_float(tmp1, sizeof(tmp1), direction, 1);
-				snprintf(s, sizeof(s), "Direction: %s deg", tmp1);
+				format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lon, 5);
+				snprintf(s, sizeof(s), "Lon: %s", tmp1);
 				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
 
-				static const uint8_t r = 30;
-				uint8_t center_x = EPAPER_WIDTH - r - 5;
-				uint8_t center_y = line_height*2 + r;
+				format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.alt, 1);
+				snprintf(s, sizeof(s), "Alt: %s m", tmp1);
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
-				uint8_t arrow_start_x = center_x;
-				uint8_t arrow_start_y = center_y;
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
 
-				uint8_t arrow_end_x = center_x + r * sinf(direction * (3.14f / 180.0f));
-				uint8_t arrow_end_y = center_y - r * cosf(direction * (3.14f / 180.0f));
+				strncpy(s, m_aprs_decoded_message.comment, sizeof(s));
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
-				epaper_fb_move_to(center_x, center_y);
-				epaper_fb_circle(r, EPAPER_COLOR_BLACK);
-				epaper_fb_circle(2, EPAPER_COLOR_BLACK);
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
 
-				epaper_fb_move_to(arrow_start_x, arrow_start_y);
-				epaper_fb_line_to(arrow_end_x, arrow_end_y, EPAPER_COLOR_BLACK);
+				if(m_nmea_has_position) {
+					float distance = great_circle_distance_m(
+							m_nmea_data.lat, m_nmea_data.lon,
+							m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
 
-				epaper_fb_move_to(center_x - 5, center_y - r + line_height/2);
-				epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
+					float direction = direction_angle(
+							m_nmea_data.lat, m_nmea_data.lon,
+							m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
+
+					yoffset += line_height/8; // quarter-line extra spacing
+					epaper_fb_move_to(0, yoffset);
+
+					format_float(tmp1, sizeof(tmp1), distance / 1000.0f, 2);
+					snprintf(s, sizeof(s), "Distance: %s km", tmp1);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+
+					format_float(tmp1, sizeof(tmp1), direction, 1);
+					snprintf(s, sizeof(s), "Direction: %s deg", tmp1);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+
+					static const uint8_t r = 30;
+					uint8_t center_x = EPAPER_WIDTH - r - 5;
+					uint8_t center_y = line_height*2 + r;
+
+					uint8_t arrow_start_x = center_x;
+					uint8_t arrow_start_y = center_y;
+
+					uint8_t arrow_end_x = center_x + r * sinf(direction * (3.14f / 180.0f));
+					uint8_t arrow_end_y = center_y - r * cosf(direction * (3.14f / 180.0f));
+
+					epaper_fb_move_to(center_x, center_y);
+					epaper_fb_circle(r, EPAPER_COLOR_BLACK);
+					epaper_fb_circle(2, EPAPER_COLOR_BLACK);
+
+					epaper_fb_move_to(arrow_start_x, arrow_start_y);
+					epaper_fb_line_to(arrow_end_x, arrow_end_y, EPAPER_COLOR_BLACK);
+
+					epaper_fb_move_to(center_x - 5, center_y - r + line_height/2);
+					epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
+				}
+			} else { /* show error message */
+				epaper_fb_draw_string("Decoder Error:", EPAPER_COLOR_BLACK);
+
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
+
+				epaper_fb_draw_string_wrapped(aprs_get_parser_error(), EPAPER_COLOR_BLACK);
 			}
 			break;
 
 		case DISP_STATE_LORA_PACKET_RAW:
-			{
-				char line[32];
-				char *lineptr = line;
+			epaper_fb_draw_data_wrapped(m_display_message, m_display_message_len, EPAPER_COLOR_BLACK);
 
-				size_t len = m_display_message_len;
-				if(len > 7*18) {
-					len = 7*18;
-				}
+			yoffset = epaper_fb_get_cursor_pos_y() + 3 * line_height / 2;
+			epaper_fb_move_to(0, yoffset);
 
-				for(uint8_t i = 0; i < len; i++) {
-					char c = m_display_message[i];
-					if(c < 0x20) {
-						c = '.'; // substitude non-printable characters
-					}
+			snprintf(s, sizeof(s), "R: -%d.%01d / %d.%02d / -%d.%01d",
+					(int)(-m_rssi),
+					(int)(10 * ((-m_rssi) - (int)(-m_rssi))),
+					(int)(m_snr),
+					(int)(100 * ((m_snr) - (int)(m_snr))),
+					(int)(-m_signalRssi),
+					(int)(10 * ((-m_signalRssi) - (int)(-m_signalRssi))));
 
-					*(lineptr++) = c;
-
-					if((i % 18) == 17) {
-						*lineptr = '\0';
-
-						epaper_fb_draw_string(line, EPAPER_COLOR_BLACK);
-						yoffset += line_height;
-						epaper_fb_move_to(0, yoffset);
-
-						lineptr = line;
-					}
-				}
-
-				if(lineptr != line) {
-					*lineptr = '\0';
-
-					epaper_fb_draw_string(line, EPAPER_COLOR_BLACK);
-					yoffset += line_height;
-					epaper_fb_move_to(0, yoffset);
-				}
-
-				snprintf(line, sizeof(line), "R: -%d.%01d / %d.%02d / -%d.%01d",
-						(int)(-m_rssi),
-						(int)(10 * ((-m_rssi) - (int)(-m_rssi))),
-						(int)(m_snr),
-						(int)(100 * ((m_snr) - (int)(m_snr))),
-						(int)(-m_signalRssi),
-						(int)(10 * ((-m_signalRssi) - (int)(-m_signalRssi))));
-
-				epaper_fb_draw_string(line, EPAPER_COLOR_BLACK);
-				yoffset += line_height;
-				epaper_fb_move_to(0, yoffset);
-			}
+			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+			yoffset += line_height;
+			epaper_fb_move_to(0, yoffset);
 			break;
 	}
 

@@ -661,7 +661,7 @@ ret_code_t epaper_fb_draw_char(uint8_t c, uint8_t color)
 	return NRF_SUCCESS;
 }
 
-ret_code_t epaper_fb_draw_string(char *s, uint8_t color)
+ret_code_t epaper_fb_draw_string(const char *s, uint8_t color)
 {
 	while(*s) {
 		ret_code_t err_code = epaper_fb_draw_char((uint8_t)*s, color);
@@ -678,6 +678,47 @@ ret_code_t epaper_fb_draw_string(char *s, uint8_t color)
 
 	return NRF_SUCCESS;
 }
+
+ret_code_t epaper_fb_draw_data_wrapped(const uint8_t *s, size_t len, uint8_t color)
+{
+	uint8_t start_pos_x = m_cursor.x;
+
+	if(!m_font) {
+		return NRF_ERROR_INVALID_STATE;
+	}
+
+	for(size_t i = 0; i < len; i++) {
+		char c = s[i];
+
+		uint8_t endpos = m_cursor.x;
+		if(c >= m_font->first && c <= m_font->last) {
+			endpos += m_font->glyph[c - m_font->first].width;
+		}
+
+		if(endpos >= EPAPER_WIDTH) {
+			m_cursor.x = start_pos_x;
+			m_cursor.y += m_font->yAdvance;
+		}
+
+		ret_code_t err_code = epaper_fb_draw_char((uint8_t)c, color);
+
+		if(err_code == NRF_ERROR_INVALID_PARAM) {
+			// this character is not in the font, draw replacement character
+			VERIFY_SUCCESS(epaper_fb_draw_char('?', color));
+		} else {
+			VERIFY_SUCCESS(err_code);
+		}
+	}
+
+	return NRF_SUCCESS;
+}
+
+
+ret_code_t epaper_fb_draw_string_wrapped(const char *s, uint8_t color)
+{
+	return epaper_fb_draw_data_wrapped((const uint8_t*)s, strlen(s), color);
+}
+
 
 uint8_t epaper_fb_get_line_height(void)
 {

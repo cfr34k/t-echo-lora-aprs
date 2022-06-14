@@ -224,7 +224,30 @@ ret_code_t epaper_fb_draw_char(uint8_t c, uint8_t color);
  * @param color  Color of the text. The background will be unchanged (i.e. transparent).
  * @returns      The error code from @ref epaper_fb_draw_char().
  */
-ret_code_t epaper_fb_draw_string(char *s, uint8_t color);
+ret_code_t epaper_fb_draw_string(const char *s, uint8_t color);
+
+/**@brief Draw a binary string with automatic line-wrapping.
+ * @details
+ * Like @ref epaper_fb_draw_string(), but the cursor will automatically be
+ * moved to the next line if a character does not fit onto the screen.
+ *
+ * @param s      Data array that should be drawn.
+ * @param len    Length of the data.
+ * @param color  Color of the text. The background will be unchanged (i.e. transparent).
+ * @returns      The error code from @ref epaper_fb_draw_char().
+ */
+ret_code_t epaper_fb_draw_data_wrapped(const uint8_t *s, size_t len, uint8_t color);
+
+/**@brief Wrapper around @ref epaper_fb_draw_data_wrapped() for null-terminated strings.
+ * @details
+ * This function wraps @ref epaper_fb_draw_data_wrapped() and provides a
+ * simplified interface for null-terminated strings.
+ *
+ * @param s      Null-terminated string that should be drawn.
+ * @param color  Color of the text. The background will be unchanged (i.e. transparent).
+ * @returns      The error code from @ref epaper_fb_draw_char().
+ */
+ret_code_t epaper_fb_draw_string_wrapped(const char *s, uint8_t color);
 
 /**@brief Get the line height of the current font.
  *
