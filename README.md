@@ -88,37 +88,30 @@ make
 
 ## Flashing the firmware
 
-### Using SWD
+This firmware is compatible with the [T-Echo’s preinstalled
+bootloader](https://github.com/Xinyuan-LilyGO/T-Echo/tree/main/bootloader), so
+you can simply install it like an regular firmware update (tested with the
+Meshtastic version, not sure about the SoftRF version).
 
-For initial flashing you must connect an SWD programmer to the T-Echo and use
-that to flash the firmware. If you have flashed a compatible bootloader, you
-can also use that to update the firmware (see below).
+Short reminder: to invoke the bootloader, double-press the reset button and
+connect the T-Echo to your PC via USB-C. It should appear as a mass-storage
+device called `TECHOBOOT`.
 
-If you are flashing the firmware for the first time or after an SDK update, you
-need to flash the SoftDevice (Nordic’s BLE stack). To do so, run
+### Initial installation
 
-```sh
-make flash_softdevice
-```
+**Back up your current firmware before installing this firmware.** To do so,
+copy the `CURRENT.UF2` from the T-Echo’s mass storage device `TECHOBOOT` to
+your PC.
 
-Afterwards, you can flash the regular firmware like this:
+When you first install the LoRa-APRS firmware, you should also install the
+correct SoftDevice (Bluetooth stack). Therefore run `make uf2_sd` which creates
+`_build/nrf52840_xxaa_with_sd.uf2` which contains both the SoftDevice and the
+regular firmware build. Copy `_build/nrf52840_xxaa_with_sd.uf2` to the
+`TECHOBOOT`. When the copy operation is complete, the device should disconnect,
+reset, and boot the LoRa-APRS firmware.
 
-```sh
-make flash
-```
+### Normal updates
 
-### Using a bootloader
-
-You can flash a bootloader to your T-Echo to be able to update the firmware using the USB-C port.
-
-A compatible bootloader can be found [in a separate
-repository](../t-echo-bootloader). See the documentation there for more
-information.
-
-## License
-
-Most code in this repository is licensed under the MIT license.
-
-The notable exception is `main.c`, which still contains a lot of code from an
-example by Nordic Semiconductor and is therefore distributed under Nordic’s
-license.
+If the SoftDevice is unchanged, only the firmware part needs to be updated. To
+do so, run `make uf2` which generates `_build/nrf52840_xxaa.uf2`. Copy that
+file to `TECHOBOOT` and you are done.
