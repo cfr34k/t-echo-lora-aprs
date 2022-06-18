@@ -5,9 +5,14 @@ OUTPUT_DIRECTORY := _build
 SDK_ROOT := ./nrf5-sdk
 PROJ_DIR := .
 
+UF2CONV := $(realpath tools/uf2conv.py)
+
 VERSION := $(shell git describe --dirty --always)
 
-$(OUTPUT_DIRECTORY)/nrf52840_xxaa.out: \
+OUTFILE = $(OUTPUT_DIRECTORY)/nrf52840_xxaa.out
+OUTHEXFILE = $(OUTPUT_DIRECTORY)/nrf52840_xxaa.hex
+
+$(OUTFILE): \
   LINKER_SCRIPT  := t-echo.ld
 
 # Source files common to all targets
@@ -335,30 +340,44 @@ include $(TEMPLATE_PATH)/Makefile.common
 
 $(foreach target, $(TARGETS), $(call define_target, $(target)))
 
-.PHONY: flash flash_softdevice erase
+.PHONY: flash flash_softdevice erase uf2 uf2_sd
 
 # Flash the program
 flash: default
-	@echo Flashing: $(OUTPUT_DIRECTORY)/nrf52840_xxaa.hex
-	nrfjprog -f nrf52 --program $(OUTPUT_DIRECTORY)/nrf52840_xxaa.hex --sectorerase
+	@echo Flashing: $(OUTHEXFILE)
+	nrfjprog -f nrf52 --program $(OUTHEXFILE) --sectorerase
 	nrfjprog -f nrf52 --reset
+
+SOFTDEVICE_HEX := $(SDK_ROOT)/components/softdevice/s140/hex/s140_nrf52_7.2.0_softdevice.hex
 
 # Flash softdevice
 flash_softdevice:
 	@echo Flashing: s140_nrf52_7.2.0_softdevice.hex
-	nrfjprog -f nrf52 --program $(SDK_ROOT)/components/softdevice/s140/hex/s140_nrf52_7.2.0_softdevice.hex --sectorerase
+	nrfjprog -f nrf52 --program $(SOFTDEVICE_HEX) --sectorerase
 	nrfjprog -f nrf52 --reset
 
 erase:
 	nrfjprog -f nrf52 --eraseall
+
+UF2_FILE = $(OUTPUT_DIRECTORY)/nrf52840_xxaa.uf2
+UF2_FILE_WITH_SD = $(OUTPUT_DIRECTORY)/nrf52840_xxaa_with_sd.uf2
+
+uf2: $(UF2_FILE)
+
+uf2_sd: $(UF2_FILE_WITH_SD)
+
+$(UF2_FILE): $(OUTHEXFILE)
+	$(UF2CONV) $< -f 0xADA52840 -c -o $@
+
+$(UF2_FILE_WITH_SD): $(OUTHEXFILE) $(SOFTDEVICE_HEX)
+	mergehex -m $^ -o $(OUTPUT_DIRECTORY)/merged.hex
+	$(UF2CONV) $(OUTPUT_DIRECTORY)/merged.hex -f 0xADA52840 -c -o $@
 
 SDK_CONFIG_FILE := ../config/sdk_config.h
 CMSIS_CONFIG_TOOL := $(SDK_ROOT)/external_tools/cmsisconfig/CMSIS_Configuration_Wizard.jar
 sdk_config:
 	java -jar $(CMSIS_CONFIG_TOOL) $(SDK_CONFIG_FILE)
 
-$(OUTPUT_DIRECTORY)/nrf52840_xxaa.uf2: $(OUTPUT_DIRECTORY)/nrf52840_xxaa.hex
-	tools/uf2conv.py $< -f 0xADA52840 -c -o $@
 
 compile_flags.txt: Makefile
 	@echo "-std=c99" >$@
