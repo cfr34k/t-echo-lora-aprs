@@ -1403,7 +1403,7 @@ static void redraw_display(bool full_update)
 					epaper_fb_move_to(arrow_start_x, arrow_start_y);
 					epaper_fb_line_to(arrow_end_x, arrow_end_y, EPAPER_COLOR_BLACK);
 
-					epaper_fb_move_to(center_x - 5, center_y - r + line_height/2);
+					epaper_fb_move_to(center_x - 5, center_y - r + line_height/3);
 					epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
 				}
 			} else { /* show error message */
