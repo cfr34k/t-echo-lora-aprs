@@ -249,6 +249,11 @@ void aprs_set_comment(const char *comment)
 	strncpy(m_comment, comment, APRS_MAX_COMMENT_LEN);
 }
 
+bool aprs_can_build_frame(void)
+{
+	return (m_src[0] != '\0') && (m_dest[0] != '\0');
+}
+
 size_t aprs_build_frame(uint8_t *frame, uint32_t frame_id)
 {
 	uint8_t *frameptr = frame;

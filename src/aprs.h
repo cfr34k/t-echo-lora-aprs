@@ -82,6 +82,7 @@ void aprs_update_pos_time(float lat, float lon, float alt_m, time_t t);
 void aprs_set_icon(char table, char icon);
 void aprs_set_icon_default(aprs_icon_t icon);
 void aprs_set_comment(const char *comment);
+bool aprs_can_build_frame(void);
 size_t aprs_build_frame(uint8_t *frame, uint32_t frame_id);
 
 bool aprs_parse_frame(const uint8_t *frame, size_t len, aprs_frame_t *result);

@@ -796,7 +796,7 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 
 				m_epaper_update_requested = true;
 			} else if(evt == BUTTONS_EVT_LONGPRESS) {
-				m_tracker_active = !m_tracker_active;
+				m_tracker_active = aprs_can_build_frame() && !m_tracker_active;
 				if(m_tracker_active) {
 					tracker_reset_tx_counter();
 					tracker_force_tx();
@@ -1270,8 +1270,17 @@ static void redraw_display(bool full_update)
 			break;
 
 		case DISP_STATE_TRACKER:
-			snprintf(s, sizeof(s), "Tracker %s.",
-					m_tracker_active ? "running" : "stopped");
+			if(!aprs_can_build_frame()) {
+				epaper_fb_draw_string("Tracker blocked.", EPAPER_COLOR_BLACK);
+
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
+
+				strncpy(s, "Check settings.", sizeof(s));
+			} else {
+				snprintf(s, sizeof(s), "Tracker %s.",
+						m_tracker_active ? "running" : "stopped");
+			}
 
 			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
