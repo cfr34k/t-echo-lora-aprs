@@ -56,16 +56,27 @@ This firmware should support T-Echos with the following components:
 
 ## Usage
 
-The device operation concept is still a bit rudimentary. The hardware buttons
-have the following functions:
+The device is operated using the two free buttons: the touch button on the
+top of the device and the push button on the bottom left. The top left button
+is the hardware reset button for the SoC.
 
-- Top push button: hard reset.
-- Bottom push button:
-  - Short press: switch to the next screen.
-  - Long press: toggle transmitter (tracking) on/off.
-- Touch button:
-  - Short touch: enable display backlight for 3 seconds.
-  - Long touch: toggle receiver on/off.
+In any state, the touch button enables the display backlight for three seconds.
+
+In normal state (the state entered after firmware boot), a short press on the
+lower-left push button switches to the next display state (i.e. tracker state,
+GNSS state, received and decoded messages). A long press on this button opens
+the menu.
+
+The menu is operated as follows:
+
+- Use the touch button to cycle through the menu items. The selected item is
+  displayed in inverted colors (black background and white text).
+- A short press on the lower-left push button activates the selected item.
+  Changes are applied immediately. Activations means:
+  - _on/off_-type items are toggled
+  - Submenus are entered (for items with `>`) or left (items starting with `<<<`)
+  - Selected values are applied (for example in the symbol selection submenu)
+
 
 ## Building the firmware
 
