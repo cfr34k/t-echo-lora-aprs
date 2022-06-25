@@ -11,26 +11,8 @@
 #include "fonts/Font_DIN1451Mittel_10.h"
 
 #include "utils.h"
+#include "aprs.h"
 #include "menusystem.h"
-
-
-#define VERSION "v1.0.0-abcdef"
-
-
-typedef struct {
-	char source[16];
-	char dest[16];
-	char via[32];
-
-	float lat; // in degrees
-	float lon; // in degrees
-	float alt; // in meters
-
-	char comment[64];
-
-	char table;
-	char symbol;
-} aprs_frame_t;
 
 
 #define NMEA_SYS_ID_INVALID 0
@@ -167,10 +149,6 @@ static const char* nmea_sys_id_to_short_name(uint8_t sys_id)
 }
 
 static void epaper_update(bool full) {}
-
-static const char* aprs_get_parser_error(void) { return "Something went seriosly wrong. Seriously."; }
-
-static bool aprs_can_build_frame(void) { return true; }
 
 static uint32_t tracker_get_tx_counter(void) { return 12345; }
 
@@ -587,6 +565,9 @@ int main(int argc, char **argv) {
 
 	bool running = true;
 
+	aprs_set_icon('/', 'b');
+	aprs_set_source("DL5TKL-4");
+	aprs_set_dest("APZTK1");
 	menusystem_init(cb_menusystem);
 
 	screen = init_sdl();

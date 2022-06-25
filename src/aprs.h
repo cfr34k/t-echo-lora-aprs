@@ -75,10 +75,13 @@ typedef struct {
 
 void aprs_init(void);
 void aprs_set_dest(const char *dest);
+void aprs_get_dest(char *dest, size_t dest_len);
 void aprs_set_source(const char *call);
+void aprs_get_source(char *source, size_t source_len);
 void aprs_clear_path();
 uint8_t aprs_add_path(const char *call);
 void aprs_update_pos_time(float lat, float lon, float alt_m, time_t t);
+void aprs_get_icon(char *table, char *icon);
 void aprs_set_icon(char table, char icon);
 void aprs_set_icon_default(aprs_icon_t icon);
 void aprs_set_comment(const char *comment);

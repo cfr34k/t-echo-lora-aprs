@@ -1,8 +1,11 @@
+VERSION := $(shell git describe --dirty --always)
+
 CFLAGS += -g -I. -I../../src/
 CFLAGS += -DSDL_DISPLAY
+CFLAGS += -DVERSION=\"$(VERSION)\"
 CFLAGS += $(shell pkg-config --cflags sdl)
 LIBS += -lm
 LIBS += $(shell pkg-config --libs sdl)
 
-display_test: sdl_display.c main.c ../../src/fasttrigon.c ../../src/utils.c ../../src/menusystem.c
+display_test: sdl_display.c main.c ../../src/fasttrigon.c ../../src/utils.c ../../src/menusystem.c aprs_fake.c
 	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $^ $(LIBS)

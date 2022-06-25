@@ -260,6 +260,30 @@ ret_code_t epaper_fb_draw_char(uint8_t c, uint8_t color)
 	return NRF_SUCCESS;
 }
 
+
+uint8_t epaper_fb_calc_text_width(const char *s)
+{
+	uint8_t total_width = 0;
+
+	while(*s) {
+		char c = *s;
+
+		// replace non-printable characters
+		if(c < m_font->first || c > m_font->last) {
+			c = '?';
+		}
+
+		GFXglyph *glyph = &m_font->glyph[c - m_font->first];
+
+		total_width += glyph->xAdvance;
+
+		s++;
+	}
+
+	return total_width;
+}
+
+
 ret_code_t epaper_fb_draw_string(const char *s, uint8_t color)
 {
 	while(*s) {

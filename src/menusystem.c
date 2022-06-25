@@ -9,6 +9,7 @@
 #endif
 
 #include "menusystem.h"
+#include "aprs.h"
 
 
 #define ENTRY_IDX_EXIT               0
@@ -25,6 +26,10 @@
 #define SYMBOL_SELECT_ENTRY_IDX_CAR         4
 #define SYMBOL_SELECT_ENTRY_IDX_TRUCK       5
 
+#define INFO_ENTRY_IDX_VERSION           1
+#define INFO_ENTRY_IDX_APRS_SOURCE       2
+#define INFO_ENTRY_IDX_APRS_DEST         3
+#define INFO_ENTRY_IDX_APRS_SYMBOL       4
 
 typedef struct menuentry_s menuentry_t;
 typedef struct menu_s menu_t;
@@ -35,7 +40,7 @@ struct menuentry_s
 {
 	menuentry_handler_t  handler;   /**< Function pointer to call when this entry is activated. */
 	const char          *text;      /**< Entry text */
-	char                 value[8];  /**< Entry value (rendered right-aligned) */
+	char                 value[32]; /**< Entry value (rendered right-aligned) */
 };
 
 struct menu_s
@@ -77,6 +82,44 @@ static void leave_submenu(void)
 }
 
 
+static void menusystem_update_values(void)
+{
+	menuentry_t *entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_RX]);
+	if(m_lora_rx_active) {
+		strncpy(entry->value, "on", sizeof(entry->value));
+	} else {
+		strncpy(entry->value, "off", sizeof(entry->value));
+	}
+
+	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_TRACKER]);
+	if(m_tracker_active) {
+		strncpy(entry->value, "on", sizeof(entry->value));
+	} else {
+		strncpy(entry->value, "off", sizeof(entry->value));
+	}
+
+	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_WARMUP]);
+	if(m_tracker_active) { // FIXME
+		strncpy(entry->value, "on", sizeof(entry->value));
+	} else {
+		strncpy(entry->value, "off", sizeof(entry->value));
+	}
+
+	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL]);
+	aprs_get_icon(&(entry->value[0]), &(entry->value[1]));
+	entry->value[2] = '\0';
+
+	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_SOURCE]);
+	aprs_get_source(entry->value, sizeof(entry->value));
+
+	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_DEST]);
+	aprs_get_dest(entry->value, sizeof(entry->value));
+
+	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL]);
+	strcpy(entry->value, m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL].value); // already filled, see above
+}
+
+
 static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 {
 	size_t entry_idx = entry - &(menu->entries[0]);
@@ -93,6 +136,7 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 			} else {
 				m_callback(MENUSYSTEM_EVT_RX_ENABLE, NULL);
 			}
+			menusystem_update_values();
 			break;
 
 		case MAIN_ENTRY_IDX_TRACKER:
@@ -101,6 +145,7 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 			} else {
 				m_callback(MENUSYSTEM_EVT_TRACKER_ENABLE, NULL);
 			}
+			menusystem_update_values();
 			break;
 
 		case MAIN_ENTRY_IDX_GNSS_WARMUP:
@@ -109,6 +154,7 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 			} else {
 				m_callback(MENUSYSTEM_EVT_GNSS_WARMUP_ENABLE, NULL);
 			}
+			menusystem_update_values();
 			break;
 
 		case MAIN_ENTRY_IDX_SYMBOL:
@@ -157,28 +203,9 @@ static void menu_handler_symbol_select(menu_t *menu, menuentry_t *entry)
 }
 
 
-static void menusystem_populate_values(void)
+static void menu_handler_info(menu_t *menu, menuentry_t *entry)
 {
-	menuentry_t *entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_RX]);
-	if(m_lora_rx_active) {
-		strncpy(entry->value, "on", sizeof(entry->value));
-	} else {
-		strncpy(entry->value, "off", sizeof(entry->value));
-	}
-
-	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_TRACKER]);
-	if(m_tracker_active) {
-		strncpy(entry->value, "on", sizeof(entry->value));
-	} else {
-		strncpy(entry->value, "off", sizeof(entry->value));
-	}
-
-	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_WARMUP]);
-	if(m_tracker_active) { // FIXME
-		strncpy(entry->value, "on", sizeof(entry->value));
-	} else {
-		strncpy(entry->value, "off", sizeof(entry->value));
-	}
+	leave_submenu();
 }
 
 
@@ -240,6 +267,28 @@ void menusystem_init(menusystem_callback_t callback)
 	m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_TRUCK].text = "Truck";
 	strcpy(m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_TRUCK].value, "/k");
 
+	// prepare the info menu
+	m_info_menu.n_entries = 5;
+
+	m_info_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_info;
+	m_info_menu.entries[ENTRY_IDX_EXIT].text = "<<< Back";
+	m_info_menu.entries[ENTRY_IDX_EXIT].value[0] = '\0';
+
+	m_info_menu.entries[INFO_ENTRY_IDX_VERSION].handler = menu_handler_info;
+	m_info_menu.entries[INFO_ENTRY_IDX_VERSION].text = "FW";
+	strcpy(m_info_menu.entries[INFO_ENTRY_IDX_VERSION].value, VERSION);
+
+	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SOURCE].handler = menu_handler_info;
+	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SOURCE].text = "Source";
+	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SOURCE].value[0] = '\0';
+
+	m_info_menu.entries[INFO_ENTRY_IDX_APRS_DEST].handler = menu_handler_info;
+	m_info_menu.entries[INFO_ENTRY_IDX_APRS_DEST].text = "Destination";
+	m_info_menu.entries[INFO_ENTRY_IDX_APRS_DEST].value[0] = '\0';
+
+	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL].handler = menu_handler_info;
+	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL].text = "Symbol";
+	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL].value[0] = '\0';
 
 	m_active_menu = NULL;
 }
@@ -250,7 +299,7 @@ void menusystem_enter(void)
 	m_selected_entry = ENTRY_IDX_EXIT;
 	m_active_menu = &m_main_menu;
 
-	menusystem_populate_values();
+	menusystem_update_values();
 }
 
 
@@ -302,7 +351,10 @@ void menusystem_render(uint8_t first_line_base)
 		epaper_fb_fill_rect(0, yoffset - line_height, EPAPER_WIDTH, yoffset, bg_color);
 		epaper_fb_move_to(0, yoffset-6);
 		epaper_fb_draw_string(m_active_menu->entries[i].text, fg_color);
-		// TODO: draw value right-aligned
+
+		uint8_t textwidth = epaper_fb_calc_text_width(m_active_menu->entries[i].value);
+		epaper_fb_move_to(EPAPER_WIDTH - textwidth, yoffset-6);
+		epaper_fb_draw_string(m_active_menu->entries[i].value, fg_color);
 
 		yoffset += line_height;
 	}

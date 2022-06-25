@@ -201,9 +201,19 @@ void aprs_set_dest(const char *dest)
 	strncpy(m_dest, dest, sizeof(m_dest));
 }
 
+void aprs_get_dest(char *dest, size_t dest_len)
+{
+	strncpy(dest, m_dest, dest_len);
+}
+
 void aprs_set_source(const char *call)
 {
 	strncpy(m_src, call, sizeof(m_src));
+}
+
+void aprs_get_source(char *source, size_t source_len)
+{
+	strncpy(source, m_src, source_len);
 }
 
 void aprs_clear_path()
@@ -236,6 +246,12 @@ void aprs_set_icon(char table, char icon)
 {
 	m_table = table;
 	m_icon  = icon;
+}
+
+void aprs_get_icon(char *table, char *icon)
+{
+	*table = m_table;
+	*icon = m_icon;
 }
 
 void aprs_set_icon_default(aprs_icon_t icon)
