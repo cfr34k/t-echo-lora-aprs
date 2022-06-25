@@ -11,6 +11,7 @@
 #include "fonts/Font_DIN1451Mittel_10.h"
 
 #include "utils.h"
+#include "menusystem.h"
 
 
 #define VERSION "v1.0.0-abcdef"
@@ -76,9 +77,11 @@ static uint16_t m_bat_millivolt = 3456;
 static uint8_t  m_bat_percent = 42;
 static bool     m_lora_rx_busy = false;
 static bool     m_lora_tx_busy = false;
-static bool     m_lora_rx_active = false;
-static bool     m_lora_tx_active = true;
-static bool     m_tracker_active = true;
+
+// status info shared with other modules
+bool     m_lora_rx_active = false;
+bool     m_lora_tx_active = true;
+bool     m_tracker_active = true;
 
 static nmea_data_t m_nmea_data = {
 	42.345f,
@@ -119,6 +122,8 @@ static uint8_t m_display_message[256] = "Hello World!";
 static uint8_t m_display_message_len = 12;
 
 static float m_rssi = -100, m_snr = 42, m_signalRssi = -127;
+
+static bool m_redraw_required = false;
 
 typedef enum
 {
@@ -181,7 +186,7 @@ static void redraw_display(bool full_update)
 
 	// status line
 	if(m_display_state != DISP_STATE_STARTUP) {
-		epaper_fb_move_to(0, yoffset);
+		epaper_fb_move_to(0, line_height - 3);
 
 		snprintf(s, sizeof(s), "BAT: %d.%02d V",
 				m_bat_millivolt / 1000,
@@ -253,117 +258,92 @@ static void redraw_display(bool full_update)
 		epaper_fb_move_to(gleft + 2, gbottom - 5);
 		epaper_fb_draw_string("TX", line_color);
 
-		yoffset += line_height + line_height/2;
+		epaper_fb_move_to(0, yoffset + 2);
+		epaper_fb_line_to(EPAPER_WIDTH, yoffset + 2, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
+
+		yoffset += line_height + 2;
 	}
 
-	epaper_fb_move_to(0, yoffset);
+	// menusystem overrides everything while it is active.
+	if(menusystem_is_active()) {
+		menusystem_render(yoffset);
+	} else {
+		epaper_fb_move_to(0, yoffset);
 
-	switch(m_display_state)
-	{
-		case DISP_STATE_STARTUP:
-			// some fun
-			epaper_fb_move_to( 50, 150);
-			epaper_fb_line_to(150, 150, EPAPER_COLOR_BLACK); // Das
-			epaper_fb_line_to(150,  70, EPAPER_COLOR_BLACK); // ist
-			epaper_fb_line_to( 50, 150, EPAPER_COLOR_BLACK); // das
-			epaper_fb_line_to( 50,  70, EPAPER_COLOR_BLACK); // Haus
-			epaper_fb_line_to(150,  70, EPAPER_COLOR_BLACK); // vom
-			epaper_fb_line_to(100,  10, EPAPER_COLOR_BLACK); // Ni-
-			epaper_fb_line_to( 50,  70, EPAPER_COLOR_BLACK); // ko-
-			epaper_fb_line_to(150, 150, EPAPER_COLOR_BLACK); // laus
+		switch(m_display_state)
+		{
+			case DISP_STATE_STARTUP:
+				// some fun
+				epaper_fb_move_to( 50, 150);
+				epaper_fb_line_to(150, 150, EPAPER_COLOR_BLACK); // Das
+				epaper_fb_line_to(150,  70, EPAPER_COLOR_BLACK); // ist
+				epaper_fb_line_to( 50, 150, EPAPER_COLOR_BLACK); // das
+				epaper_fb_line_to( 50,  70, EPAPER_COLOR_BLACK); // Haus
+				epaper_fb_line_to(150,  70, EPAPER_COLOR_BLACK); // vom
+				epaper_fb_line_to(100,  10, EPAPER_COLOR_BLACK); // Ni-
+				epaper_fb_line_to( 50,  70, EPAPER_COLOR_BLACK); // ko-
+				epaper_fb_line_to(150, 150, EPAPER_COLOR_BLACK); // laus
 
-			epaper_fb_move_to(100, 90);
-			epaper_fb_circle(80, EPAPER_COLOR_BLACK);
+				epaper_fb_move_to(100, 90);
+				epaper_fb_circle(80, EPAPER_COLOR_BLACK);
 
-			epaper_fb_set_font(&din1451m10pt7b);
-			epaper_fb_move_to(0, 180);
-			epaper_fb_draw_string("Lora-APRS " VERSION, EPAPER_COLOR_BLACK);
-			break;
+				epaper_fb_set_font(&din1451m10pt7b);
+				epaper_fb_move_to(0, 180);
+				epaper_fb_draw_string("Lora-APRS " VERSION, EPAPER_COLOR_BLACK);
+				break;
 
-		case DISP_STATE_GPS:
-			epaper_fb_draw_string("GNSS-Status:", EPAPER_COLOR_BLACK);
-
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-
-			if(m_nmea_data.pos_valid) {
-				format_float(tmp1, sizeof(tmp1), m_nmea_data.lat, 6);
-				snprintf(s, sizeof(s), "Lat: %s", tmp1);
-
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-				epaper_fb_move_to(150, yoffset);
-				epaper_fb_draw_string("Alt:", EPAPER_COLOR_BLACK);
+			case DISP_STATE_GPS:
+				epaper_fb_draw_string("GNSS-Status:", EPAPER_COLOR_BLACK);
 
 				yoffset += line_height;
 				epaper_fb_move_to(0, yoffset);
 
-				format_float(tmp1, sizeof(tmp1), m_nmea_data.lon, 6);
-				snprintf(s, sizeof(s), "Lon: %s", tmp1);
+				if(m_nmea_data.pos_valid) {
+					format_float(tmp1, sizeof(tmp1), m_nmea_data.lat, 6);
+					snprintf(s, sizeof(s), "Lat: %s", tmp1);
 
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
-				epaper_fb_move_to(150, yoffset);
-				snprintf(s, sizeof(s), "%d", (int)(m_nmea_data.altitude + 0.5f));
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-			} else {
-				epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);
-			}
+					epaper_fb_move_to(150, yoffset);
+					epaper_fb_draw_string("Alt:", EPAPER_COLOR_BLACK);
 
-			yoffset += line_height + line_height/2;
-			epaper_fb_move_to(0, yoffset);
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
 
-			for(uint8_t i = 0; i < NMEA_NUM_FIX_INFO; i++) {
-				nmea_fix_info_t *fix_info = &(m_nmea_data.fix_info[i]);
+					format_float(tmp1, sizeof(tmp1), m_nmea_data.lon, 6);
+					snprintf(s, sizeof(s), "Lon: %s", tmp1);
 
-				if(fix_info->sys_id == NMEA_SYS_ID_INVALID) {
-					continue;
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					epaper_fb_move_to(150, yoffset);
+					snprintf(s, sizeof(s), "%d", (int)(m_nmea_data.altitude + 0.5f));
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+				} else {
+					epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);
 				}
 
-				snprintf(s, sizeof(s), "%s: %s [%s] Sats: %d",
-						nmea_sys_id_to_short_name(fix_info->sys_id),
-						nmea_fix_type_to_string(fix_info->fix_type),
-						fix_info->auto_mode ? "auto" : "man",
-						fix_info->sats_used);
-
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-				yoffset += line_height;
-				epaper_fb_move_to(0, yoffset);
-			}
-
-			format_float(tmp1, sizeof(tmp1), m_nmea_data.hdop, 1);
-			format_float(tmp2, sizeof(tmp2), m_nmea_data.vdop, 1);
-			format_float(tmp3, sizeof(tmp3), m_nmea_data.pdop, 1);
-
-			snprintf(s, sizeof(s), "DOP H: %s V: %s P: %s",
-					tmp1, tmp2, tmp3);
-
-			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-			break;
-
-		case DISP_STATE_TRACKER:
-			if(!aprs_can_build_frame()) {
-				epaper_fb_draw_string("Tracker blocked.", EPAPER_COLOR_BLACK);
-
-				yoffset += line_height;
+				yoffset += line_height + line_height/2;
 				epaper_fb_move_to(0, yoffset);
 
-				strncpy(s, "Check settings.", sizeof(s));
-			} else {
-				snprintf(s, sizeof(s), "Tracker %s.",
-						m_tracker_active ? "running" : "stopped");
-			}
+				for(uint8_t i = 0; i < NMEA_NUM_FIX_INFO; i++) {
+					nmea_fix_info_t *fix_info = &(m_nmea_data.fix_info[i]);
 
-			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+					if(fix_info->sys_id == NMEA_SYS_ID_INVALID) {
+						continue;
+					}
 
-			yoffset += line_height + line_height / 2;
-			epaper_fb_move_to(0, yoffset);
+					snprintf(s, sizeof(s), "%s: %s [%s] Sats: %d",
+							nmea_sys_id_to_short_name(fix_info->sys_id),
+							nmea_fix_type_to_string(fix_info->fix_type),
+							fix_info->auto_mode ? "auto" : "man",
+							fix_info->sats_used);
 
-			if(m_nmea_data.pos_valid) {
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+				}
+
 				format_float(tmp1, sizeof(tmp1), m_nmea_data.hdop, 1);
 				format_float(tmp2, sizeof(tmp2), m_nmea_data.vdop, 1);
 				format_float(tmp3, sizeof(tmp3), m_nmea_data.pdop, 1);
@@ -375,154 +355,230 @@ static void redraw_display(bool full_update)
 
 				yoffset += line_height;
 				epaper_fb_move_to(0, yoffset);
+				break;
 
-				format_float(tmp1, sizeof(tmp1), m_nmea_data.lat, 5);
-				format_float(tmp2, sizeof(tmp2), m_nmea_data.lon, 5);
-
-				snprintf(s, sizeof(s), "%s/%s, %d m",
-						tmp1, tmp2, (int)(m_nmea_data.altitude + 0.5));
-
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-			} else {
-				epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);
-			}
-
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-
-			if(m_nmea_data.speed_heading_valid) {
-				format_float(tmp1, sizeof(tmp1), m_nmea_data.speed, 1);
-
-				snprintf(s, sizeof(s), "%s m/s - %d deg",
-						tmp1, (int)(m_nmea_data.heading + 0.5));
-
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-			} else {
-				epaper_fb_draw_string("No speed / heading info.", EPAPER_COLOR_BLACK);
-			}
-
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-
-			snprintf(s, sizeof(s), "TX count: %lu", tracker_get_tx_counter());
-
-			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-			break;
-
-		case DISP_STATE_LORA_PACKET_DECODED:
-			if(m_aprs_decode_ok) {
-				epaper_fb_draw_string(m_aprs_decoded_message.source, EPAPER_COLOR_BLACK);
-
-				yoffset += line_height;
-				epaper_fb_move_to(0, yoffset);
-
-				format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lat, 5);
-				snprintf(s, sizeof(s), "Lat: %s", tmp1);
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-				yoffset += line_height;
-				epaper_fb_move_to(0, yoffset);
-
-				format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lon, 5);
-				snprintf(s, sizeof(s), "Lon: %s", tmp1);
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-				yoffset += line_height;
-				epaper_fb_move_to(0, yoffset);
-
-				format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.alt, 1);
-				snprintf(s, sizeof(s), "Alt: %s m", tmp1);
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-				yoffset += line_height;
-				epaper_fb_move_to(0, yoffset);
-
-				strncpy(s, m_aprs_decoded_message.comment, sizeof(s));
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-				yoffset += line_height;
-				epaper_fb_move_to(0, yoffset);
-
-				if(m_nmea_has_position) {
-					float distance = great_circle_distance_m(
-							m_nmea_data.lat, m_nmea_data.lon,
-							m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
-
-					float direction = direction_angle(
-							m_nmea_data.lat, m_nmea_data.lon,
-							m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
-
-					yoffset += line_height/8; // quarter-line extra spacing
-					epaper_fb_move_to(0, yoffset);
-
-					format_float(tmp1, sizeof(tmp1), distance / 1000.0f, 2);
-					snprintf(s, sizeof(s), "Distance: %s km", tmp1);
-					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+			case DISP_STATE_TRACKER:
+				if(!aprs_can_build_frame()) {
+					epaper_fb_draw_string("Tracker blocked.", EPAPER_COLOR_BLACK);
 
 					yoffset += line_height;
 					epaper_fb_move_to(0, yoffset);
 
-					format_float(tmp1, sizeof(tmp1), direction, 1);
-					snprintf(s, sizeof(s), "Direction: %s deg", tmp1);
-					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-					yoffset += line_height;
-
-					static const uint8_t r = 30;
-					uint8_t center_x = EPAPER_WIDTH - r - 5;
-					uint8_t center_y = line_height*2 + r;
-
-					uint8_t arrow_start_x = center_x;
-					uint8_t arrow_start_y = center_y;
-
-					uint8_t arrow_end_x = center_x + r * sinf(direction * (3.14f / 180.0f));
-					uint8_t arrow_end_y = center_y - r * cosf(direction * (3.14f / 180.0f));
-
-					epaper_fb_move_to(center_x, center_y);
-					epaper_fb_circle(r, EPAPER_COLOR_BLACK);
-					epaper_fb_circle(2, EPAPER_COLOR_BLACK);
-
-					epaper_fb_move_to(arrow_start_x, arrow_start_y);
-					epaper_fb_line_to(arrow_end_x, arrow_end_y, EPAPER_COLOR_BLACK);
-
-					epaper_fb_move_to(center_x - 5, center_y - r + line_height/3);
-					epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
+					strncpy(s, "Check settings.", sizeof(s));
+				} else {
+					snprintf(s, sizeof(s), "Tracker %s.",
+							m_tracker_active ? "running" : "stopped");
 				}
-			} else { /* show error message */
-				epaper_fb_draw_string("Decoder Error:", EPAPER_COLOR_BLACK);
+
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+				yoffset += line_height + line_height / 2;
+				epaper_fb_move_to(0, yoffset);
+
+				if(m_nmea_data.pos_valid) {
+					format_float(tmp1, sizeof(tmp1), m_nmea_data.hdop, 1);
+					format_float(tmp2, sizeof(tmp2), m_nmea_data.vdop, 1);
+					format_float(tmp3, sizeof(tmp3), m_nmea_data.pdop, 1);
+
+					snprintf(s, sizeof(s), "DOP H: %s V: %s P: %s",
+							tmp1, tmp2, tmp3);
+
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+
+					format_float(tmp1, sizeof(tmp1), m_nmea_data.lat, 5);
+					format_float(tmp2, sizeof(tmp2), m_nmea_data.lon, 5);
+
+					snprintf(s, sizeof(s), "%s/%s, %d m",
+							tmp1, tmp2, (int)(m_nmea_data.altitude + 0.5));
+
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+				} else {
+					epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);
+				}
 
 				yoffset += line_height;
 				epaper_fb_move_to(0, yoffset);
 
-				epaper_fb_draw_string_wrapped(aprs_get_parser_error(), EPAPER_COLOR_BLACK);
-			}
-			break;
+				if(m_nmea_data.speed_heading_valid) {
+					format_float(tmp1, sizeof(tmp1), m_nmea_data.speed, 1);
 
-		case DISP_STATE_LORA_PACKET_RAW:
-			epaper_fb_draw_data_wrapped(m_display_message, m_display_message_len, EPAPER_COLOR_BLACK);
+					snprintf(s, sizeof(s), "%s m/s - %d deg",
+							tmp1, (int)(m_nmea_data.heading + 0.5));
 
-			yoffset = epaper_fb_get_cursor_pos_y() + 3 * line_height / 2;
-			epaper_fb_move_to(0, yoffset);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+				} else {
+					epaper_fb_draw_string("No speed / heading info.", EPAPER_COLOR_BLACK);
+				}
 
-			snprintf(s, sizeof(s), "R: -%d.%01d / %d.%02d / -%d.%01d",
-					(int)(-m_rssi),
-					(int)(10 * ((-m_rssi) - (int)(-m_rssi))),
-					(int)(m_snr),
-					(int)(100 * ((m_snr) - (int)(m_snr))),
-					(int)(-m_signalRssi),
-					(int)(10 * ((-m_signalRssi) - (int)(-m_signalRssi))));
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
 
-			epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-			yoffset += line_height;
-			epaper_fb_move_to(0, yoffset);
-			break;
+				snprintf(s, sizeof(s), "TX count: %lu", tracker_get_tx_counter());
+
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
+				break;
+
+			case DISP_STATE_LORA_PACKET_DECODED:
+				if(m_aprs_decode_ok) {
+					epaper_fb_draw_string(m_aprs_decoded_message.source, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+
+					format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lat, 5);
+					snprintf(s, sizeof(s), "Lat: %s", tmp1);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+
+					format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lon, 5);
+					snprintf(s, sizeof(s), "Lon: %s", tmp1);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+
+					format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.alt, 1);
+					snprintf(s, sizeof(s), "Alt: %s m", tmp1);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+
+					strncpy(s, m_aprs_decoded_message.comment, sizeof(s));
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+
+					if(m_nmea_has_position) {
+						float distance = great_circle_distance_m(
+								m_nmea_data.lat, m_nmea_data.lon,
+								m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
+
+						float direction = direction_angle(
+								m_nmea_data.lat, m_nmea_data.lon,
+								m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
+
+						yoffset += line_height/8; // quarter-line extra spacing
+						epaper_fb_move_to(0, yoffset);
+
+						format_float(tmp1, sizeof(tmp1), distance / 1000.0f, 2);
+						snprintf(s, sizeof(s), "Distance: %s km", tmp1);
+						epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+						yoffset += line_height;
+						epaper_fb_move_to(0, yoffset);
+
+						format_float(tmp1, sizeof(tmp1), direction, 1);
+						snprintf(s, sizeof(s), "Direction: %s deg", tmp1);
+						epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+						yoffset += line_height;
+
+						static const uint8_t r = 30;
+						uint8_t center_x = EPAPER_WIDTH - r - 5;
+						uint8_t center_y = line_height*2 + r;
+
+						uint8_t arrow_start_x = center_x;
+						uint8_t arrow_start_y = center_y;
+
+						uint8_t arrow_end_x = center_x + r * sinf(direction * (3.14f / 180.0f));
+						uint8_t arrow_end_y = center_y - r * cosf(direction * (3.14f / 180.0f));
+
+						epaper_fb_move_to(center_x, center_y);
+						epaper_fb_circle(r, EPAPER_COLOR_BLACK);
+						epaper_fb_circle(2, EPAPER_COLOR_BLACK);
+
+						epaper_fb_move_to(arrow_start_x, arrow_start_y);
+						epaper_fb_line_to(arrow_end_x, arrow_end_y, EPAPER_COLOR_BLACK);
+
+						epaper_fb_move_to(center_x - 5, center_y - r + line_height/3);
+						epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
+					}
+				} else { /* show error message */
+					epaper_fb_draw_string("Decoder Error:", EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+
+					epaper_fb_draw_string_wrapped(aprs_get_parser_error(), EPAPER_COLOR_BLACK);
+				}
+				break;
+
+			case DISP_STATE_LORA_PACKET_RAW:
+				epaper_fb_draw_data_wrapped(m_display_message, m_display_message_len, EPAPER_COLOR_BLACK);
+
+				yoffset = epaper_fb_get_cursor_pos_y() + 3 * line_height / 2;
+				epaper_fb_move_to(0, yoffset);
+
+				snprintf(s, sizeof(s), "R: -%d.%01d / %d.%02d / -%d.%01d",
+						(int)(-m_rssi),
+						(int)(10 * ((-m_rssi) - (int)(-m_rssi))),
+						(int)(m_snr),
+						(int)(100 * ((m_snr) - (int)(m_snr))),
+						(int)(-m_signalRssi),
+						(int)(10 * ((-m_signalRssi) - (int)(-m_signalRssi))));
+
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
+				break;
+		}
 	}
 
 	epaper_update(full_update);
 }
+
+void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
+{
+	switch(evt) {
+		case MENUSYSTEM_EVT_EXIT_MENU:
+			printf("Menu exit.\n");
+			break;
+
+		case MENUSYSTEM_EVT_RX_ENABLE:
+			m_lora_rx_active = true;
+			break;
+
+		case MENUSYSTEM_EVT_RX_DISABLE:
+			m_lora_rx_active = false;
+			break;
+
+		case MENUSYSTEM_EVT_TRACKER_ENABLE:
+			m_tracker_active = true;
+			break;
+
+		case MENUSYSTEM_EVT_TRACKER_DISABLE:
+			m_tracker_active = false;
+			break;
+
+		case MENUSYSTEM_EVT_GNSS_WARMUP_ENABLE:
+			// TODO
+			break;
+
+		case MENUSYSTEM_EVT_GNSS_WARMUP_DISABLE:
+			m_lora_tx_active = true;
+			break;
+
+		case MENUSYSTEM_EVT_APRS_SYMBOL_CHANGED:
+			printf("New APRS symbol: table = %c, symbol = %c\n", data->aprs_symbol.table, data->aprs_symbol.symbol);
+			break;
+
+		default:
+			break;
+	}
+
+	m_redraw_required = true;
+}
+
 
 int main(int argc, char **argv) {
 	SDL_Surface *screen;
@@ -531,6 +587,8 @@ int main(int argc, char **argv) {
 
 	bool running = true;
 
+	menusystem_init(cb_menusystem);
+
 	screen = init_sdl();
 
 	epaper_fb_set_font(&din1451m10pt7b);
@@ -538,15 +596,29 @@ int main(int argc, char **argv) {
 	while(running && SDL_WaitEvent(&event)) {
 		if(event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) {
 			running = 0;
+		} else if(event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_RETURN) {
+			menusystem_enter();
+			m_redraw_required = true;
+		} else if(event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_RIGHT) {
+			if(menusystem_is_active()) {
+				menusystem_input(MENUSYSTEM_INPUT_CONFIRM);
+			} else {
+				m_display_state++;
+				m_display_state %= DISP_STATE_END;
+				m_redraw_required = true;
+			}
+		} else if(event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_DOWN) {
+			if(menusystem_is_active()) {
+				menusystem_input(MENUSYSTEM_INPUT_NEXT);
+			}
 		}
 
-		if(event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_RIGHT) {
-			m_display_state++;
-			m_display_state %= DISP_STATE_END;
+		if(m_redraw_required) {
+			m_redraw_required = false;
+			redraw_display(true);
+			SDL_UpdateRect(screen, 0, 0, 0, 0);
 		}
-		redraw_display(true);
 
-		SDL_UpdateRect(screen, 0, 0, 0, 0);
 	}
 
 	SDL_Quit();

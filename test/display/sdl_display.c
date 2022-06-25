@@ -151,7 +151,7 @@ void epaper_fb_line_to(uint8_t xe, uint8_t ye, uint8_t color)
 		int16_t tx = neg_x ? -x : x;
 		int16_t ty = neg_y ? -y : y;
 
-		if(!is_dashed || ((pixcount % 5) < 3)) {
+		if(!is_dashed || ((pixcount % 8) < 5)) {
 			if(flip_xy) {
 				epaper_fb_set_pixel(xa + ty, ya + tx, color);
 			} else {
