@@ -1431,6 +1431,10 @@ static void redraw_display(bool full_update)
 					epaper_fb_move_to(0, yoffset);
 
 					strncpy(s, m_aprs_decoded_message.comment, sizeof(s));
+					if(strlen(s) > 20) {
+						s[18] = '\0';
+						strcat(s, "...");
+					}
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 					yoffset += line_height;
