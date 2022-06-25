@@ -1239,7 +1239,7 @@ static void redraw_display(bool full_update)
 		epaper_fb_move_to(0, yoffset + 2);
 		epaper_fb_line_to(EPAPER_WIDTH, yoffset + 2, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
 
-		yoffset += line_height + 2;
+		yoffset += line_height + 3;
 	}
 
 	// menusystem overrides everything while it is active.
