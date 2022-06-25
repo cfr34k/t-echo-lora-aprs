@@ -85,6 +85,7 @@ SRC_FILES += \
   $(PROJ_DIR)/src/tracker.c \
   $(PROJ_DIR)/src/utils.c \
   $(PROJ_DIR)/src/settings.c \
+  $(PROJ_DIR)/src/menusystem.c \
   $(PROJ_DIR)/src/main.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
@@ -339,6 +340,10 @@ TEMPLATE_PATH := $(SDK_ROOT)/components/toolchain/gcc
 include $(TEMPLATE_PATH)/Makefile.common
 
 $(foreach target, $(TARGETS), $(call define_target, $(target)))
+
+# Additional dependencies to make sure that the correct version is set in the binary
+$(OUTPUT_DIRECTORY)/$(TARGETS)/main.c.o: .git/refs/heads
+$(OUTPUT_DIRECTORY)/$(TARGETS)/menusystem.c.o: .git/refs/heads
 
 .PHONY: flash flash_softdevice erase uf2 uf2_sd
 

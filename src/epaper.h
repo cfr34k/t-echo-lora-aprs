@@ -210,6 +210,18 @@ void epaper_fb_set_font(const GFXfont *font);
  */
 ret_code_t epaper_fb_draw_char(uint8_t c, uint8_t color);
 
+/**@brief Calculate the rendered width of the given string.
+ * @details
+ * Calculate the sum of xAdvance values for all printable characters in the
+ * string. For non-printable characters, the width of '?' is added, because
+ * that is the replacement character used in @ref epaper_fb_draw_string().
+ *
+ * @param[in] s    The string whose width to calculate.
+ * @returns        The number of pixels that the string will occupy in
+ *                 horizontal direction.
+ */
+uint8_t epaper_fb_calc_text_width(const char *s);
+
 /**@brief Draw the given string using the current font.
  * @details
  * The string will drawn using repeated calls to @ref epaper_fb_draw_char().
