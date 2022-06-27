@@ -767,6 +767,11 @@ static void cb_tracker(tracker_evt_t evt)
  */
 void cb_buttons(uint8_t pin, uint8_t evt)
 {
+	// enable backlight on any button event
+	APP_ERROR_CHECK(app_timer_stop(m_backlight_timer));
+	led_on(LED_EPAPER_BACKLIGHT);
+	APP_ERROR_CHECK(app_timer_start(m_backlight_timer, APP_TIMER_TICKS(3000), NULL));
+
 	switch(pin)
 	{
 		case PIN_BTN_TOUCH:
@@ -778,10 +783,6 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 						menusystem_input(MENUSYSTEM_INPUT_NEXT);
 					}
 				}
-
-				APP_ERROR_CHECK(app_timer_stop(m_backlight_timer));
-				led_on(LED_EPAPER_BACKLIGHT);
-				APP_ERROR_CHECK(app_timer_start(m_backlight_timer, APP_TIMER_TICKS(3000), NULL));
 			}
 			break;
 
