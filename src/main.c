@@ -184,6 +184,7 @@ static bool m_lora_tx_busy = false;
 // shared with other modules
 bool m_lora_rx_active = false;
 bool m_tracker_active = false;
+bool m_gps_warmup_active = false;
 
 
 BLE_BAS_DEF(m_ble_bas); // battery service
@@ -869,6 +870,8 @@ void cb_settings(settings_evt_t evt, settings_id_t id)
  */
 void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 {
+	bool gps_active_pre = m_gps_warmup_active || m_tracker_active;
+
 	switch(evt) {
 		case MENUSYSTEM_EVT_EXIT_MENU:
 			break;
@@ -888,21 +891,19 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 				m_tracker_active = true;
 				tracker_reset_tx_counter();
 				tracker_force_tx();
-				APP_ERROR_CHECK(gps_power_on());
 			}
 			break;
 
 		case MENUSYSTEM_EVT_TRACKER_DISABLE:
 			m_tracker_active = false;
-			APP_ERROR_CHECK(gps_power_off());
 			break;
 
 		case MENUSYSTEM_EVT_GNSS_WARMUP_ENABLE:
-			// TODO
+			m_gps_warmup_active = true;
 			break;
 
 		case MENUSYSTEM_EVT_GNSS_WARMUP_DISABLE:
-			// TODO
+			m_gps_warmup_active = false;
 			break;
 
 		case MENUSYSTEM_EVT_APRS_SYMBOL_CHANGED:
@@ -921,6 +922,14 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 
 		default:
 			break;
+	}
+
+	bool gps_active_now = m_gps_warmup_active || m_tracker_active;
+
+	if(gps_active_now && !gps_active_pre) {
+		APP_ERROR_CHECK(gps_power_on());
+	} else if(!gps_active_now && gps_active_pre) {
+		APP_ERROR_CHECK(gps_power_off());
 	}
 
 	m_epaper_update_requested = true;

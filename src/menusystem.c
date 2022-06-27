@@ -62,6 +62,7 @@ static menu_t *m_active_menu, *m_prev_menu;
 // import some variables from main.c to make updating the menu easier
 extern bool m_lora_rx_active;
 extern bool m_tracker_active;
+extern bool m_gps_warmup_active;
 
 
 static void enter_submenu(menu_t *menu, size_t initial_index)
@@ -99,7 +100,7 @@ static void menusystem_update_values(void)
 	}
 
 	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_WARMUP]);
-	if(m_tracker_active) { // FIXME
+	if(m_gps_warmup_active) {
 		strncpy(entry->value, "on", sizeof(entry->value));
 	} else {
 		strncpy(entry->value, "off", sizeof(entry->value));
@@ -149,7 +150,7 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 			break;
 
 		case MAIN_ENTRY_IDX_GNSS_WARMUP:
-			if(true) { // FIXME
+			if(m_gps_warmup_active) {
 				m_callback(MENUSYSTEM_EVT_GNSS_WARMUP_DISABLE, NULL);
 			} else {
 				m_callback(MENUSYSTEM_EVT_GNSS_WARMUP_ENABLE, NULL);
