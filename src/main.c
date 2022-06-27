@@ -777,8 +777,12 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 	{
 		case PIN_BTN_TOUCH:
 			if(evt == APP_BUTTON_PUSH) {
-				if(menusystem_is_active()) {
-					menusystem_input(MENUSYSTEM_INPUT_NEXT);
+				// The transmitter interferes with the touch button, so we
+				// ignore "critical" inputs while a packet is transmitted.
+				if(!m_lora_tx_busy) {
+					if(menusystem_is_active()) {
+						menusystem_input(MENUSYSTEM_INPUT_NEXT);
+					}
 				}
 
 				APP_ERROR_CHECK(app_timer_stop(m_backlight_timer));
