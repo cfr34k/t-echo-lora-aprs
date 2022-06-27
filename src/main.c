@@ -136,7 +136,7 @@
 #define DEAD_BEEF                       0xDEADBEEF                              /**< Value used as error code on stack dump, can be used to identify stack location on stack unwind. */
 
 #define VOLTAGE_MONITOR_INTERVAL_IDLE        3600   // seconds
-#define VOLTAGE_MONITOR_INTERVAL_CONNECTED     60   // seconds
+#define VOLTAGE_MONITOR_INTERVAL_ACTIVE        60   // seconds
 
 
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
@@ -574,9 +574,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 			// LED indication will be changed when advertising starts.
 
 			periph_pwr_stop_activity(PERIPH_PWR_FLAG_CONNECTED);
-
-			voltage_monitor_stop();
-			voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 			break;
 
 		case BLE_GAP_EVT_CONNECTED:
@@ -590,9 +587,6 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 			// enable external peripherals
 			periph_pwr_start_activity(PERIPH_PWR_FLAG_LEDS);
 			periph_pwr_start_activity(PERIPH_PWR_FLAG_CONNECTED);
-
-			voltage_monitor_stop();
-			voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_CONNECTED);
 			break;
 
 		case BLE_GAP_EVT_PHY_UPDATE_REQUEST:
@@ -932,8 +926,17 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 
 	if(gps_active_now && !gps_active_pre) {
 		APP_ERROR_CHECK(gps_power_on());
+
+		// as the GPS is a major power drain, we increase the voltage monitor's
+		// update rate while it is on.
+		voltage_monitor_stop();
+		voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_ACTIVE);
 	} else if(!gps_active_now && gps_active_pre) {
 		APP_ERROR_CHECK(gps_power_off());
+
+		// GPS is off -> go to lower rate again
+		voltage_monitor_stop();
+		voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
 	}
 
 	m_epaper_update_requested = true;
