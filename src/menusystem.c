@@ -194,6 +194,7 @@ static void menu_handler_symbol_select(menu_t *menu, menuentry_t *entry)
 			evt_data.aprs_symbol.symbol = entry->value[1];
 			m_callback(MENUSYSTEM_EVT_APRS_SYMBOL_CHANGED, &evt_data);
 			leave_submenu();
+			menusystem_update_values();
 			break;
 
 		default:
