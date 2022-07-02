@@ -71,7 +71,7 @@ static void cb_app_button(uint8_t pin, uint8_t evt)
 	}
 
 	APP_ERROR_CHECK(app_timer_stop(m_longpress_timer));
-	APP_ERROR_CHECK(app_timer_start(m_longpress_timer, APP_TIMER_TICKS(2000), NULL));
+	APP_ERROR_CHECK(app_timer_start(m_longpress_timer, APP_TIMER_TICKS(1000), NULL));
 }
 
 

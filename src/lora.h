@@ -40,6 +40,21 @@ typedef enum
 	LORA_EVT_OFF,
 } lora_evt_t;
 
+typedef enum
+{
+	LORA_PWR_PLUS_22_DBM = 0,
+	LORA_PWR_PLUS_20_DBM,
+	LORA_PWR_PLUS_17_DBM,
+	LORA_PWR_PLUS_14_DBM,
+	LORA_PWR_PLUS_10_DBM,
+	LORA_PWR_PLUS_0_DBM,
+	LORA_PWR_MINUS_9_DBM,
+
+	LORA_PWR_NUM_ENTRIES,
+} lora_pwr_t;
+
+extern const char *LORA_PWR_STRINGS[LORA_PWR_NUM_ENTRIES];
+
 typedef union
 {
 	struct {
@@ -62,5 +77,9 @@ ret_code_t lora_send_packet(const uint8_t *data, uint8_t length);
 ret_code_t lora_start_rx(void);
 bool lora_is_busy(void);
 void lora_loop(void);
+
+ret_code_t lora_set_power(lora_pwr_t power);
+lora_pwr_t lora_get_power(void);
+const char* lora_power_to_str(lora_pwr_t power);
 
 #endif // LORA_H

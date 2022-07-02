@@ -857,6 +857,16 @@ void cb_settings(settings_evt_t evt, settings_id_t id)
 				NRF_LOG_WARNING("Error while loading comment: 0x%08x", err_code);
 				aprs_set_comment(APRS_COMMENT);
 			}
+
+			len = sizeof(buffer);
+			err_code = settings_query(SETTINGS_ID_LORA_POWER, buffer, &len);
+			if(err_code == NRF_SUCCESS) {
+				NRF_LOG_INFO("LoRa power loaded: %i", buffer[0]);
+				lora_set_power(buffer[0]);
+			} else {
+				NRF_LOG_WARNING("Error while loading LoRa power: 0x%08x", err_code);
+				// use default power set in lora_init().
+			}
 			break;
 
 		case SETTINGS_EVT_UPDATE_COMPLETE:
@@ -916,6 +926,15 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 				settings_write(SETTINGS_ID_SYMBOL_CODE, buf, sizeof(buf));
 
 				aprs_set_icon(table, symbol);
+			}
+			break;
+
+		case MENUSYSTEM_EVT_LORA_POWER_CHANGED:
+			{
+				APP_ERROR_CHECK(lora_set_power(data->lora_power.power));
+
+				uint8_t buf = data->lora_power.power;
+				settings_write(SETTINGS_ID_LORA_POWER, &buf, sizeof(buf));
 			}
 			break;
 

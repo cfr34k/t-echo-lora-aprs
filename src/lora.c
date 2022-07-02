@@ -29,14 +29,6 @@
  * Target modulation:
  * - RF frequency: 433.775 MHz
  * - Bandwidth: 125 kHz (0x04)
- *
- * The following power settings were tested:
- *
- * Expected Power | Measured Power | PA settings | TX params
- *            +14 |            +13 | 02 02 00 01 | 0d 04
- *            +20 |             ?  | 03 05 00 01 | 16 04
- *            +22 |             ?  | 04 07 00 01 | 16 04
- *            + 3 |            + 7 | 02 02 00 01 | 16 04
  */
 
 #include <math.h>
@@ -45,6 +37,7 @@
 #include <nrf_log.h>
 #include <app_timer.h>
 
+#include "nrf_error.h"
 #include "pinout.h"
 #include "periph_pwr.h"
 #include "leds.h"
@@ -325,6 +318,43 @@ static uint32_t m_tx_timeout = 600;
 static lora_evt_data_t m_evt_data;
 
 static lora_callback_t m_callback;
+
+/* The following power settings were tested:
+ *
+ * Expected Power | Measured Power | PA settings | TX params
+ *            +14 |            +13 | 02 02 00 01 | 0d 04
+ *            +20 |             ?  | 03 05 00 01 | 16 04
+ *            +22 |             ?  | 04 07 00 01 | 16 04
+ *            + 3 |            + 7 | 02 02 00 01 | 16 04
+ */
+
+const char *LORA_PWR_STRINGS[LORA_PWR_NUM_ENTRIES] = {
+	"+22 dBm", // LORA_PWR_PLUS_22_DBM
+	"+20 dBm", // LORA_PWR_PLUS_20_DBM
+	"+17 dBm", // LORA_PWR_PLUS_17_DBM
+	"+14 dBm", // LORA_PWR_PLUS_14_DBM
+	"+10 dBm", // LORA_PWR_PLUS_10_DBM
+	"0 dBm",   // LORA_PWR_PLUS_0_DBM
+	"-9 dBm"  // LORA_PWR_MINUS_9_DBM
+};
+
+typedef struct
+{
+	char pa_settings[4];   // paDutyCycle, HpMax, deviceSel, paLUT
+	char tx_params[2];     // power, rampTime
+} pwr_conf_t;
+
+const pwr_conf_t LORA_PWR_CONFIG[LORA_PWR_NUM_ENTRIES] = {
+	{{0x04, 0x07, 0x00, 0x01}, {0x16, 0x04}}, // LORA_PWR_PLUS_22_DBM
+	{{0x03, 0x05, 0x00, 0x01}, {0x16, 0x04}}, // LORA_PWR_PLUS_20_DBM
+	{{0x02, 0x03, 0x00, 0x01}, {0x16, 0x04}}, // LORA_PWR_PLUS_17_DBM
+	{{0x02, 0x02, 0x00, 0x01}, {0x16, 0x04}}, // LORA_PWR_PLUS_14_DBM
+	{{0x02, 0x02, 0x00, 0x01}, {0x0A, 0x04}}, // LORA_PWR_PLUS_10_DBM
+	{{0x02, 0x02, 0x00, 0x01}, {0x00, 0x04}}, // LORA_PWR_PLUS_0_DBM
+	{{0x02, 0x02, 0x00, 0x01}, {0xF7, 0x04}}  // LORA_PWR_MINUS_9_DBM
+};
+
+static lora_pwr_t m_power = LORA_PWR_PLUS_10_DBM; // play it safe
 
 
 static ret_code_t handle_state_entry(void);
@@ -616,21 +646,19 @@ static ret_code_t handle_state_entry(void)
 			break;
 
 		case LORA_STATE_SET_PA_CONFIG:
-			// optimal PA settings for +20 dBm, see datasheet page 77
 			command[0] = SX1262_OPCODE_SET_PA_CONFIG;
-			command[1] = 0x03;
-			command[2] = 0x05;
-			command[3] = 0x00;
-			command[4] = 0x01;
+			command[1] = LORA_PWR_CONFIG[m_power].pa_settings[0];
+			command[2] = LORA_PWR_CONFIG[m_power].pa_settings[1];
+			command[3] = LORA_PWR_CONFIG[m_power].pa_settings[2];
+			command[4] = LORA_PWR_CONFIG[m_power].pa_settings[3];
 
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
 
 		case LORA_STATE_SET_TX_PARAMS:
-			// TX parameters: "22" dBm, 200 μs ramp time
 			command[0] = SX1262_OPCODE_SET_TX_PARAMS;
-			command[1] = 0x16; // output power = measured @ 0x16 + x - 22 dBm
-			command[2] = 0x04;
+			command[1] = LORA_PWR_CONFIG[m_power].tx_params[0];
+			command[2] = LORA_PWR_CONFIG[m_power].tx_params[1];
 
 			APP_ERROR_CHECK(send_command(command, 3, &m_status));
 			break;
@@ -1152,4 +1180,32 @@ void lora_loop(void)
 
 		m_callback(LORA_EVT_OFF, NULL);
 	}
+}
+
+
+ret_code_t lora_set_power(lora_pwr_t power)
+{
+	if(power >= LORA_PWR_NUM_ENTRIES) {
+		return NRF_ERROR_INVALID_PARAM;
+	}
+
+	m_power = power;
+
+	return NRF_SUCCESS;
+}
+
+
+lora_pwr_t lora_get_power(void)
+{
+	return m_power;
+}
+
+
+const char* lora_power_to_str(lora_pwr_t power)
+{
+	if(power >= LORA_PWR_NUM_ENTRIES) {
+		return NULL;
+	}
+
+	return LORA_PWR_STRINGS[power];
 }

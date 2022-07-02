@@ -17,8 +17,9 @@
 #define MAIN_ENTRY_IDX_RX            1
 #define MAIN_ENTRY_IDX_TRACKER       2
 #define MAIN_ENTRY_IDX_GNSS_WARMUP   3
-#define MAIN_ENTRY_IDX_SYMBOL        4
-#define MAIN_ENTRY_IDX_INFO          5
+#define MAIN_ENTRY_IDX_POWER         4
+#define MAIN_ENTRY_IDX_SYMBOL        5
+#define MAIN_ENTRY_IDX_INFO          6
 
 #define SYMBOL_SELECT_ENTRY_IDX_JOGGER      1
 #define SYMBOL_SELECT_ENTRY_IDX_BICYCLE     2
@@ -45,13 +46,14 @@ struct menuentry_s
 
 struct menu_s
 {
-	menuentry_t  entries[6];
+	menuentry_t  entries[8];
 	size_t       n_entries;
 };
 
 static menusystem_callback_t m_callback;
 
 static menu_t m_main_menu;
+static menu_t m_power_select_menu;
 static menu_t m_symbol_select_menu;
 static menu_t m_info_menu;
 
@@ -118,6 +120,9 @@ static void menusystem_update_values(void)
 
 	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL]);
 	strcpy(entry->value, m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL].value); // already filled, see above
+
+	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_POWER]);
+	strncpy(entry->value, lora_power_to_str(lora_get_power()), sizeof(entry->value));
 }
 
 
@@ -156,6 +161,10 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 				m_callback(MENUSYSTEM_EVT_GNSS_WARMUP_ENABLE, NULL);
 			}
 			menusystem_update_values();
+			break;
+
+		case MAIN_ENTRY_IDX_POWER:
+			enter_submenu(&m_power_select_menu, 0);
 			break;
 
 		case MAIN_ENTRY_IDX_SYMBOL:
@@ -205,6 +214,27 @@ static void menu_handler_symbol_select(menu_t *menu, menuentry_t *entry)
 }
 
 
+static void menu_handler_power_select(menu_t *menu, menuentry_t *entry)
+{
+	size_t entry_idx = entry - &(menu->entries[0]);
+
+	menusystem_evt_data_t evt_data;
+
+	switch(entry_idx) {
+		case ENTRY_IDX_EXIT:
+			leave_submenu();
+			break;
+
+		default:
+			evt_data.lora_power.power = entry_idx - 1;
+			m_callback(MENUSYSTEM_EVT_LORA_POWER_CHANGED, &evt_data);
+			leave_submenu();
+			menusystem_update_values();
+			break;
+	}
+}
+
+
 static void menu_handler_info(menu_t *menu, menuentry_t *entry)
 {
 	leave_submenu();
@@ -234,6 +264,10 @@ void menusystem_init(menusystem_callback_t callback)
 	m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_WARMUP].text = "GNSS Warmup";
 	m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_WARMUP].value[0] = '\0';
 
+	m_main_menu.entries[MAIN_ENTRY_IDX_POWER].handler = menu_handler_main;
+	m_main_menu.entries[MAIN_ENTRY_IDX_POWER].text = "TX Power >";
+	m_main_menu.entries[MAIN_ENTRY_IDX_POWER].value[0] = '\0';
+
 	m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL].handler = menu_handler_main;
 	m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL].text = "Symbol >";
 	m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL].value[0] = '\0';
@@ -241,6 +275,21 @@ void menusystem_init(menusystem_callback_t callback)
 	m_main_menu.entries[MAIN_ENTRY_IDX_INFO].handler = menu_handler_main;
 	m_main_menu.entries[MAIN_ENTRY_IDX_INFO].text = "Info >";
 	m_main_menu.entries[MAIN_ENTRY_IDX_INFO].value[0] = '\0';
+
+	// prepare the power select menu
+	m_power_select_menu.n_entries = LORA_PWR_NUM_ENTRIES + 1;
+
+	m_power_select_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_power_select;
+	m_power_select_menu.entries[ENTRY_IDX_EXIT].text = "<<< Cancel";
+	m_power_select_menu.entries[ENTRY_IDX_EXIT].value[0] = '\0';
+
+	for(lora_pwr_t pwr = 0; pwr < LORA_PWR_NUM_ENTRIES; pwr++) {
+		size_t menu_idx = pwr + 1;
+
+		m_power_select_menu.entries[menu_idx].handler = menu_handler_power_select;
+		m_power_select_menu.entries[menu_idx].text = lora_power_to_str(pwr);
+		m_power_select_menu.entries[menu_idx].value[0] = '\0';
+	}
 
 	// prepare the symbol select menu
 	m_symbol_select_menu.n_entries = 6;
