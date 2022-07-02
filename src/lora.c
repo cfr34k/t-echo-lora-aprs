@@ -328,6 +328,9 @@ static lora_callback_t m_callback;
  * LORA_PWR_PLUS_10_DBM =>  +9.1 dBm
  * LORA_PWR_PLUS_0_DBM  =>  -0.2 dBm
  * LORA_PWR_MINUS_9_DBM =>  -8.9 dBm
+ *
+ * Please note: the first four entries (22, 20, 17 and 14 dBm) are optimized
+ * settings given in the SX1262 datasheet.
  */
 
 const char *LORA_PWR_STRINGS[LORA_PWR_NUM_ENTRIES] = {
