@@ -319,13 +319,15 @@ static lora_evt_data_t m_evt_data;
 
 static lora_callback_t m_callback;
 
-/* The following power settings were tested:
+/* The following power outputs were measured for the different settings:
  *
- * Expected Power | Measured Power | PA settings | TX params
- *            +14 |            +13 | 02 02 00 01 | 0d 04
- *            +20 |             ?  | 03 05 00 01 | 16 04
- *            +22 |             ?  | 04 07 00 01 | 16 04
- *            + 3 |            + 7 | 02 02 00 01 | 16 04
+ * LORA_PWR_PLUS_22_DBM => +19.7 dBm
+ * LORA_PWR_PLUS_20_DBM => +17.7 dBm
+ * LORA_PWR_PLUS_17_DBM => +14.7 dBm
+ * LORA_PWR_PLUS_14_DBM => +11.9 dBm
+ * LORA_PWR_PLUS_10_DBM =>  +9.1 dBm
+ * LORA_PWR_PLUS_0_DBM  =>  -0.2 dBm
+ * LORA_PWR_MINUS_9_DBM =>  -8.9 dBm
  */
 
 const char *LORA_PWR_STRINGS[LORA_PWR_NUM_ENTRIES] = {
@@ -335,7 +337,7 @@ const char *LORA_PWR_STRINGS[LORA_PWR_NUM_ENTRIES] = {
 	"+14 dBm", // LORA_PWR_PLUS_14_DBM
 	"+10 dBm", // LORA_PWR_PLUS_10_DBM
 	"0 dBm",   // LORA_PWR_PLUS_0_DBM
-	"-9 dBm"  // LORA_PWR_MINUS_9_DBM
+	"-9 dBm"   // LORA_PWR_MINUS_9_DBM
 };
 
 typedef struct
@@ -349,9 +351,9 @@ const pwr_conf_t LORA_PWR_CONFIG[LORA_PWR_NUM_ENTRIES] = {
 	{{0x03, 0x05, 0x00, 0x01}, {0x16, 0x04}}, // LORA_PWR_PLUS_20_DBM
 	{{0x02, 0x03, 0x00, 0x01}, {0x16, 0x04}}, // LORA_PWR_PLUS_17_DBM
 	{{0x02, 0x02, 0x00, 0x01}, {0x16, 0x04}}, // LORA_PWR_PLUS_14_DBM
-	{{0x02, 0x02, 0x00, 0x01}, {0x0A, 0x04}}, // LORA_PWR_PLUS_10_DBM
-	{{0x02, 0x02, 0x00, 0x01}, {0x00, 0x04}}, // LORA_PWR_PLUS_0_DBM
-	{{0x02, 0x02, 0x00, 0x01}, {0xF7, 0x04}}  // LORA_PWR_MINUS_9_DBM
+	{{0x02, 0x02, 0x00, 0x01}, {0x11, 0x04}}, // LORA_PWR_PLUS_10_DBM
+	{{0x02, 0x02, 0x00, 0x01}, {0x06, 0x04}}, // LORA_PWR_PLUS_0_DBM
+	{{0x02, 0x02, 0x00, 0x01}, {0xFD, 0x04}}  // LORA_PWR_MINUS_9_DBM
 };
 
 static lora_pwr_t m_power = LORA_PWR_PLUS_10_DBM; // play it safe
