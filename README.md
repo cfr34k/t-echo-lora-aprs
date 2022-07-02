@@ -20,8 +20,8 @@ standby (reachable via BLE; standby time depends on hardware configuration).
   - Achieves down to 100 μA standby current with full BLE connectivity
     (depending on hardware assembly variant).
 - Tracker/transmitter:
-  - Smart beacon: transmission times depend on movement.
-  - 20 dBm TX power.
+  - Smart beacon: transmissions depend on movement.
+  - Configurable TX power up to +22 dBm.
 - Receiver:
   - Tries to decode received packets and
   - Displays remote station call sign, location, distance and direction on success.
@@ -29,6 +29,10 @@ standby (reachable via BLE; standby time depends on hardware configuration).
 - E-Paper display:
   - Support for partial refresh (no flickering; 0.3 s refresh time).
   - Force full refresh (with flickering) every 1 hour to remove artifacts and prevent burn-in.
+- GNSS warmup mode:
+  - Keeps the GNSS module powered without transmitting LoRa packets.
+  - Can be used to achieve a good position fix before enabling the transmitter
+    (which might interefere with the GNSS receiver).
 - Bluetooth Low Energy:
   - Configure source call sign, APRS symbol, and comment.
   - Notification support for received APRS messages.
