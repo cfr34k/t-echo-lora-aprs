@@ -64,6 +64,7 @@ static bool     m_lora_tx_busy = false;
 bool     m_lora_rx_active = false;
 bool     m_lora_tx_active = true;
 bool     m_tracker_active = true;
+bool     m_gps_warmup_active = true;
 
 static nmea_data_t m_nmea_data = {
 	42.345f,
@@ -251,23 +252,63 @@ static void redraw_display(bool full_update)
 		switch(m_display_state)
 		{
 			case DISP_STATE_STARTUP:
-				// some fun
-				epaper_fb_move_to( 50, 150);
-				epaper_fb_line_to(150, 150, EPAPER_COLOR_BLACK); // Das
-				epaper_fb_line_to(150,  70, EPAPER_COLOR_BLACK); // ist
-				epaper_fb_line_to( 50, 150, EPAPER_COLOR_BLACK); // das
-				epaper_fb_line_to( 50,  70, EPAPER_COLOR_BLACK); // Haus
-				epaper_fb_line_to(150,  70, EPAPER_COLOR_BLACK); // vom
-				epaper_fb_line_to(100,  10, EPAPER_COLOR_BLACK); // Ni-
-				epaper_fb_line_to( 50,  70, EPAPER_COLOR_BLACK); // ko-
-				epaper_fb_line_to(150, 150, EPAPER_COLOR_BLACK); // laus
+				// bicycle frame
+				epaper_fb_move_to( 65, 114);
+				epaper_fb_line_to( 96, 114, EPAPER_COLOR_BLACK);
+				epaper_fb_line_to(127,  88, EPAPER_COLOR_BLACK);
+				epaper_fb_line_to(125,  84, EPAPER_COLOR_BLACK);
+				epaper_fb_line_to( 81,  84, EPAPER_COLOR_BLACK);
+				epaper_fb_line_to( 65, 114, EPAPER_COLOR_BLACK);
 
-				epaper_fb_move_to(100, 90);
-				epaper_fb_circle(80, EPAPER_COLOR_BLACK);
+				epaper_fb_move_to( 79,  88);
+				epaper_fb_line_to( 55,  88, EPAPER_COLOR_BLACK);
+				epaper_fb_line_to( 65, 114, EPAPER_COLOR_BLACK);
+
+				// seat post
+				epaper_fb_move_to( 96, 114);
+				epaper_fb_line_to( 80,  76, EPAPER_COLOR_BLACK);
+
+				// seat
+				epaper_fb_move_to( 72,  73);
+				epaper_fb_line_to( 90,  73, EPAPER_COLOR_BLACK);
+				epaper_fb_move_to( 74,  74);
+				epaper_fb_line_to( 87,  74, EPAPER_COLOR_BLACK);
+				epaper_fb_move_to( 77,  75);
+				epaper_fb_line_to( 82,  75, EPAPER_COLOR_BLACK);
+
+				// handlebar
+				epaper_fb_move_to(117,  72);
+				epaper_fb_line_to(130,  72, EPAPER_COLOR_BLACK);
+				epaper_fb_move_to(128,  72);
+				epaper_fb_line_to(124,  78, EPAPER_COLOR_BLACK);
+				epaper_fb_line_to(137, 114, EPAPER_COLOR_BLACK);
+
+				// front wheel
+				epaper_fb_circle(20, EPAPER_COLOR_BLACK);
+
+				// rear wheel
+				epaper_fb_move_to( 65, 114);
+				epaper_fb_circle(20, EPAPER_COLOR_BLACK);
+
+				// Antenna mast
+				epaper_fb_move_to( 55,  88);
+				epaper_fb_line_to( 55,  38, EPAPER_COLOR_BLACK);
+				epaper_fb_move_to( 50,  38);
+				epaper_fb_line_to( 55,  43, EPAPER_COLOR_BLACK);
+				epaper_fb_line_to( 60,  38, EPAPER_COLOR_BLACK);
+
+				// waves
+				epaper_fb_move_to( 55,  38);
+				epaper_fb_circle(10, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
+				epaper_fb_circle(20, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
+				epaper_fb_circle(30, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
+
 
 				epaper_fb_set_font(&din1451m10pt7b);
-				epaper_fb_move_to(0, 180);
-				epaper_fb_draw_string("Lora-APRS " VERSION, EPAPER_COLOR_BLACK);
+				epaper_fb_move_to(0, 170);
+				epaper_fb_draw_string("Lora-APRS by DL5TKL", EPAPER_COLOR_BLACK);
+				epaper_fb_move_to(0, 190);
+				epaper_fb_draw_string("v" VERSION, EPAPER_COLOR_BLACK);
 				break;
 
 			case DISP_STATE_GPS:

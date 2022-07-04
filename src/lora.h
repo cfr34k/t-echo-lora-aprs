@@ -28,7 +28,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <sdk_errors.h>
+#ifdef SDL_DISPLAY
+	// compiling for the display emulator
+	#include "sdk_fake.h"
+#else
+	#include <sdk_errors.h>
+#endif
 
 typedef enum
 {
