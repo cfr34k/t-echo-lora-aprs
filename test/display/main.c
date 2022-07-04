@@ -303,7 +303,6 @@ static void redraw_display(bool full_update)
 				epaper_fb_circle(20, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
 				epaper_fb_circle(30, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
 
-
 				epaper_fb_set_font(&din1451m10pt7b);
 				epaper_fb_move_to(0, 170);
 				epaper_fb_draw_string("Lora-APRS by DL5TKL", EPAPER_COLOR_BLACK);
