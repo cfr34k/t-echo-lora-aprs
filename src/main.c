@@ -1360,7 +1360,7 @@ static void redraw_display(bool full_update)
 				epaper_fb_move_to(0, 170);
 				epaper_fb_draw_string("Lora-APRS by DL5TKL", EPAPER_COLOR_BLACK);
 				epaper_fb_move_to(0, 190);
-				epaper_fb_draw_string("v" VERSION, EPAPER_COLOR_BLACK);
+				epaper_fb_draw_string(VERSION, EPAPER_COLOR_BLACK);
 				break;
 
 			case DISP_STATE_GPS:
