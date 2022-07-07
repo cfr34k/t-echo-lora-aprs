@@ -246,7 +246,7 @@ void menusystem_init(menusystem_callback_t callback)
 	m_callback = callback;
 
 	// prepare the main menu
-	m_main_menu.n_entries = 6;
+	m_main_menu.n_entries = 7;
 
 	m_main_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_main;
 	m_main_menu.entries[ENTRY_IDX_EXIT].text = "<<< Exit";
