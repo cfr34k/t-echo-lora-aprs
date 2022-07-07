@@ -142,6 +142,9 @@ void cb_gps_reset_timer(void *p_context)
 
 		case GPS_RESET_WAIT2:
 			m_reset_state = GPS_RESET_COMPLETE;
+
+			err_code = periph_pwr_stop_activity(PERIPH_PWR_FLAG_GPS);
+			APP_ERROR_CHECK(err_code);
 			break;
 
 		case GPS_RESET_COMPLETE:
