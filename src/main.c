@@ -304,6 +304,30 @@ static void timers_init(void)
 }
 
 
+/**@brief Set device name.
+ */
+static void gap_update_device_name(void)
+{
+	ret_code_t              err_code;
+	ble_gap_conn_sec_mode_t sec_mode;
+
+	char devname[BLE_GAP_DEVNAME_DEFAULT_LEN + 1];
+
+	strcpy(devname, DEVICE_NAME);
+	strcat(devname, " ");
+
+	size_t len = strlen(devname);
+	aprs_get_source(devname + len, sizeof(devname) - len - 1);
+
+	BLE_GAP_CONN_SEC_MODE_SET_NO_ACCESS(&sec_mode);
+
+	err_code = sd_ble_gap_device_name_set(&sec_mode,
+			(const uint8_t *)devname,
+			strlen(devname));
+	APP_ERROR_CHECK(err_code);
+}
+
+
 /**@brief Function for the GAP initialization.
  *
  * @details This function sets up all the necessary GAP (Generic Access Profile) parameters of the
@@ -313,17 +337,8 @@ static void gap_params_init(void)
 {
 	ret_code_t              err_code;
 	ble_gap_conn_params_t   gap_conn_params;
-	ble_gap_conn_sec_mode_t sec_mode;
 
-	BLE_GAP_CONN_SEC_MODE_SET_OPEN(&sec_mode);
-
-	err_code = sd_ble_gap_device_name_set(&sec_mode,
-			(const uint8_t *)DEVICE_NAME,
-			strlen(DEVICE_NAME));
-	APP_ERROR_CHECK(err_code);
-
-	err_code = sd_ble_gap_appearance_set(BLE_APPEARANCE_GENERIC_TAG);
-	APP_ERROR_CHECK(err_code);
+	gap_update_device_name();
 
 	memset(&gap_conn_params, 0, sizeof(gap_conn_params));
 
@@ -1623,18 +1638,19 @@ int main(void)
 	timers_init();
 	power_management_init();
 	ble_stack_init();
-	gap_params_init();
-	gatt_init();
-	advertising_init();
-	services_init();
-	conn_params_init();
-	peer_manager_init();
 
 	// settings set some values in this module, so we must initialize it first.
 	aprs_init();
 
 	// load the settings
 	settings_init(cb_settings);
+
+	gap_params_init();
+	gatt_init();
+	advertising_init();
+	services_init();
+	conn_params_init();
+	peer_manager_init();
 
 	buttons_leds_init();
 
