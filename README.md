@@ -118,15 +118,59 @@ device called `TECHOBOOT`.
 copy the `CURRENT.UF2` from the T-Echo’s mass storage device `TECHOBOOT` to
 your PC.
 
-When you first install the LoRa-APRS firmware, you should also install the
+When you first install the LoRa-APRS firmware, you must also install the
 correct SoftDevice (Bluetooth stack). Therefore run `make uf2_sd` which creates
 `_build/nrf52840_xxaa_with_sd.uf2` which contains both the SoftDevice and the
 regular firmware build. Copy `_build/nrf52840_xxaa_with_sd.uf2` to the
 `TECHOBOOT`. When the copy operation is complete, the device should disconnect,
 reset, and boot the LoRa-APRS firmware.
 
+After initial installation, **you have to configure your call sign to be able to
+transmit LoRa packets** (see _Configuring the firmware_ below).
+
 ### Normal updates
 
 If the SoftDevice is unchanged, only the firmware part needs to be updated. To
 do so, run `make uf2` which generates `_build/nrf52840_xxaa.uf2`. Copy that
 file to `TECHOBOOT` and you are done.
+
+## Configuring the firmware
+
+There are two ways to configure certain aspects of the firmware: via Bluetooth
+LE and via the on-screen menu.
+
+### Via the menu
+
+The following aspects are configurable via the menu:
+
+- Status of tracker, receiver and GNSS warmup
+- APRS symbol (limited selection)
+- Transmission power
+
+### Via Bluetooth LE
+
+Via BLE you can set the following:
+
+- Source call sign
+- APRS symbol (free selection of symbol table and icon)
+- APRS comment (free text)
+
+The source call sign must be set to be able to transmit APRS packets.
+
+All settings (_characteristics_ in the Bluetooth jargon) of the LoRa-APRS
+firmware are gathered in a custom _APRS service_ with UUID
+`00000001-b493-bb5d-2a6a-4682945c9e00`. The following characteristics are
+available:
+
+^ UUID                                   ^ Description                         ^ Encoding ^ Value length    ^ Access       ^ Example ^
+| `00000101-b493-bb5d-2a6a-4682945c9e00` | APRS source call sign               | Text     | 0-16 characters ^ Read, write  | `DE0ABC-5` |
+| `00000102-b493-bb5d-2a6a-4682945c9e00` | APRS comment                        | Text     | 0-64 characters ^ Read, write  | `T-Echo on tour` |
+| `00000103-b493-bb5d-2a6a-4682945c9e00` | APRS symbol (Table + Icon selector) | Text     | 2 characters    ^ Read, write  | `/.` (rotes X auf der Karte) |
+| `00000104-b493-bb5d-2a6a-4682945c9e00` | Raw received message                | Binary   | 1-247 bytes     ^ Read, notify | `<\xff\x01DE0ABC-5>APZTK1:…` |
+
+Unfortunately, there is no simple way (like a dedicated app) yet to set up the
+device. However, you can use a generic BLE exploration/debugging app like [nRF
+Connect for
+Mobile](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-mobile)
+to write the available BLE characteristics.
+
