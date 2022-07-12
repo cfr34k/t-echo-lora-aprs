@@ -162,11 +162,12 @@ firmware are gathered in a custom _APRS service_ with UUID
 `00000001-b493-bb5d-2a6a-4682945c9e00`. The following characteristics are
 available:
 
-^ UUID                                   ^ Description                         ^ Encoding ^ Value length    ^ Access       ^ Example ^
-| `00000101-b493-bb5d-2a6a-4682945c9e00` | APRS source call sign               | Text     | 0-16 characters ^ Read, write  | `DE0ABC-5` |
-| `00000102-b493-bb5d-2a6a-4682945c9e00` | APRS comment                        | Text     | 0-64 characters ^ Read, write  | `T-Echo on tour` |
-| `00000103-b493-bb5d-2a6a-4682945c9e00` | APRS symbol (Table + Icon selector) | Text     | 2 characters    ^ Read, write  | `/.` (rotes X auf der Karte) |
-| `00000104-b493-bb5d-2a6a-4682945c9e00` | Raw received message                | Binary   | 1-247 bytes     ^ Read, notify | `<\xff\x01DE0ABC-5>APZTK1:…` |
+| UUID                                   | Description                         | Encoding | Value length    | Access       | Example |
+|----------------------------------------|-------------------------------------|----------|-----------------|--------------|---------|
+| `00000101-b493-bb5d-2a6a-4682945c9e00` | APRS source call sign               | Text     | 0-16 characters | Read, write  | `DE0ABC-5` |
+| `00000102-b493-bb5d-2a6a-4682945c9e00` | APRS comment                        | Text     | 0-64 characters | Read, write  | `T-Echo on tour` |
+| `00000103-b493-bb5d-2a6a-4682945c9e00` | APRS symbol (Table + Icon selector) | Text     | 2 characters    | Read, write  | `/.` (rotes X auf der Karte) |
+| `00000104-b493-bb5d-2a6a-4682945c9e00` | Raw received message                | Binary   | 1-247 bytes     | Read, notify | `<\xff\x01DE0ABC-5>APZTK1:…` |
 
 Unfortunately, there is no simple way (like a dedicated app) yet to set up the
 device. However, you can use a generic BLE exploration/debugging app like [nRF
