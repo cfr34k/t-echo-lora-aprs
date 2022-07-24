@@ -84,9 +84,9 @@ The menu is operated as follows:
 
 ## Building the firmware
 
-Before you can compile the firmware it needs some basic configuration. Copy
-`src/config.h.template` to `src/config.h` and edit it. At the very least set
-your amateur radio call sign in `APRS_SOURCE`.
+**Please note:** [pre-built
+binaries](https://github.com/cfr34k/t-echo-lora-aprs/releases) are also
+available and strongly recommended. Skip this section if you are using those.
 
 To compile the firmware you need to set up the toolchain for Nordic
 Semiconductor’s nRF5 SDK. See [the SDK
@@ -100,6 +100,30 @@ To compile the firmware, simply run
 ```sh
 make
 ```
+
+This will give you firmware binaries (ELF and HEX files) that you can use to
+directly flash a device via SWD and debug the firmware. All outputs are stored
+in a new directory called `_build`.
+
+To generate UF2 files that can be used with the preinstalled bootloader the following commands are available.
+
+```sh
+make uf2_sd
+```
+
+This generates a complete installation image
+(`_build/nrf52840_xxaa_with_sd.uf2`) that can be used to flash devices
+currently running a different firmware.
+
+Alternatively, you can create a simple update image with
+
+```sh
+make uf2
+```
+
+The resulting image (`_build/nrf52840_xxaa.uf2`) can only be used to upgrade
+devices that run different versions of this LoRa-APRS firmware. However, it is
+much smaller and therefore faster to download and flash.
 
 ## Flashing the firmware
 
@@ -119,11 +143,13 @@ copy the `CURRENT.UF2` from the T-Echo’s mass storage device `TECHOBOOT` to
 your PC.
 
 When you first install the LoRa-APRS firmware, you must also install the
-correct SoftDevice (Bluetooth stack). Therefore run `make uf2_sd` which creates
-`_build/nrf52840_xxaa_with_sd.uf2` which contains both the SoftDevice and the
-regular firmware build. Copy `_build/nrf52840_xxaa_with_sd.uf2` to the
-`TECHOBOOT`. When the copy operation is complete, the device should disconnect,
-reset, and boot the LoRa-APRS firmware.
+correct SoftDevice (Bluetooth stack).  Therefore, download the latest
+`nrf52840_xxaa_with_sd.uf2` from the [Releases
+page](https://github.com/cfr34k/t-echo-lora-aprs/releases) (or use the one you
+built yourself) which contains both the SoftDevice and the regular firmware
+build. Copy `nrf52840_xxaa_with_sd.uf2` to the `TECHOBOOT`. When the copy
+operation is complete, the device should disconnect, reset, and boot the
+LoRa-APRS firmware.
 
 After initial installation, **you have to configure your call sign to be able to
 transmit LoRa packets** (see _Configuring the firmware_ below).
@@ -131,8 +157,8 @@ transmit LoRa packets** (see _Configuring the firmware_ below).
 ### Normal updates
 
 If the SoftDevice is unchanged, only the firmware part needs to be updated. To
-do so, run `make uf2` which generates `_build/nrf52840_xxaa.uf2`. Copy that
-file to `TECHOBOOT` and you are done.
+do so, [download](https://github.com/cfr34k/t-echo-lora-aprs/releases) or build
+`nrf52840_xxaa.uf2`. Copy that file to `TECHOBOOT` and you are done.
 
 ## Configuring the firmware
 
