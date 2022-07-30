@@ -40,6 +40,7 @@ typedef enum {
 	GPS_RESET_WAIT1,
 	GPS_RESET_ACTIVE,
 	GPS_RESET_WAIT2,
+	GPS_RESET_SEND_FULL_COLDSTART_CMD,
 	GPS_RESET_COMPLETE
 } gps_reset_state_t;
 
@@ -145,6 +146,15 @@ void cb_gps_reset_timer(void *p_context)
 
 			err_code = periph_pwr_stop_activity(PERIPH_PWR_FLAG_GPS);
 			APP_ERROR_CHECK(err_code);
+			break;
+
+		case GPS_RESET_SEND_FULL_COLDSTART_CMD:
+			{
+				m_reset_state = GPS_RESET_COMPLETE;
+
+				static uint8_t cmd[] = "$PMTK103*30\r\n";
+				APP_ERROR_CHECK(nrfx_uarte_tx(&m_uarte, cmd, 13));
+			}
 			break;
 
 		case GPS_RESET_COMPLETE:
@@ -270,4 +280,11 @@ void gps_loop(void)
 			m_callback(&m_nmea_data);
 		}
 	}
+}
+
+
+ret_code_t gps_send_factory_reset_command(void)
+{
+	m_reset_state = GPS_RESET_SEND_FULL_COLDSTART_CMD;
+	return app_timer_start(m_gps_reset_timer, APP_TIMER_TICKS(5000), NULL);
 }

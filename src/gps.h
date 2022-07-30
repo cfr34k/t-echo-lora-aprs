@@ -44,4 +44,6 @@ ret_code_t gps_reset(void);
 ret_code_t gps_power_on(void);
 ret_code_t gps_power_off(void);
 
+ret_code_t gps_send_factory_reset_command(void);
+
 #endif // GPS_H
