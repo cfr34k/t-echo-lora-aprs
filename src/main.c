@@ -1441,6 +1441,32 @@ static void redraw_display(bool full_update)
 
 				yoffset += line_height;
 				epaper_fb_move_to(0, yoffset);
+
+				{
+					uint8_t gps_sats_tracked = 0;
+					uint8_t glonass_sats_tracked = 0;
+
+					for(uint8_t i = 0; i < m_nmea_data.sat_info_count_gps; i++) {
+						if(m_nmea_data.sat_info_gps[i].snr >= 0) {
+							gps_sats_tracked++;
+						}
+					}
+
+					for(uint8_t i = 0; i < m_nmea_data.sat_info_count_glonass; i++) {
+						if(m_nmea_data.sat_info_glonass[i].snr >= 0) {
+							glonass_sats_tracked++;
+						}
+					}
+
+					snprintf(s, sizeof(s), "Trk: GP: %d/%d, GL: %d/%d",
+							gps_sats_tracked, m_nmea_data.sat_info_count_gps,
+							glonass_sats_tracked, m_nmea_data.sat_info_count_glonass);
+
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+				}
 				break;
 
 			case DISP_STATE_TRACKER:

@@ -44,6 +44,9 @@
 // maximum number of simultaneously provided fix info structures
 #define NMEA_NUM_FIX_INFO   3
 
+// number of tracked satellites per satellite system
+#define NMEA_NUM_SAT_INFO   32
+
 typedef struct
 {
 	uint8_t sys_id;
@@ -51,6 +54,12 @@ typedef struct
 	bool    auto_mode;
 	uint8_t sats_used;
 } nmea_fix_info_t;
+
+typedef struct
+{
+	uint8_t sat_id;
+	int8_t  snr;
+} nmea_sat_info_t;
 
 typedef struct
 {
@@ -64,6 +73,12 @@ typedef struct
 	bool  speed_heading_valid;
 
 	nmea_fix_info_t fix_info[NMEA_NUM_FIX_INFO];
+
+	nmea_sat_info_t sat_info_gps[NMEA_NUM_SAT_INFO];
+	nmea_sat_info_t sat_info_glonass[NMEA_NUM_SAT_INFO];
+
+	uint8_t sat_info_count_gps;
+	uint8_t sat_info_count_glonass;
 
 	float pdop;
 	float hdop;

@@ -235,7 +235,7 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 
 	char *token = nmea_tokenize(sentence + 1, ','); // skip the '$' in the beginning
 
-	if(strcmp(token, "GNGGA") == 0) {
+	if(strcmp(token, "GNGGA") == 0 || strcmp(token, "GPGGA") == 0) {
 		// parse Detailed GNSS position information
 		size_t info_token_idx = 0;
 
@@ -405,6 +405,47 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 
 		if(fix_type >= 0) {
 			fix_info_to_data_struct(data, auto_mode, fix_type, pdop, hdop, vdop, used_sats, sys_id);
+		}
+	} else if(strcmp(token, "GPGSV") == 0 || strcmp(token, "GLGSV") == 0) {
+		// parse Satellites in View sentence for GPS and GLONASS
+		size_t info_token_idx = 0;
+
+		bool is_gps = (token[1] == 'P');
+
+		nmea_sat_info_t *sat_list  = is_gps ? data->sat_info_gps          : data->sat_info_glonass;
+		uint8_t         *sat_count = is_gps ? &(data->sat_info_count_gps) : &(data->sat_info_count_glonass);
+
+		uint8_t current_sentence = 0;
+		uint8_t sat_id = 0;
+		while((token = nmea_tokenize(NULL, ','))) {
+			switch(info_token_idx) {
+				case 1:
+					current_sentence = strtod(token, NULL);
+					if(current_sentence == 1) {
+						// reset the satellite list
+						*sat_count = 0;
+					}
+					break;
+			}
+
+			if(info_token_idx >= 3 && ((info_token_idx - 3) % 4) == 0) {
+				sat_id = strtod(token, NULL);
+			}
+
+			if((*sat_count < NMEA_NUM_SAT_INFO)
+					&& info_token_idx >= 6
+					&& ((info_token_idx - 6) % 4) == 0) {
+				sat_list[*sat_count].sat_id = sat_id;
+				if(token[0] != '\0') {
+					sat_list[*sat_count].snr = strtod(token, NULL);
+				} else {
+					sat_list[*sat_count].snr = -1; // not tracked
+				}
+
+				(*sat_count)++;
+			}
+
+			info_token_idx++;
 		}
 	}
 
