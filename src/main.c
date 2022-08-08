@@ -1229,24 +1229,108 @@ static void redraw_display(bool full_update)
 	uint8_t line_height = epaper_fb_get_line_height();
 	uint8_t yoffset = line_height;
 
+	// calculate GNSS satellite count
+	uint8_t gps_sats_tracked = 0;
+	uint8_t glonass_sats_tracked = 0;
+
+	uint8_t gnss_total_sats_used;
+	uint8_t gnss_total_sats_tracked;
+	uint8_t gnss_total_sats_in_view;
+
+	for(uint8_t i = 0; i < m_nmea_data.sat_info_count_gps; i++) {
+		if(m_nmea_data.sat_info_gps[i].snr >= 0) {
+			gps_sats_tracked++;
+		}
+	}
+
+	for(uint8_t i = 0; i < m_nmea_data.sat_info_count_glonass; i++) {
+		if(m_nmea_data.sat_info_glonass[i].snr >= 0) {
+			glonass_sats_tracked++;
+		}
+	}
+
+	gnss_total_sats_in_view = m_nmea_data.sat_info_count_gps + m_nmea_data.sat_info_count_glonass;
+	gnss_total_sats_tracked = gps_sats_tracked + glonass_sats_tracked;
+
+	gnss_total_sats_used = 0;
+	for(uint8_t i = 0; i < NMEA_NUM_FIX_INFO; i++) {
+		if(m_nmea_data.fix_info[i].sys_id != NMEA_SYS_ID_INVALID) {
+			gnss_total_sats_used += m_nmea_data.fix_info[i].sats_used;
+		}
+	}
+
 	epaper_fb_clear(EPAPER_COLOR_WHITE);
 
 	// status line
 	if(m_display_state != DISP_STATE_STARTUP) {
-		epaper_fb_move_to(0, line_height - 3);
+		uint8_t fill_color, line_color;
+		uint8_t gwidth, gleft, gright, gbottom, gtop;
 
-		snprintf(s, sizeof(s), "BAT: %d.%02d V",
-				m_bat_millivolt / 1000,
-				(m_bat_millivolt / 10) % 100);
+		// Satellite info box
+
+		line_color = EPAPER_COLOR_BLACK;
+		if(!(m_gps_warmup_active || m_tracker_active)) {
+			line_color |= EPAPER_COLOR_FLAG_DASHED;
+		}
+
+		gleft = 0;
+		gright = 98;
+		gbottom = yoffset;
+		gtop = yoffset - line_height;
+
+		epaper_fb_draw_rect(gleft, gtop, gright, gbottom, line_color);
+
+		// draw a stilized satellite
+
+		uint8_t center_x = line_height/2;
+		uint8_t center_y = line_height/2;
+
+		// satellite: top-left wing
+		epaper_fb_move_to(center_x-1, center_y-1);
+		epaper_fb_line_to(center_x-2, center_y-2, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-3, center_y-1, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-6, center_y-4, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-4, center_y-6, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-1, center_y-3, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-2, center_y-2, EPAPER_COLOR_BLACK);
+
+		// satellite: bottom-right wing
+		epaper_fb_move_to(center_x+1, center_y+1);
+		epaper_fb_line_to(center_x+2, center_y+2, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+3, center_y+1, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+6, center_y+4, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+4, center_y+6, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+1, center_y+3, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+2, center_y+2, EPAPER_COLOR_BLACK);
+
+		// satellite: body
+		epaper_fb_move_to(center_x+1, center_y-3);
+		epaper_fb_line_to(center_x+3, center_y-1, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-1, center_y+3, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-3, center_y+1, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+1, center_y-3, EPAPER_COLOR_BLACK);
+
+		// satellite: antenna
+		epaper_fb_move_to(center_x-2, center_y+2);
+		epaper_fb_line_to(center_x-3, center_y+3, EPAPER_COLOR_BLACK);
+		epaper_fb_move_to(center_x-5, center_y+2);
+		epaper_fb_line_to(center_x-4, center_y+2, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-2, center_y+4, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-2, center_y+5, EPAPER_COLOR_BLACK);
+
+		epaper_fb_move_to(gleft + 22, gbottom - 5);
+
+		snprintf(s, sizeof(s), "%d/%d/%d",
+				gnss_total_sats_used, gnss_total_sats_tracked, gnss_total_sats_in_view);
 
 		epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 		// battery graph
-		uint8_t gwidth = 28;
-		uint8_t gleft = epaper_fb_get_cursor_pos_x() + 6;
-		uint8_t gright = gleft + gwidth;
-		uint8_t gbottom = yoffset - 2;
-		uint8_t gtop = yoffset + 4 - line_height;
+		gwidth = 35;
+		gleft = 160;
+		gright = gleft + gwidth;
+		gbottom = yoffset - 2;
+		gtop = yoffset + 4 - line_height;
 
 		epaper_fb_draw_rect(gleft, gtop, gright, gbottom, EPAPER_COLOR_BLACK);
 
@@ -1255,9 +1339,12 @@ static void redraw_display(bool full_update)
 				gleft + (uint32_t)gwidth * (uint32_t)m_bat_percent / 100UL, gbottom,
 				EPAPER_COLOR_BLACK);
 
-		// RX status block
-		uint8_t fill_color, line_color;
+		epaper_fb_fill_rect(
+				gright, (gtop+gbottom)/2 - 3,
+				gright + 3, (gtop+gbottom)/2 + 3,
+				EPAPER_COLOR_BLACK);
 
+		// RX status block
 		if(m_lora_rx_busy) {
 			fill_color = EPAPER_COLOR_BLACK;
 			line_color = EPAPER_COLOR_WHITE;
@@ -1270,8 +1357,8 @@ static void redraw_display(bool full_update)
 			line_color |= EPAPER_COLOR_FLAG_DASHED;
 		}
 
-		gleft = EPAPER_WIDTH - 30;
-		gright = EPAPER_WIDTH - 1;
+		gleft = 130;
+		gright = 158;
 		gbottom = yoffset;
 		gtop = yoffset - line_height;
 
@@ -1294,8 +1381,8 @@ static void redraw_display(bool full_update)
 			line_color |= EPAPER_COLOR_FLAG_DASHED;
 		}
 
-		gleft = EPAPER_WIDTH - 63;
-		gright = EPAPER_WIDTH - 34;
+		gleft = 100;
+		gright = 128;
 		gbottom = yoffset;
 		gtop = yoffset - line_height;
 
@@ -1442,31 +1529,14 @@ static void redraw_display(bool full_update)
 				yoffset += line_height;
 				epaper_fb_move_to(0, yoffset);
 
-				{
-					uint8_t gps_sats_tracked = 0;
-					uint8_t glonass_sats_tracked = 0;
+				snprintf(s, sizeof(s), "Trk: GP: %d/%d, GL: %d/%d",
+						gps_sats_tracked, m_nmea_data.sat_info_count_gps,
+						glonass_sats_tracked, m_nmea_data.sat_info_count_glonass);
 
-					for(uint8_t i = 0; i < m_nmea_data.sat_info_count_gps; i++) {
-						if(m_nmea_data.sat_info_gps[i].snr >= 0) {
-							gps_sats_tracked++;
-						}
-					}
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
-					for(uint8_t i = 0; i < m_nmea_data.sat_info_count_glonass; i++) {
-						if(m_nmea_data.sat_info_glonass[i].snr >= 0) {
-							glonass_sats_tracked++;
-						}
-					}
-
-					snprintf(s, sizeof(s), "Trk: GP: %d/%d, GL: %d/%d",
-							gps_sats_tracked, m_nmea_data.sat_info_count_gps,
-							glonass_sats_tracked, m_nmea_data.sat_info_count_glonass);
-
-					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-					yoffset += line_height;
-					epaper_fb_move_to(0, yoffset);
-				}
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
 				break;
 
 			case DISP_STATE_TRACKER:
@@ -1652,6 +1722,7 @@ static void redraw_display(bool full_update)
 
 	epaper_update(full_update);
 }
+
 
 
 /**@brief Function for application main entry.

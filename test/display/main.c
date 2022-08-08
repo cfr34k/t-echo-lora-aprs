@@ -12,48 +12,9 @@
 
 #include "utils.h"
 #include "aprs.h"
+#include "nmea.h"
 #include "menusystem.h"
 
-
-#define NMEA_SYS_ID_INVALID 0
-#define NMEA_SYS_ID_GPS     1
-#define NMEA_SYS_ID_GLONASS 2
-#define NMEA_SYS_ID_GALILEO 3
-#define NMEA_SYS_ID_BEIDOU  4
-#define NMEA_SYS_ID_QZSS    5
-#define NMEA_SYS_ID_NAVIC   6
-
-#define NMEA_FIX_TYPE_NONE  0
-#define NMEA_FIX_TYPE_2D    1
-#define NMEA_FIX_TYPE_3D    2
-
-#define NMEA_NUM_FIX_INFO   3
-
-typedef struct
-{
-	uint8_t sys_id;
-	uint8_t fix_type;
-	bool    auto_mode;
-	uint8_t sats_used;
-} nmea_fix_info_t;
-
-typedef struct
-{
-	float lat;
-	float lon;
-	float altitude;
-	bool  pos_valid;
-
-	float speed;               // meters per second
-	float heading;             // degrees to north (0 - 360°)
-	bool  speed_heading_valid;
-
-	nmea_fix_info_t fix_info[NMEA_NUM_FIX_INFO];
-
-	float pdop;
-	float hdop;
-	float vdop;
-} nmea_data_t;
 
 static uint16_t m_bat_millivolt = 3456;
 static uint8_t  m_bat_percent = 42;
@@ -79,7 +40,81 @@ static nmea_data_t m_nmea_data = {
 	{
 		{NMEA_SYS_ID_GPS, NMEA_FIX_TYPE_3D, true, 5},
 		{NMEA_SYS_ID_GLONASS, NMEA_FIX_TYPE_2D, true, 3},
+		{NMEA_SYS_ID_INVALID, NMEA_FIX_TYPE_2D, true, 0},
 	},
+
+	{ // Sat info GPS
+		{ 9,  1},
+		{ 7,  1},
+		{ 5,  1},
+		{ 3,  1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+	},
+
+	{ // Sat info GLONASS
+		{81,  1},
+		{82,  2},
+		{83, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+		{ 0, -1},
+	},
+
+	4,
+	3,
 
 	1.0f,
 	2.0f,
@@ -122,7 +157,7 @@ typedef enum
 static display_state_t m_display_state = DISP_STATE_STARTUP;
 
 
-static const char* nmea_fix_type_to_string(uint8_t fix_type)
+const char* nmea_fix_type_to_string(uint8_t fix_type)
 {
 	switch(fix_type)
 	{
@@ -134,7 +169,7 @@ static const char* nmea_fix_type_to_string(uint8_t fix_type)
 }
 
 
-static const char* nmea_sys_id_to_short_name(uint8_t sys_id)
+const char* nmea_sys_id_to_short_name(uint8_t sys_id)
 {
 	switch(sys_id)
 	{
@@ -161,24 +196,108 @@ static void redraw_display(bool full_update)
 	uint8_t line_height = epaper_fb_get_line_height();
 	uint8_t yoffset = line_height;
 
+	// calculate GNSS satellite count
+	uint8_t gps_sats_tracked = 0;
+	uint8_t glonass_sats_tracked = 0;
+
+	uint8_t gnss_total_sats_used;
+	uint8_t gnss_total_sats_tracked;
+	uint8_t gnss_total_sats_in_view;
+
+	for(uint8_t i = 0; i < m_nmea_data.sat_info_count_gps; i++) {
+		if(m_nmea_data.sat_info_gps[i].snr >= 0) {
+			gps_sats_tracked++;
+		}
+	}
+
+	for(uint8_t i = 0; i < m_nmea_data.sat_info_count_glonass; i++) {
+		if(m_nmea_data.sat_info_glonass[i].snr >= 0) {
+			glonass_sats_tracked++;
+		}
+	}
+
+	gnss_total_sats_in_view = m_nmea_data.sat_info_count_gps + m_nmea_data.sat_info_count_glonass;
+	gnss_total_sats_tracked = gps_sats_tracked + glonass_sats_tracked;
+
+	gnss_total_sats_used = 0;
+	for(uint8_t i = 0; i < NMEA_NUM_FIX_INFO; i++) {
+		if(m_nmea_data.fix_info[i].sys_id != NMEA_SYS_ID_INVALID) {
+			gnss_total_sats_used += m_nmea_data.fix_info[i].sats_used;
+		}
+	}
+
 	epaper_fb_clear(EPAPER_COLOR_WHITE);
 
 	// status line
 	if(m_display_state != DISP_STATE_STARTUP) {
-		epaper_fb_move_to(0, line_height - 3);
+		uint8_t fill_color, line_color;
+		uint8_t gwidth, gleft, gright, gbottom, gtop;
 
-		snprintf(s, sizeof(s), "BAT: %d.%02d V",
-				m_bat_millivolt / 1000,
-				(m_bat_millivolt / 10) % 100);
+		// Satellite info box
+
+		line_color = EPAPER_COLOR_BLACK;
+		if(!(m_gps_warmup_active || m_tracker_active)) {
+			line_color |= EPAPER_COLOR_FLAG_DASHED;
+		}
+
+		gleft = 0;
+		gright = 98;
+		gbottom = yoffset;
+		gtop = yoffset - line_height;
+
+		epaper_fb_draw_rect(gleft, gtop, gright, gbottom, line_color);
+
+		// draw a stilized satellite
+
+		uint8_t center_x = line_height/2;
+		uint8_t center_y = line_height/2;
+
+		// satellite: top-left wing
+		epaper_fb_move_to(center_x-1, center_y-1);
+		epaper_fb_line_to(center_x-2, center_y-2, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-3, center_y-1, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-6, center_y-4, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-4, center_y-6, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-1, center_y-3, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-2, center_y-2, EPAPER_COLOR_BLACK);
+
+		// satellite: bottom-right wing
+		epaper_fb_move_to(center_x+1, center_y+1);
+		epaper_fb_line_to(center_x+2, center_y+2, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+3, center_y+1, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+6, center_y+4, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+4, center_y+6, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+1, center_y+3, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+2, center_y+2, EPAPER_COLOR_BLACK);
+
+		// satellite: body
+		epaper_fb_move_to(center_x+1, center_y-3);
+		epaper_fb_line_to(center_x+3, center_y-1, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-1, center_y+3, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-3, center_y+1, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+1, center_y-3, EPAPER_COLOR_BLACK);
+
+		// satellite: antenna
+		epaper_fb_move_to(center_x-2, center_y+2);
+		epaper_fb_line_to(center_x-3, center_y+3, EPAPER_COLOR_BLACK);
+		epaper_fb_move_to(center_x-5, center_y+2);
+		epaper_fb_line_to(center_x-4, center_y+2, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-2, center_y+4, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-2, center_y+5, EPAPER_COLOR_BLACK);
+
+		epaper_fb_move_to(gleft + 22, gbottom - 5);
+
+		snprintf(s, sizeof(s), "%d/%d/%d",
+				gnss_total_sats_used, gnss_total_sats_tracked, gnss_total_sats_in_view);
 
 		epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 		// battery graph
-		uint8_t gwidth = 28;
-		uint8_t gleft = epaper_fb_get_cursor_pos_x() + 6;
-		uint8_t gright = gleft + gwidth;
-		uint8_t gbottom = yoffset - 2;
-		uint8_t gtop = yoffset + 4 - line_height;
+		gwidth = 35;
+		gleft = 160;
+		gright = gleft + gwidth;
+		gbottom = yoffset - 2;
+		gtop = yoffset + 4 - line_height;
 
 		epaper_fb_draw_rect(gleft, gtop, gright, gbottom, EPAPER_COLOR_BLACK);
 
@@ -187,9 +306,12 @@ static void redraw_display(bool full_update)
 				gleft + (uint32_t)gwidth * (uint32_t)m_bat_percent / 100UL, gbottom,
 				EPAPER_COLOR_BLACK);
 
-		// RX status block
-		uint8_t fill_color, line_color;
+		epaper_fb_fill_rect(
+				gright, (gtop+gbottom)/2 - 3,
+				gright + 3, (gtop+gbottom)/2 + 3,
+				EPAPER_COLOR_BLACK);
 
+		// RX status block
 		if(m_lora_rx_busy) {
 			fill_color = EPAPER_COLOR_BLACK;
 			line_color = EPAPER_COLOR_WHITE;
@@ -202,8 +324,8 @@ static void redraw_display(bool full_update)
 			line_color |= EPAPER_COLOR_FLAG_DASHED;
 		}
 
-		gleft = EPAPER_WIDTH - 30;
-		gright = EPAPER_WIDTH - 1;
+		gleft = 130;
+		gright = 158;
 		gbottom = yoffset;
 		gtop = yoffset - line_height;
 
@@ -226,8 +348,8 @@ static void redraw_display(bool full_update)
 			line_color |= EPAPER_COLOR_FLAG_DASHED;
 		}
 
-		gleft = EPAPER_WIDTH - 63;
-		gright = EPAPER_WIDTH - 34;
+		gleft = 100;
+		gright = 128;
 		gbottom = yoffset;
 		gtop = yoffset - line_height;
 
@@ -240,7 +362,7 @@ static void redraw_display(bool full_update)
 		epaper_fb_move_to(0, yoffset + 2);
 		epaper_fb_line_to(EPAPER_WIDTH, yoffset + 2, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
 
-		yoffset += line_height + 2;
+		yoffset += line_height + 3;
 	}
 
 	// menusystem overrides everything while it is active.
@@ -307,7 +429,7 @@ static void redraw_display(bool full_update)
 				epaper_fb_move_to(0, 170);
 				epaper_fb_draw_string("Lora-APRS by DL5TKL", EPAPER_COLOR_BLACK);
 				epaper_fb_move_to(0, 190);
-				epaper_fb_draw_string("v" VERSION, EPAPER_COLOR_BLACK);
+				epaper_fb_draw_string(VERSION, EPAPER_COLOR_BLACK);
 				break;
 
 			case DISP_STATE_GPS:
@@ -368,6 +490,15 @@ static void redraw_display(bool full_update)
 
 				snprintf(s, sizeof(s), "DOP H: %s V: %s P: %s",
 						tmp1, tmp2, tmp3);
+
+				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+				yoffset += line_height;
+				epaper_fb_move_to(0, yoffset);
+
+				snprintf(s, sizeof(s), "Trk: GP: %d/%d, GL: %d/%d",
+						gps_sats_tracked, m_nmea_data.sat_info_count_gps,
+						glonass_sats_tracked, m_nmea_data.sat_info_count_glonass);
 
 				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
@@ -471,6 +602,10 @@ static void redraw_display(bool full_update)
 					epaper_fb_move_to(0, yoffset);
 
 					strncpy(s, m_aprs_decoded_message.comment, sizeof(s));
+					if(strlen(s) > 20) {
+						s[18] = '\0';
+						strcat(s, "...");
+					}
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 					yoffset += line_height;
@@ -554,6 +689,7 @@ static void redraw_display(bool full_update)
 
 	epaper_update(full_update);
 }
+
 
 void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 {
