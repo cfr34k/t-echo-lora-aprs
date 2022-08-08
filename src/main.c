@@ -1266,10 +1266,19 @@ static void redraw_display(bool full_update)
 		uint8_t fill_color, line_color;
 		uint8_t gwidth, gleft, gright, gbottom, gtop;
 
+		bool gps_active = (m_gps_warmup_active || m_tracker_active);
+
 		// Satellite info box
 
-		line_color = EPAPER_COLOR_BLACK;
-		if(!(m_gps_warmup_active || m_tracker_active)) {
+		if(m_nmea_data.pos_valid && gps_active) {
+			fill_color = EPAPER_COLOR_BLACK;
+			line_color = EPAPER_COLOR_WHITE;
+		} else {
+			fill_color = EPAPER_COLOR_WHITE;
+			line_color = EPAPER_COLOR_BLACK;
+		}
+
+		if(!gps_active) {
 			line_color |= EPAPER_COLOR_FLAG_DASHED;
 		}
 
@@ -1278,52 +1287,55 @@ static void redraw_display(bool full_update)
 		gbottom = yoffset;
 		gtop = yoffset - line_height;
 
+		epaper_fb_fill_rect(gleft, gtop, gright, gbottom, fill_color);
 		epaper_fb_draw_rect(gleft, gtop, gright, gbottom, line_color);
 
 		// draw a stilized satellite
+
+		line_color &= (~EPAPER_COLOR_FLAG_DASHED);
 
 		uint8_t center_x = line_height/2;
 		uint8_t center_y = line_height/2;
 
 		// satellite: top-left wing
 		epaper_fb_move_to(center_x-1, center_y-1);
-		epaper_fb_line_to(center_x-2, center_y-2, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x-3, center_y-1, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x-6, center_y-4, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x-4, center_y-6, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x-1, center_y-3, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x-2, center_y-2, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-2, center_y-2, line_color);
+		epaper_fb_line_to(center_x-3, center_y-1, line_color);
+		epaper_fb_line_to(center_x-6, center_y-4, line_color);
+		epaper_fb_line_to(center_x-4, center_y-6, line_color);
+		epaper_fb_line_to(center_x-1, center_y-3, line_color);
+		epaper_fb_line_to(center_x-2, center_y-2, line_color);
 
 		// satellite: bottom-right wing
 		epaper_fb_move_to(center_x+1, center_y+1);
-		epaper_fb_line_to(center_x+2, center_y+2, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x+3, center_y+1, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x+6, center_y+4, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x+4, center_y+6, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x+1, center_y+3, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x+2, center_y+2, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+2, center_y+2, line_color);
+		epaper_fb_line_to(center_x+3, center_y+1, line_color);
+		epaper_fb_line_to(center_x+6, center_y+4, line_color);
+		epaper_fb_line_to(center_x+4, center_y+6, line_color);
+		epaper_fb_line_to(center_x+1, center_y+3, line_color);
+		epaper_fb_line_to(center_x+2, center_y+2, line_color);
 
 		// satellite: body
 		epaper_fb_move_to(center_x+1, center_y-3);
-		epaper_fb_line_to(center_x+3, center_y-1, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x-1, center_y+3, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x-3, center_y+1, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x+1, center_y-3, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x+3, center_y-1, line_color);
+		epaper_fb_line_to(center_x-1, center_y+3, line_color);
+		epaper_fb_line_to(center_x-3, center_y+1, line_color);
+		epaper_fb_line_to(center_x+1, center_y-3, line_color);
 
 		// satellite: antenna
 		epaper_fb_move_to(center_x-2, center_y+2);
-		epaper_fb_line_to(center_x-3, center_y+3, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-3, center_y+3, line_color);
 		epaper_fb_move_to(center_x-5, center_y+2);
-		epaper_fb_line_to(center_x-4, center_y+2, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x-2, center_y+4, EPAPER_COLOR_BLACK);
-		epaper_fb_line_to(center_x-2, center_y+5, EPAPER_COLOR_BLACK);
+		epaper_fb_line_to(center_x-4, center_y+2, line_color);
+		epaper_fb_line_to(center_x-2, center_y+4, line_color);
+		epaper_fb_line_to(center_x-2, center_y+5, line_color);
 
 		epaper_fb_move_to(gleft + 22, gbottom - 5);
 
 		snprintf(s, sizeof(s), "%d/%d/%d",
 				gnss_total_sats_used, gnss_total_sats_tracked, gnss_total_sats_in_view);
 
-		epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+		epaper_fb_draw_string(s, line_color);
 
 		// battery graph
 		gwidth = 35;
@@ -1722,7 +1734,6 @@ static void redraw_display(bool full_update)
 
 	epaper_update(full_update);
 }
-
 
 
 /**@brief Function for application main entry.
