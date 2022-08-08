@@ -37,6 +37,30 @@ standby (reachable via BLE; standby time depends on hardware configuration).
   - Configure source call sign, APRS symbol, and comment.
   - Notification support for received APRS messages.
 
+## Screenshots
+
+Here are some screenshots of a pre-v0.3 development version from the [display
+simulator](./test/display/) I use to develop the display layout. The data shown
+is obviously fake, but the screen layout on the device is identical.
+
+The startup screen:
+
+![Startup screen showing logo and version](screenshots/startup.png)
+
+GNSS and tracker status:
+
+![GNSS status](screenshots/gnss_status.png)
+![Tracker status](screenshots/gnss_status.png)
+
+Screen shown when a packet is successfully received and decoded. It shows the course and distance to the other station:
+
+![Received packet screen](screenshots/received_packet.png)
+
+Impressions from the menu system:
+
+![Main menu](screenshots/menu_main.png)
+![Symbol selection menu](screenshots/menu_symbol_select.png)
+
 ## Disclaimer
 
 I provide this firmware in the hope that it will be useful. However I can not
