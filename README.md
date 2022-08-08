@@ -219,9 +219,38 @@ available:
 | `00000103-b493-bb5d-2a6a-4682945c9e00` | APRS symbol (Table + Icon selector) | Text     | 2 characters    | Read, write  | `/.` (red X on the map) |
 | `00000104-b493-bb5d-2a6a-4682945c9e00` | Raw received message                | Binary   | 1-247 bytes     | Read, notify | `<\xff\x01DE0ABC-5>APZTK1:…` |
 
-Unfortunately, there is no simple way (like a dedicated app) yet to set up the
-device. However, you can use a generic BLE exploration/debugging app like [nRF
-Connect for
+#### Python-based client
+
+A simple Python script based on the [Bleak BLE
+library](https://bleak.readthedocs.io/en/stable/index.html) is available for
+configuring the device. It should work on any platform that Bleak works on, but
+I can only test it on Linux.
+
+To use the script, first install the correct version of Bleak (consider using a
+[Python Virtual Environment](https://docs.python.org/3/library/venv.html)):
+
+```sh
+pip install -r tools/ble_client/requirements.txt
+```
+
+Then, run the script:
+
+```sh
+cd tools/ble_client/
+./techo_client.py
+```
+
+The script provides a simple menu system with indexed entries. To select an
+entry, just type the corresponding index when prompted to do so.
+
+When started, the script will first scan for T-Echos and list all that were
+found. You pick one and the script connects to it. You can then select from
+various actions, including listing and changing the current settings.
+
+#### Generic configuration options
+
+If you cannot use the Python script described above, you can try a generic BLE
+exploration/debugging app like [nRF Connect for
 Mobile](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-mobile)
 to write the available BLE characteristics.
 
