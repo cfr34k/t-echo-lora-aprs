@@ -256,7 +256,7 @@ ret_code_t aprs_service_set_symbol(aprs_service_t * p_srv, char table, char symb
 	uint8_t buf[2] = {table, symbol};
 	ble_gatts_value_t value = {sizeof(buf), 0, buf};
 
-	return sd_ble_gatts_value_get(BLE_CONN_HANDLE_INVALID, p_srv->symbol_char_handles.value_handle, &value);
+	return sd_ble_gatts_value_set(BLE_CONN_HANDLE_INVALID, p_srv->symbol_char_handles.value_handle, &value);
 }
 
 
