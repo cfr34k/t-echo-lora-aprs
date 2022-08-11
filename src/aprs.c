@@ -64,26 +64,26 @@ const char * const m_icon_names[APRS_NUM_ICONS] = {
 	"Ship",         // AI_SHIP
 };
 
-float m_lat;
-float m_lon;
-float m_alt_m;
-time_t m_time;
+static float m_lat;
+static float m_lon;
+static float m_alt_m;
+static time_t m_time;
 
-char m_dest[16];
-char m_src[16];
+static char m_dest[16];
+static char m_src[16];
 
-char    m_path[8][16];
-uint8_t m_npath;
+static char    m_path[8][16];
+static uint8_t m_npath;
 
-uint8_t m_info[APRS_MAX_INFO_LEN];
+static uint8_t m_info[APRS_MAX_INFO_LEN];
 
-char m_table;
-char m_icon;
-char m_comment[APRS_MAX_COMMENT_LEN+1];
+static char m_table;
+static char m_icon;
+static char m_comment[APRS_MAX_COMMENT_LEN+1];
 
-char m_error_message[256];
+static char m_error_message[256];
 
-uint32_t m_config_flags;
+static uint32_t m_config_flags;
 
 
 static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
