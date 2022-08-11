@@ -305,7 +305,8 @@ static void update_info_field(uint32_t frame_id)
 	*infoptr = '\0';
 
 	/* add altitude for uncompressed packets (already included in compressed format) */
-	if(!(m_config_flags & APRS_FLAG_COMPRESS_LOCATION)) {
+	if(!(m_config_flags & APRS_FLAG_COMPRESS_LOCATION)
+			&& (m_config_flags & APRS_FLAG_ADD_ALTITUDE)) {
 		retptr = encode_altitude_readable(infoptr, info_end - infoptr);
 		if(retptr) {
 			infoptr = retptr;
@@ -338,8 +339,8 @@ void aprs_init(void)
 	m_comment[0] = '\0';
 	m_comment[APRS_MAX_COMMENT_LEN] = '\0';
 
-	// default flags
-	m_config_flags = APRS_FLAG_ADD_DAO | APRS_FLAG_ADD_FRAME_COUNTER | APRS_FLAG_COMPRESS_LOCATION;
+	// default flags (compatible with v0.3)
+	m_config_flags = APRS_FLAG_ADD_FRAME_COUNTER | APRS_FLAG_ADD_ALTITUDE;
 }
 
 void aprs_set_dest(const char *dest)
@@ -457,6 +458,32 @@ size_t aprs_build_frame(uint8_t *frame, uint32_t frame_id)
 	*frameptr = '\0';
 
 	return (size_t)(frameptr - frame);
+}
+
+
+uint32_t aprs_get_config_flags(void)
+{
+	return m_config_flags;
+}
+
+void aprs_set_config_flags(uint32_t new_flags)
+{
+	m_config_flags = new_flags;
+}
+
+void aprs_enable_config_flag(aprs_flag_t flag)
+{
+	m_config_flags |= flag;
+}
+
+void aprs_disable_config_flag(aprs_flag_t flag)
+{
+	m_config_flags &= ~flag;
+}
+
+void aprs_toggle_config_flag(aprs_flag_t flag)
+{
+	m_config_flags ^= flag;
 }
 
 

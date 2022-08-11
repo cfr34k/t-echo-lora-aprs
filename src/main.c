@@ -900,6 +900,17 @@ void cb_settings(settings_evt_t evt, settings_id_t id)
 				NRF_LOG_WARNING("Error while loading LoRa power: 0x%08x", err_code);
 				// use default power set in lora_init().
 			}
+
+			len = sizeof(buffer);
+			err_code = settings_query(SETTINGS_ID_APRS_FLAGS, buffer, &len);
+			if(err_code == NRF_SUCCESS) {
+				uint32_t flags = *(uint32_t*)buffer;
+				NRF_LOG_INFO("APRS flags loaded: 0x%08x", flags);
+				aprs_set_config_flags(flags);
+			} else {
+				NRF_LOG_WARNING("Error while loading APRS flags: 0x%08x", err_code);
+				// use default flags set in aprs_init().
+			}
 			break;
 
 		case SETTINGS_EVT_UPDATE_COMPLETE:
@@ -969,6 +980,10 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 				uint8_t buf = data->lora_power.power;
 				settings_write(SETTINGS_ID_LORA_POWER, &buf, sizeof(buf));
 			}
+			break;
+
+		case MENUSYSTEM_EVT_APRS_FLAGS_CHANGED:
+			settings_write(SETTINGS_ID_APRS_FLAGS, (uint8_t*)&data->aprs_flags.flags, sizeof(data->aprs_flags.flags));
 			break;
 
 		default:

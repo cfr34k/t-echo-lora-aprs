@@ -18,7 +18,7 @@
 #define MAIN_ENTRY_IDX_TRACKER       2
 #define MAIN_ENTRY_IDX_GNSS_WARMUP   3
 #define MAIN_ENTRY_IDX_POWER         4
-#define MAIN_ENTRY_IDX_SYMBOL        5
+#define MAIN_ENTRY_IDX_APRS          5
 #define MAIN_ENTRY_IDX_INFO          6
 
 #define SYMBOL_SELECT_ENTRY_IDX_JOGGER      1
@@ -31,6 +31,12 @@
 #define INFO_ENTRY_IDX_APRS_SOURCE       2
 #define INFO_ENTRY_IDX_APRS_DEST         3
 #define INFO_ENTRY_IDX_APRS_SYMBOL       4
+
+#define APRS_CONFIG_ENTRY_IDX_COMPRESSED        1
+#define APRS_CONFIG_ENTRY_IDX_ALTITUDE          2
+#define APRS_CONFIG_ENTRY_IDX_PACKET_ID         3
+#define APRS_CONFIG_ENTRY_IDX_DAO               4
+#define APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL       5
 
 typedef struct menuentry_s menuentry_t;
 typedef struct menu_s menu_t;
@@ -46,6 +52,9 @@ struct menuentry_s
 
 struct menu_s
 {
+	menu_t      *prev_menu;
+	size_t       prev_selected_entry;
+
 	menuentry_t  entries[8];
 	size_t       n_entries;
 };
@@ -54,11 +63,12 @@ static menusystem_callback_t m_callback;
 
 static menu_t m_main_menu;
 static menu_t m_power_select_menu;
+static menu_t m_aprs_config_menu;
 static menu_t m_symbol_select_menu;
 static menu_t m_info_menu;
 
-static size_t  m_selected_entry, m_prev_selected_entry;
-static menu_t *m_active_menu, *m_prev_menu;
+static size_t  m_selected_entry;
+static menu_t *m_active_menu;
 
 
 // import some variables from main.c to make updating the menu easier
@@ -69,8 +79,8 @@ extern bool m_gps_warmup_active;
 
 static void enter_submenu(menu_t *menu, size_t initial_index)
 {
-	m_prev_menu = m_active_menu;
-	m_prev_selected_entry = m_selected_entry;
+	menu->prev_menu = m_active_menu;
+	menu->prev_selected_entry = m_selected_entry;
 	m_active_menu = menu;
 	m_selected_entry = initial_index;
 	m_callback(MENUSYSTEM_EVT_REDRAW_REQUIRED, NULL);
@@ -79,14 +89,16 @@ static void enter_submenu(menu_t *menu, size_t initial_index)
 
 static void leave_submenu(void)
 {
-	m_active_menu = m_prev_menu;
-	m_selected_entry = m_prev_selected_entry;
+	m_selected_entry = m_active_menu->prev_selected_entry;
+	m_active_menu = m_active_menu->prev_menu;
+
 	m_callback(MENUSYSTEM_EVT_REDRAW_REQUIRED, NULL);
 }
 
 
 static void menusystem_update_values(void)
 {
+	// main menu
 	menuentry_t *entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_RX]);
 	if(m_lora_rx_active) {
 		strncpy(entry->value, "on", sizeof(entry->value));
@@ -108,10 +120,42 @@ static void menusystem_update_values(void)
 		strncpy(entry->value, "off", sizeof(entry->value));
 	}
 
-	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL]);
+	// aprs config menu
+	uint32_t aprs_flags = aprs_get_config_flags();
+
+	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_COMPRESSED]);
+	if(aprs_flags & APRS_FLAG_COMPRESS_LOCATION) {
+		strncpy(entry->value,  "on", sizeof(entry->value));
+	} else {
+		strncpy(entry->value,  "off", sizeof(entry->value));
+	}
+
+	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_ALTITUDE]);
+	if(aprs_flags & APRS_FLAG_ADD_ALTITUDE) {
+		strncpy(entry->value,  "on", sizeof(entry->value));
+	} else {
+		strncpy(entry->value,  "off", sizeof(entry->value));
+	}
+
+	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_DAO]);
+	if(aprs_flags & APRS_FLAG_ADD_DAO) {
+		strncpy(entry->value,  "on", sizeof(entry->value));
+	} else {
+		strncpy(entry->value,  "off", sizeof(entry->value));
+	}
+
+	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_PACKET_ID]);
+	if(aprs_flags & APRS_FLAG_ADD_FRAME_COUNTER) {
+		strncpy(entry->value,  "on", sizeof(entry->value));
+	} else {
+		strncpy(entry->value,  "off", sizeof(entry->value));
+	}
+
+	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL]);
 	aprs_get_icon(&(entry->value[0]), &(entry->value[1]));
 	entry->value[2] = '\0';
 
+	// info menu
 	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_SOURCE]);
 	aprs_get_source(entry->value, sizeof(entry->value));
 
@@ -119,10 +163,11 @@ static void menusystem_update_values(void)
 	aprs_get_dest(entry->value, sizeof(entry->value));
 
 	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL]);
-	strcpy(entry->value, m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL].value); // already filled, see above
+	strcpy(entry->value, m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].value); // already filled, see above
 
 	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_POWER]);
 	strncpy(entry->value, lora_power_to_str(lora_get_power()), sizeof(entry->value));
+
 }
 
 
@@ -167,8 +212,8 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 			enter_submenu(&m_power_select_menu, 0);
 			break;
 
-		case MAIN_ENTRY_IDX_SYMBOL:
-			enter_submenu(&m_symbol_select_menu, 0);
+		case MAIN_ENTRY_IDX_APRS:
+			enter_submenu(&m_aprs_config_menu, 0);
 			break;
 
 		case MAIN_ENTRY_IDX_INFO:
@@ -179,6 +224,58 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 			m_selected_entry = 0;
 			m_callback(MENUSYSTEM_EVT_REDRAW_REQUIRED, NULL);
 			break;
+	}
+}
+
+
+static void menu_handler_aprs_config(menu_t *menu, menuentry_t *entry)
+{
+	size_t entry_idx = entry - &(menu->entries[0]);
+
+	bool flags_changed = false;
+
+	switch(entry_idx) {
+		case ENTRY_IDX_EXIT:
+			leave_submenu();
+			break;
+
+		case APRS_CONFIG_ENTRY_IDX_COMPRESSED:
+			aprs_toggle_config_flag(APRS_FLAG_COMPRESS_LOCATION);
+			flags_changed = true;
+			break;
+
+		case APRS_CONFIG_ENTRY_IDX_DAO:
+			aprs_toggle_config_flag(APRS_FLAG_ADD_DAO);
+			flags_changed = true;
+			break;
+
+		case APRS_CONFIG_ENTRY_IDX_PACKET_ID:
+			aprs_toggle_config_flag(APRS_FLAG_ADD_FRAME_COUNTER);
+			flags_changed = true;
+			break;
+
+		case APRS_CONFIG_ENTRY_IDX_ALTITUDE:
+			aprs_toggle_config_flag(APRS_FLAG_ADD_ALTITUDE);
+			flags_changed = true;
+			break;
+
+		case APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL:
+			enter_submenu(&m_symbol_select_menu, 0);
+			break;
+
+		default:
+			m_selected_entry = 0;
+			m_callback(MENUSYSTEM_EVT_REDRAW_REQUIRED, NULL);
+			break;
+	}
+
+	if(flags_changed) {
+		menusystem_evt_data_t evt_data;
+
+		evt_data.aprs_flags.flags = aprs_get_config_flags();
+		m_callback(MENUSYSTEM_EVT_APRS_FLAGS_CHANGED, &evt_data);
+
+		menusystem_update_values();
 	}
 }
 
@@ -268,9 +365,9 @@ void menusystem_init(menusystem_callback_t callback)
 	m_main_menu.entries[MAIN_ENTRY_IDX_POWER].text = "TX Power >";
 	m_main_menu.entries[MAIN_ENTRY_IDX_POWER].value[0] = '\0';
 
-	m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL].handler = menu_handler_main;
-	m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL].text = "Symbol >";
-	m_main_menu.entries[MAIN_ENTRY_IDX_SYMBOL].value[0] = '\0';
+	m_main_menu.entries[MAIN_ENTRY_IDX_APRS].handler = menu_handler_main;
+	m_main_menu.entries[MAIN_ENTRY_IDX_APRS].text = "APRS Config >";
+	m_main_menu.entries[MAIN_ENTRY_IDX_APRS].value[0] = '\0';
 
 	m_main_menu.entries[MAIN_ENTRY_IDX_INFO].handler = menu_handler_main;
 	m_main_menu.entries[MAIN_ENTRY_IDX_INFO].text = "Info >";
@@ -290,6 +387,33 @@ void menusystem_init(menusystem_callback_t callback)
 		m_power_select_menu.entries[menu_idx].text = lora_power_to_str(pwr);
 		m_power_select_menu.entries[menu_idx].value[0] = '\0';
 	}
+
+	// prepare the APRS config menu
+	m_aprs_config_menu.n_entries = 6;
+
+	m_aprs_config_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_aprs_config;
+	m_aprs_config_menu.entries[ENTRY_IDX_EXIT].text = "<<< Back";
+	m_aprs_config_menu.entries[ENTRY_IDX_EXIT].value[0] = '\0';
+
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_COMPRESSED].handler = menu_handler_aprs_config;
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_COMPRESSED].text = "Compressed format";
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_COMPRESSED].value[0] = '\0';
+
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_ALTITUDE].handler = menu_handler_aprs_config;
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_ALTITUDE].text = "Altitude";
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_ALTITUDE].value[0] = '\0';
+
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_DAO].handler = menu_handler_aprs_config;
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_DAO].text = "DAO";
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_DAO].value[0] = '\0';
+
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_PACKET_ID].handler = menu_handler_aprs_config;
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_PACKET_ID].text = "Frame counter";
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_PACKET_ID].value[0] = '\0';
+
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].handler = menu_handler_aprs_config;
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].text = "Symbol >>>";
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].value[0] = '\0';
 
 	// prepare the symbol select menu
 	m_symbol_select_menu.n_entries = 6;

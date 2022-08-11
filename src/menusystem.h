@@ -43,6 +43,7 @@ typedef enum
 	MENUSYSTEM_EVT_GNSS_WARMUP_DISABLE,
 	MENUSYSTEM_EVT_APRS_SYMBOL_CHANGED,
 	MENUSYSTEM_EVT_LORA_POWER_CHANGED,
+	MENUSYSTEM_EVT_APRS_FLAGS_CHANGED,
 } menusystem_evt_t;
 
 /** @brief Event-related data. */
@@ -53,6 +54,11 @@ typedef union
 		char table;
 		char symbol;
 	} aprs_symbol;
+
+	struct
+	{
+		uint32_t flags;
+	} aprs_flags;
 
 	struct
 	{

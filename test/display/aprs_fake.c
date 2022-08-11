@@ -8,6 +8,8 @@ static char m_icon;
 static char m_dest[32];
 static char m_src[32];
 
+static uint32_t m_config_flags;
+
 void aprs_get_icon(char *table, char *icon)
 {
 	*table = m_table;
@@ -49,4 +51,30 @@ void aprs_set_source(const char *call)
 void aprs_get_source(char *source, size_t source_len)
 {
 	strncpy(source, m_src, source_len);
+}
+
+
+uint32_t aprs_get_config_flags(void)
+{
+	return m_config_flags;
+}
+
+void aprs_set_config_flags(uint32_t new_flags)
+{
+	m_config_flags = new_flags;
+}
+
+void aprs_enable_config_flag(aprs_flag_t flag)
+{
+	m_config_flags |= flag;
+}
+
+void aprs_disable_config_flag(aprs_flag_t flag)
+{
+	m_config_flags &= ~flag;
+}
+
+void aprs_toggle_config_flag(aprs_flag_t flag)
+{
+	m_config_flags ^= flag;
 }

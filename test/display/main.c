@@ -736,6 +736,10 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 			printf("New APRS symbol: table = %c, symbol = %c\n", data->aprs_symbol.table, data->aprs_symbol.symbol);
 			break;
 
+		case MENUSYSTEM_EVT_APRS_FLAGS_CHANGED:
+			printf("New APRS flags: 0x%08x\n", data->aprs_flags.flags);
+			break;
+
 		default:
 			break;
 	}

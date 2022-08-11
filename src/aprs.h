@@ -61,6 +61,7 @@ typedef enum {
 	APRS_FLAG_COMPRESS_LOCATION = (1 << 0),
 	APRS_FLAG_ADD_DAO           = (1 << 1),
 	APRS_FLAG_ADD_FRAME_COUNTER = (1 << 2),
+	APRS_FLAG_ADD_ALTITUDE      = (1 << 3),
 } aprs_flag_t;
 
 
@@ -94,6 +95,12 @@ void aprs_set_icon_default(aprs_icon_t icon);
 void aprs_set_comment(const char *comment);
 bool aprs_can_build_frame(void);
 size_t aprs_build_frame(uint8_t *frame, uint32_t frame_id);
+
+uint32_t aprs_get_config_flags(void);
+void aprs_set_config_flags(uint32_t new_flags);
+void aprs_enable_config_flag(aprs_flag_t flag);
+void aprs_disable_config_flag(aprs_flag_t flag);
+void aprs_toggle_config_flag(aprs_flag_t flag);
 
 bool aprs_parse_frame(const uint8_t *frame, size_t len, aprs_frame_t *result);
 const char* aprs_get_parser_error(void);
