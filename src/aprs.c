@@ -26,6 +26,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <math.h>
+
 #include "aprs.h"
 
 const char m_icon_map[APRS_NUM_ICONS] = {
@@ -159,7 +161,7 @@ static char* encode_position_readable(char *str, size_t max_len)
 		dao[0] = '\0';
 	}
 
-	int ret = snprintf(str, max_len, "!%02i%02i.%02i%c%c%03i%02i.%02i%c%c%s",
+	int ret = snprintf(str, max_len, "%02i%02i.%02i%c%c%03i%02i.%02i%c%c%s",
 			lat_deg, lat_min, lat_min_fract, lat_ns, m_table,
 			lon_deg, lon_min, lon_min_fract, lon_ew, m_icon,
 			dao);
@@ -175,7 +177,66 @@ static char* encode_position_readable(char *str, size_t max_len)
 
 static char* encode_position_compressed(char *str, size_t max_len)
 {
-	return NULL; // not implemented yet
+	/*
+	 * compressed format: /YYYYXXXX$csT
+	 * where:
+	 * /    = symbol table
+	 * YYYY = compressed latitude (base-91 encoded)
+	 * XXXX = compressed longitude (base-91 encoded)
+	 * $    = icon
+	 * cs   = compressed altitude (alternatives: course/speed, radio range)
+	 * T    = compression type (bitmask, base-91 encoded)
+	 */
+
+	if(max_len < 13) {
+		return str; // length too small for fixed-length field. Do nothing.
+	}
+
+	// set APRS symbol
+	str[0] = m_table;
+	str[9] = m_icon;
+
+	// compressed latitude calculation
+	uint32_t lat_compressed = (90.0f - m_lat) * 380926.0f;
+
+	// base-91 encoding
+	for(uint8_t i = 0; i < 4; i++) {
+		str[4 - i] = '!' + (lat_compressed % 91);
+		lat_compressed /= 91;
+	}
+
+	// compressed longitude calculation
+	uint32_t lon_compressed = (180.0f + m_lon) * 190463.0f;
+
+	// base-91 encoding
+	for(uint8_t i = 0; i < 4; i++) {
+		str[8 - i] = '!' + (lon_compressed % 91);
+		lon_compressed /= 91;
+	}
+
+	// compressed altitude calculation
+	// encoded value = log_1.002(altitude in feet)
+
+	float alt_ft = m_alt_m / 0.3048f;
+	if(alt_ft < 1) {
+		alt_ft = 1; // prevent exception in the logarithm
+	}
+
+	uint32_t alt_encoded = (uint32_t)(logf(alt_ft) / 0.00199800266f); // the magic constant is ln(1.002)
+
+	str[10] = '!' + (alt_encoded / 91) % 91;
+	str[11] = '!' + alt_encoded % 91;
+
+	// Type byte
+	uint8_t type = (1 << 5) /* current position */
+	             | (2 << 3) /* source = GGA (necessary for altitude encoding) */
+	             | (0 << 0) /* origin = compressed */;
+
+	str[12] = '!' + type;
+
+	str[13] = '\0';
+
+	return str + 13;
 }
 
 static char* encode_altitude_readable(char *str, size_t max_len)
@@ -215,6 +276,10 @@ static void update_info_field(uint32_t frame_id)
 	char *info_end = (char*)m_info + sizeof(m_info);
 	char *infoptr = (char*)m_info;
 	char *retptr;
+
+	/* packet type: position, no APRS messaging */
+	*infoptr = '!';
+	infoptr++;
 
 	/* encode position */
 
@@ -274,7 +339,7 @@ void aprs_init(void)
 	m_comment[APRS_MAX_COMMENT_LEN] = '\0';
 
 	// default flags
-	m_config_flags = APRS_FLAG_ADD_DAO | APRS_FLAG_ADD_FRAME_COUNTER;
+	m_config_flags = APRS_FLAG_ADD_DAO | APRS_FLAG_ADD_FRAME_COUNTER | APRS_FLAG_COMPRESS_LOCATION;
 }
 
 void aprs_set_dest(const char *dest)
