@@ -455,7 +455,7 @@ static ret_code_t handle_state_exit(void)
 
 		case LORA_STATE_READ_PACKET_INFO:
 			m_evt_data.rx_packet_data.rssi       = -((float)m_buffer_rx[2] / 2);
-			m_evt_data.rx_packet_data.snr        =  ((float)m_buffer_rx[3] / 4);
+			m_evt_data.rx_packet_data.snr        =  ((float)(int8_t)m_buffer_rx[3] / 4);
 			m_evt_data.rx_packet_data.signalRssi = -((float)m_buffer_rx[4] / 2);
 			break;
 
