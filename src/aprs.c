@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <ctype.h>
 
 #include <math.h>
 
@@ -507,7 +508,7 @@ static int extract_text_until(const char *start, char marker, char *dest, size_t
 }
 
 
-static int parse_location_and_symbol(const char *start, float *lat, float *lon, char *table, char *symbol)
+static int parse_location_and_symbol_readable(const char *start, aprs_frame_t *result)
 {
 	const char *orig_start = start;
 
@@ -538,10 +539,10 @@ static int parse_location_and_symbol(const char *start, float *lat, float *lon, 
 
 	start += 5;
 
-	*lat = (float)deg + minutes / 60.0f;
+	result->lat = (float)deg + minutes / 60.0f;
 
 	if(*start == 'S') {
-		*lat = -*lat;
+		result->lat = -result->lat;
 	} else if(*start != 'N') {
 		snprintf(m_error_message, sizeof(m_error_message), "Location error: Invalid latitude polarity: '%c'.", *start);
 		return -1;
@@ -549,7 +550,7 @@ static int parse_location_and_symbol(const char *start, float *lat, float *lon, 
 
 	start++;
 
-	*table = *start;
+	result->table = *start;
 	start++;
 
 	// same as above for the longitude
@@ -578,10 +579,10 @@ static int parse_location_and_symbol(const char *start, float *lat, float *lon, 
 
 	start += 5;
 
-	*lon = (float)deg + minutes / 60.0f;
+	result->lon = (float)deg + minutes / 60.0f;
 
 	if(*start == 'W') {
-		*lon = -*lon;
+		result->lon = -result->lon;
 	} else if(*start != 'E') {
 		snprintf(m_error_message, sizeof(m_error_message), "Location error: Invalid longitude polarity: '%c'.", *start);
 		return -1;
@@ -589,10 +590,120 @@ static int parse_location_and_symbol(const char *start, float *lat, float *lon, 
 
 	start++;
 
-	*symbol = *start;
+	result->symbol = *start;
 	start++;
 
 	return start - orig_start; // number of parsed characters
+}
+
+
+static int parse_location_and_symbol_compressed(const char *start, aprs_frame_t *result)
+{
+	// quick check: ensure that all 13 characters are printable ASCII characters
+	for(uint8_t i = 0; i < 13; i++) {
+		if(!isprint((int)start[i])) {
+			snprintf(m_error_message, sizeof(m_error_message), "Compressed location: Non-printable character at index %d: 0x%02x.", i, start[i]);
+			return -1;
+		}
+	}
+
+	result->table = start[0];
+	result->symbol = start[9];
+
+	// check the compression type byte
+	uint8_t type = start[12] - '!';
+	bool has_altitude = ((type & 0x18) == 0x10);
+
+	if((type & 0xC0) != 0) {
+		snprintf(m_error_message, sizeof(m_error_message), "Compression type: unused bits are not 0: 0x%02x.", type);
+		return -1;
+	}
+
+	// recover the altitude if available
+	if(has_altitude) {
+		uint32_t alt_encoded = (start[10] - '!') * 91 + (start[11] - '!');
+		result->alt = powf(1.002f, alt_encoded) * 0.3048f; // decode and convert to meters
+	}
+
+	// recover latitude and longitude
+	uint32_t lat_encoded = 0;
+	uint32_t lon_encoded = 0;
+
+	for(uint8_t i = 0; i < 4; i++) {
+		lat_encoded *= 91;
+		lat_encoded += start[1 + i] - '!';
+
+		lon_encoded *= 91;
+		lon_encoded += start[5 + i] - '!';
+	}
+
+	result->lat = 90.0f - lat_encoded / 380926.0f;
+	result->lon = -180.0f + lon_encoded / 190463.0f;
+
+	return 13;
+}
+
+
+static int parse_dao(const char *start, aprs_frame_t *result)
+{
+	while(start[4] != '\0') {
+		if(start[0] == '!' && (start[4] == '!')) {
+			// this may be a DAO sequence. Only WGS84 is supported here.
+			float lat_enhance_deg_abs;
+			float lon_enhance_deg_abs;
+			bool pos_enhancement_set = false;
+
+			if(start[1] == 'w') {
+				// base91 notation
+				uint32_t lat_add_digits = (start[2] - '!') * 100L / 91L;
+				uint32_t lon_add_digits = (start[3] - '!') * 100L / 91L;
+
+				lat_enhance_deg_abs = lat_add_digits * 1.666667e-6; // / 60 / 10000
+				lon_enhance_deg_abs = lon_add_digits * 1.666667e-6; // / 60 / 10000
+				pos_enhancement_set = true;
+			} else if(start[1] == 'W') {
+				lat_enhance_deg_abs = (start[2] - '0') * 1.666667e-5; // / 60 / 1000
+				lon_enhance_deg_abs = (start[3] - '0') * 1.666667e-5; // / 60 / 1000
+				pos_enhancement_set = true;
+			}
+
+			if(pos_enhancement_set) {
+				if(result->lat >= 0) {
+					result->lat += lat_enhance_deg_abs;
+				} else {
+					result->lat -= lat_enhance_deg_abs;
+				}
+
+				if(result->lon >= 0) {
+					result->lon += lon_enhance_deg_abs;
+				} else {
+					result->lon -= lon_enhance_deg_abs;
+				}
+			}
+
+			break;
+		}
+
+		start++;
+	}
+
+	return 0;
+}
+
+static int parse_location_and_symbol(const char *start, aprs_frame_t *result)
+{
+	// first try to parse human-readable APRS packets
+	int ret = parse_location_and_symbol_readable(start, result);
+	if(ret >= 0) { // success!
+		// find DAO in remaining data
+		parse_dao(start+ret, result);
+		return ret;
+	}
+
+	// parsing as text failed => try again with compressed format. DAO parsing is
+	// not necessary in this case.
+	ret = parse_location_and_symbol_compressed(start, result);
+	return ret;
 }
 
 
@@ -653,11 +764,13 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 	char type = *textframe;
 	textframe++;
 
+	result->alt = 0.0f; // default if altitude is not available
+
 	switch(type) {
 		case '!':
 		case '=':
 			// position without timestamp
-			ret = parse_location_and_symbol(textframe, &result->lat, &result->lon, &result->table, &result->symbol);
+			ret = parse_location_and_symbol(textframe, result);
 			break;
 
 		case '/':
@@ -665,7 +778,7 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 			// position with timestamp
 			textframe += 7; // skip the timestamp for now
 
-			ret = parse_location_and_symbol(textframe, &result->lat, &result->lon, &result->table, &result->symbol);
+			ret = parse_location_and_symbol(textframe, result);
 			break;
 
 		default:
@@ -688,8 +801,6 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 		char *endptr;
 		long alt = strtol(buf, &endptr, 10);
 		result->alt = (float)alt * 0.3048f; // convert to meters
-	} else {
-		result->alt = 0.0f;
 	}
 
 	// fill comment
