@@ -1640,14 +1640,14 @@ static void redraw_display(bool full_update)
 					yoffset += line_height;
 					epaper_fb_move_to(0, yoffset);
 
-					format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lat, 5);
+					format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lat, 6);
 					snprintf(s, sizeof(s), "Lat: %s", tmp1);
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 					yoffset += line_height;
 					epaper_fb_move_to(0, yoffset);
 
-					format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lon, 5);
+					format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lon, 6);
 					snprintf(s, sizeof(s), "Lon: %s", tmp1);
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
@@ -1683,7 +1683,7 @@ static void redraw_display(bool full_update)
 						yoffset += line_height/8; // quarter-line extra spacing
 						epaper_fb_move_to(0, yoffset);
 
-						format_float(tmp1, sizeof(tmp1), distance / 1000.0f, 2);
+						format_float(tmp1, sizeof(tmp1), distance / 1000.0f, 3);
 						snprintf(s, sizeof(s), "Distance: %s km", tmp1);
 						epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
