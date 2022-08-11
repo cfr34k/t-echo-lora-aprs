@@ -35,10 +35,10 @@
 #include "tracker.h"
 
 #define HEADING_CHECK_MIN_SPEED   1.0f // m/s
-#define MAX_HEADING_DELTA_DEG    45.0f
+#define MAX_HEADING_DELTA_DEG    30.0f
 
 #define MIN_TX_INTERVAL_MS      15000
-#define MAX_TX_INTERVAL_MS     180000
+#define MAX_TX_INTERVAL_MS     900000
 
 #define MAX_DISTANCE_M         2000
 
