@@ -57,6 +57,13 @@ typedef enum
 } aprs_icon_t;
 
 
+typedef enum {
+	APRS_FLAG_COMPRESS_LOCATION,
+	APRS_FLAG_ADD_DAO,
+	APRS_FLAG_ADD_FRAME_COUNTER,
+} aprs_flag_t;
+
+
 typedef struct {
 	char source[16];
 	char dest[16];

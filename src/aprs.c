@@ -83,6 +83,8 @@ char m_comment[APRS_MAX_COMMENT_LEN+1];
 
 char m_error_message[256];
 
+uint32_t m_config_flags;
+
 
 static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
 {
@@ -96,21 +98,18 @@ static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
 	}
 }
 
-static void update_info_field(uint32_t frame_id)
+static char* encode_position_readable(char *str, size_t max_len)
 {
 	float lat = m_lat;
 	float lon = m_lon;
 
 	char lat_ns, lon_ew;
 	int lat_deg, lon_deg;
+	int lat_min_full_precision, lon_min_full_precision;
 	int lat_min, lon_min;
 	int lat_min_fract, lon_min_fract;
 
-	float alt_ft;
-
-	char frame_id_str[9];
-
-	struct tm *tms;
+	char dao[6];
 
 	// convert sign -> north/south, east/west
 	if(lat < 0) {
@@ -131,49 +130,128 @@ static void update_info_field(uint32_t frame_id)
 	lat_deg = (int)lat;
 	lon_deg = (int)lon;
 
+	// calculate arc minutes with 4 fractional digits
+	lat_min_full_precision = ((lat - lat_deg) * 600000);
+	lon_min_full_precision = ((lon - lon_deg) * 600000);
+
 	// calculate integer arc minutes
-	lat_min = ((lat - lat_deg) * 60);
-	lon_min = ((lon - lon_deg) * 60);
+	lat_min = lat_min_full_precision / 10000;
+	lon_min = lon_min_full_precision / 10000;
 
-	// calculate fractional arc minutes
-	lat_min_fract = (lat * 6000 - lat_deg * 6000 - lat_min * 100);
-	lon_min_fract = (lon * 6000 - lon_deg * 6000 - lon_min * 100);
+	// calculate fractional arc minutes (base precision)
+	lat_min_fract = (lat_min_full_precision / 100) % 100;
+	lon_min_fract = (lon_min_full_precision / 100) % 100;
 
-	// convert meters to feet
-	alt_ft = m_alt_m / 0.3048;
+	// calculate the DAO string if requested
+	if(m_config_flags & APRS_FLAG_ADD_DAO) {
+		dao[0] = dao[4] = '!'; // start and end markers
+		dao[1] = 'w';          // WGS84 identifier
+		dao[5] = '\0';         // String terminator
 
-	// include frame id if it is not 0
-	if(frame_id != 0) {
-		snprintf(frame_id_str, sizeof(frame_id_str), "#%lu", frame_id);
+		// extract extended precision part
+		int lat_min_fract_extended = lat_min_full_precision % 100;
+		int lon_min_fract_extended = lon_min_full_precision % 100;
+
+		// encode extended precision part as Base-91
+		dao[2] = '!' + lat_min_fract_extended * 91 / 100; // note: integer division!
+		dao[3] = '!' + lon_min_fract_extended * 91 / 100; // note: integer division!
 	} else {
-		frame_id_str[0] = '\0';
+		dao[0] = '\0';
 	}
 
-	// generate time string from timestamp
-	tms = gmtime(&m_time);
-
-	/* Time as ddhhmm
-	sprintf((char*)m_info, "/%02i%02i%02iz%02i%05.2f%c/%03i%05.2f%c%c%s /a=%06i",
-			tms->tm_mday, tms->tm_hour, tms->tm_min,
-			lat_deg, lat_min, lat_ns,
-			lon_deg, lon_min, lon_ew,
-			ICON_DATA[m_icon].aprs_char, m_comment,
-			(int)alt_ft);
-	*/
-	/*
-	// time as hhmmss
-	snprintf((char*)m_info, sizeof(m_info), "/%02i%02i%02ih%02i%02i.%02i%c/%03i%02i.%02i%c%c/A=%06i %s",
-			tms->tm_hour, tms->tm_min, tms->tm_sec,
-			lat_deg, lat_min, lat_min_fract, lat_ns,
-			lon_deg, lon_min, lon_min_fract, lon_ew,
-			m_icon_map[m_icon], (int)alt_ft, m_comment);
-	*/
-	// no time at all
-	(void)tms;
-	snprintf((char*)m_info, sizeof(m_info), "!%02i%02i.%02i%c%c%03i%02i.%02i%c%c%s %s/A=%06i",
+	int ret = snprintf(str, max_len, "!%02i%02i.%02i%c%c%03i%02i.%02i%c%c%s",
 			lat_deg, lat_min, lat_min_fract, lat_ns, m_table,
 			lon_deg, lon_min, lon_min_fract, lon_ew, m_icon,
-			m_comment, frame_id_str, (int)alt_ft);
+			dao);
+
+	if(ret < 0) {
+		return NULL; // error
+	} else if(ret < max_len) {
+		return str + ret; // everything encoded ok
+	} else {
+		return str + max_len - 1; // string was truncated
+	}
+}
+
+static char* encode_position_compressed(char *str, size_t max_len)
+{
+	return NULL; // not implemented yet
+}
+
+static char* encode_altitude_readable(char *str, size_t max_len)
+{
+	float alt_ft = m_alt_m / 0.3048f;
+
+	int ret = snprintf(str, max_len, "/A=%06i", (int)alt_ft);
+
+	if(ret < 0) {
+		return NULL; // error
+	} else if(ret < max_len) {
+		return str + ret; // everything encoded ok
+	} else {
+		return str + max_len - 1; // string was truncated
+	}
+}
+
+static char* encode_frame_id(char *str, size_t max_len, uint32_t frame_id)
+{
+	if(!(m_config_flags & APRS_FLAG_ADD_FRAME_COUNTER)) {
+		return str;
+	}
+
+	int ret = snprintf(str, max_len, " #%lu", frame_id);
+
+	if(ret < 0) {
+		return NULL; // error
+	} else if(ret < max_len) {
+		return str + ret; // everything encoded ok
+	} else {
+		return str + max_len - 1; // string was truncated
+	}
+}
+
+static void update_info_field(uint32_t frame_id)
+{
+	char *info_end = (char*)m_info + sizeof(m_info);
+	char *infoptr = (char*)m_info;
+	char *retptr;
+
+	/* encode position */
+
+	if(m_config_flags & APRS_FLAG_COMPRESS_LOCATION) {
+		retptr = encode_position_compressed(infoptr, info_end - infoptr);
+	} else {
+		retptr = encode_position_readable(infoptr, info_end - infoptr);
+	}
+
+	if(retptr) {
+		infoptr = retptr;
+	}
+
+	/* add comment */
+	size_t chars_to_copy_from_comment = strlen(m_comment);
+	if((chars_to_copy_from_comment + 1) > (info_end - infoptr)) {
+		chars_to_copy_from_comment = info_end - infoptr - 1;
+	}
+
+	strncpy(infoptr, m_comment, chars_to_copy_from_comment);
+
+	infoptr += chars_to_copy_from_comment;
+	*infoptr = '\0';
+
+	/* add altitude for uncompressed packets (already included in compressed format) */
+	if(!(m_config_flags & APRS_FLAG_COMPRESS_LOCATION)) {
+		retptr = encode_altitude_readable(infoptr, info_end - infoptr);
+		if(retptr) {
+			infoptr = retptr;
+		}
+	}
+
+	/* add frame counter */
+	retptr = encode_frame_id(infoptr, info_end - infoptr, frame_id);
+	if(retptr) {
+		infoptr = retptr;
+	}
 }
 
 // PUBLIC FUNCTIONS
@@ -194,6 +272,9 @@ void aprs_init(void)
 
 	m_comment[0] = '\0';
 	m_comment[APRS_MAX_COMMENT_LEN] = '\0';
+
+	// default flags
+	m_config_flags = APRS_FLAG_ADD_DAO | APRS_FLAG_ADD_FRAME_COUNTER;
 }
 
 void aprs_set_dest(const char *dest)
