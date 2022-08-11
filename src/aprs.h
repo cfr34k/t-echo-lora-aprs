@@ -58,9 +58,9 @@ typedef enum
 
 
 typedef enum {
-	APRS_FLAG_COMPRESS_LOCATION,
-	APRS_FLAG_ADD_DAO,
-	APRS_FLAG_ADD_FRAME_COUNTER,
+	APRS_FLAG_COMPRESS_LOCATION = (1 << 0),
+	APRS_FLAG_ADD_DAO           = (1 << 1),
+	APRS_FLAG_ADD_FRAME_COUNTER = (1 << 2),
 } aprs_flag_t;
 
 
