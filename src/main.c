@@ -1732,15 +1732,19 @@ static void redraw_display(bool full_update)
 				yoffset = epaper_fb_get_cursor_pos_y() + 3 * line_height / 2;
 				epaper_fb_move_to(0, yoffset);
 
-				snprintf(s, sizeof(s), "R: -%d.%01d / %d.%02d / -%d.%01d",
-						(int)(-m_rssi),
-						(int)(10 * ((-m_rssi) - (int)(-m_rssi))),
-						(int)(m_snr),
-						(int)(100 * ((m_snr) - (int)(m_snr))),
-						(int)(-m_signalRssi),
-						(int)(10 * ((-m_signalRssi) - (int)(-m_signalRssi))));
+				epaper_fb_draw_string("R: ", EPAPER_COLOR_BLACK);
 
-				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+				format_float(tmp1, sizeof(tmp1), m_rssi, 1);
+				epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
+				epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);
+
+				format_float(tmp1, sizeof(tmp1), m_snr, 2);
+				epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
+				epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);
+
+				format_float(tmp1, sizeof(tmp1), m_signalRssi, 1);
+				epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
+
 				yoffset += line_height;
 				epaper_fb_move_to(0, yoffset);
 				break;
