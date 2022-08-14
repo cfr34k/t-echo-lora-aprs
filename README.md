@@ -254,3 +254,6 @@ exploration/debugging app like [nRF Connect for
 Mobile](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-mobile)
 to write the available BLE characteristics.
 
+## License
+
+For license information, see [COPYING](COPYING).
