@@ -1759,6 +1759,7 @@ static void redraw_display(bool full_update)
 */
 int main(void)
 {
+
 	// Initialize.
 	log_init();
 	gpio_init();
@@ -1769,7 +1770,7 @@ int main(void)
 	// settings set some values in this module, so we must initialize it first.
 	aprs_init();
 
-	// load the settings
+	// load the settings (must be done before peer_manager_init()!)
 	settings_init(cb_settings);
 
 	gap_params_init();

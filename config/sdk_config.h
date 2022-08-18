@@ -11822,6 +11822,8 @@
 // </h> 
 //==========================================================
 
+#define NRFX_NVMC_ENABLED 1
+
 // <<< end of configuration section >>>
 #endif //SDK_CONFIG_H
 

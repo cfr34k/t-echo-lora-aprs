@@ -28,6 +28,8 @@
 #include <sdk_macros.h>
 #include <nrf_log.h>
 
+#include <nrfx_nvmc.h>
+
 #include "nrf_error.h"
 #include "settings.h"
 
@@ -80,7 +82,19 @@ ret_code_t settings_init(settings_callback callback)
 	err_code = fds_register(cb_fds);
 	VERIFY_SUCCESS(err_code);
 
-	return fds_init();
+	err_code = fds_init();
+
+	if(err_code != FDS_ERR_NO_PAGES) {
+		return err_code;
+	} else {
+		// erase the flash pages for the FDS and try again
+		APP_ERROR_CHECK(nrfx_nvmc_page_erase(0xF0000));
+		APP_ERROR_CHECK(nrfx_nvmc_page_erase(0xF1000));
+		APP_ERROR_CHECK(nrfx_nvmc_page_erase(0xF2000));
+		APP_ERROR_CHECK(nrfx_nvmc_page_erase(0xF3000));
+
+		return fds_init();
+	}
 }
 
 
