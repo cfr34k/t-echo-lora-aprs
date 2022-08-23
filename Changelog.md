@@ -1,3 +1,13 @@
+# In development
+
+## Fixed bugs
+
+- Last character of APRS comment was missing in the parsed packet view.
+- fixed crash on startup after initial installation. This happened if the flash
+  area where the settings are stored was not clean (erased), i.e. contained data
+  from a different firmware. In this case, the settings area is now erased and
+  the flash storage is re-initialized.
+
 # Version 0.4
 
 ## New and changed features

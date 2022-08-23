@@ -805,9 +805,9 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 
 	// fill comment
 	if(textframe < endptr) {
-		size = endptr - textframe - 1;
+		size = endptr - textframe;
 		if(size > sizeof(result->comment)) {
-			size = sizeof(result->comment) - 1;
+			size = sizeof(result->comment);
 		}
 
 		memcpy(result->comment, textframe, size);
