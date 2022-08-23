@@ -1713,6 +1713,16 @@ static void redraw_display(bool full_update)
 						epaper_fb_move_to(arrow_start_x, arrow_start_y);
 						epaper_fb_line_to(arrow_end_x, arrow_end_y, EPAPER_COLOR_BLACK);
 
+						// draw arrow of own heading for comparison (dashed)
+						if(m_nmea_data.speed_heading_valid) {
+							uint8_t arrow_end_x = center_x + r * sinf(m_nmea_data.heading * (3.14f / 180.0f));
+							uint8_t arrow_end_y = center_y - r * cosf(m_nmea_data.heading * (3.14f / 180.0f));
+
+							epaper_fb_move_to(arrow_start_x, arrow_start_y);
+							epaper_fb_line_to(arrow_end_x, arrow_end_y,
+									EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
+						}
+
 						epaper_fb_move_to(center_x - 5, center_y - r + line_height/3);
 						epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
 					}

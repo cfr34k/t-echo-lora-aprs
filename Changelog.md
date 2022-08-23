@@ -1,5 +1,9 @@
 # In development
 
+## New and changed features
+
+- Show own heading as dashed line in the RX direction diagram for comparison.
+
 ## Fixed bugs
 
 - Last character of APRS comment was missing in the parsed packet view.
