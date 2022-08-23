@@ -88,6 +88,7 @@ SRC_FILES += \
   $(PROJ_DIR)/src/settings.c \
   $(PROJ_DIR)/src/menusystem.c \
   $(PROJ_DIR)/src/main.c \
+  $(PROJ_DIR)/src/display.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
   $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_printf.c \

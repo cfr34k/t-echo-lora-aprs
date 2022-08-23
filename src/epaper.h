@@ -28,6 +28,7 @@
 #include <sdk_errors.h>
 
 #include <stdbool.h>
+#include <stddef.h>
 
 #define EPAPER_COLOR_WHITE    0x01
 #define EPAPER_COLOR_BLACK    0x00
