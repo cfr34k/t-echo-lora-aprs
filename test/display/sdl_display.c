@@ -146,12 +146,21 @@ void epaper_fb_line_to(uint8_t xe, uint8_t ye, uint8_t color)
 	int16_t d_no = 2*(dy - dx);
 
 	bool is_dashed = (color & EPAPER_COLOR_FLAG_DASHED) != 0;
+	bool is_dotted = (color & EPAPER_COLOR_FLAG_DOTTED_LIGHT) != 0;
 
 	while(x <= dx) {
 		int16_t tx = neg_x ? -x : x;
 		int16_t ty = neg_y ? -y : y;
 
-		if(!is_dashed || ((pixcount % 8) < 5)) {
+		bool draw_pixel = true;
+
+		if(is_dashed) {
+			draw_pixel = (pixcount % 8) < 5;
+		} else if(is_dotted) {
+			draw_pixel = (pixcount % 3) == 0;
+		}
+
+		if(draw_pixel) {
 			if(flip_xy) {
 				epaper_fb_set_pixel(xa + ty, ya + tx, color);
 			} else {

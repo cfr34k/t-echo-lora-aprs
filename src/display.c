@@ -526,7 +526,7 @@ void redraw_display(bool full_update)
 
 							epaper_fb_move_to(arrow_start_x, arrow_start_y);
 							epaper_fb_line_to(arrow_end_x, arrow_end_y,
-									EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
+									EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DOTTED_LIGHT);
 						}
 
 						epaper_fb_move_to(center_x - 5, center_y - r + line_height/3);

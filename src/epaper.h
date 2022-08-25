@@ -34,8 +34,12 @@
 #define EPAPER_COLOR_BLACK    0x00
 
 // drawing lines with this flag set will cause the line to be dashed:
-// 3 pixels are drawn, 2 pixels left blank
+// 5 pixels are drawn, 3 pixels left blank
 #define EPAPER_COLOR_FLAG_DASHED 0x02
+
+// drawing lines with this flag set will cause the line to be lightly dotted:
+// 1 pixel is drawn, 2 pixels left blank
+#define EPAPER_COLOR_FLAG_DOTTED_LIGHT 0x04
 
 #define EPAPER_COLOR_MASK       0x01
 #define EPAPER_COLOR_FLAGS_MASK 0xFE
