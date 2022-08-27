@@ -1,8 +1,14 @@
-# In development
+# Version 0.5
 
 ## New and changed features
 
-- Show own heading as dashed line in the RX direction diagram for comparison.
+- Show own heading as dotted line in the RX direction diagram for comparison
+  with the course to the received station.
+- Add option to send the battery voltage in the APRS comment field.
+- Changes in the menu:
+  - Introduced “Advanced” submenu below the “APRS Config” submenu which
+    includes the new Battery Voltage option.
+  - Moved the Frame Counter option to the new “Advanced” submenu.
 
 ## Fixed bugs
 
@@ -11,6 +17,7 @@
   area where the settings are stored was not clean (erased), i.e. contained data
   from a different firmware. In this case, the settings area is now erased and
   the flash storage is re-initialized.
+
 
 # Version 0.4
 
