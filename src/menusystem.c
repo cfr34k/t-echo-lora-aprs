@@ -14,29 +14,47 @@
 
 #define ENTRY_IDX_EXIT               0
 
-#define MAIN_ENTRY_IDX_RX            1
-#define MAIN_ENTRY_IDX_TRACKER       2
-#define MAIN_ENTRY_IDX_GNSS_WARMUP   3
-#define MAIN_ENTRY_IDX_POWER         4
-#define MAIN_ENTRY_IDX_APRS          5
-#define MAIN_ENTRY_IDX_INFO          6
+enum main_entry_ids_t {
+	MAIN_ENTRY_IDX_RX           = 1,
+	MAIN_ENTRY_IDX_TRACKER      = 2,
+	MAIN_ENTRY_IDX_GNSS_WARMUP  = 3,
+	MAIN_ENTRY_IDX_POWER        = 4,
+	MAIN_ENTRY_IDX_APRS         = 5,
+	MAIN_ENTRY_IDX_INFO         = 6,
 
-#define SYMBOL_SELECT_ENTRY_IDX_JOGGER      1
-#define SYMBOL_SELECT_ENTRY_IDX_BICYCLE     2
-#define SYMBOL_SELECT_ENTRY_IDX_MOTORCYCLE  3
-#define SYMBOL_SELECT_ENTRY_IDX_CAR         4
-#define SYMBOL_SELECT_ENTRY_IDX_TRUCK       5
+	MAIN_ENTRY_COUNT
+};
 
-#define INFO_ENTRY_IDX_VERSION           1
-#define INFO_ENTRY_IDX_APRS_SOURCE       2
-#define INFO_ENTRY_IDX_APRS_DEST         3
-#define INFO_ENTRY_IDX_APRS_SYMBOL       4
+enum symbol_select_entry_ids_t {
+	SYMBOL_SELECT_ENTRY_IDX_JOGGER      = 1,
+	SYMBOL_SELECT_ENTRY_IDX_BICYCLE     = 2,
+	SYMBOL_SELECT_ENTRY_IDX_MOTORCYCLE  = 3,
+	SYMBOL_SELECT_ENTRY_IDX_CAR         = 4,
+	SYMBOL_SELECT_ENTRY_IDX_TRUCK       = 5,
 
-#define APRS_CONFIG_ENTRY_IDX_COMPRESSED        1
-#define APRS_CONFIG_ENTRY_IDX_ALTITUDE          2
-#define APRS_CONFIG_ENTRY_IDX_PACKET_ID         3
-#define APRS_CONFIG_ENTRY_IDX_DAO               4
-#define APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL       5
+	SYMBOL_SELECT_ENTRY_COUNT
+};
+
+enum info_entry_ids_t {
+	INFO_ENTRY_IDX_VERSION           = 1,
+	INFO_ENTRY_IDX_APRS_SOURCE       = 2,
+	INFO_ENTRY_IDX_APRS_DEST         = 3,
+	INFO_ENTRY_IDX_APRS_SYMBOL       = 4,
+
+	INFO_ENTRY_COUNT
+};
+
+enum aprs_config_entry_ids_t {
+	APRS_CONFIG_ENTRY_IDX_COMPRESSED        = 1,
+	APRS_CONFIG_ENTRY_IDX_ALTITUDE          = 2,
+	APRS_CONFIG_ENTRY_IDX_PACKET_ID         = 3,
+	APRS_CONFIG_ENTRY_IDX_DAO               = 4,
+	APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL       = 5,
+
+	APRS_CONFIG_ENTRY_COUNT
+};
+
+#define POWER_SELECT_ENTRY_COUNT   (LORA_PWR_NUM_ENTRIES + 1)
 
 typedef struct menuentry_s menuentry_t;
 typedef struct menu_s menu_t;
@@ -55,7 +73,7 @@ struct menu_s
 	menu_t      *prev_menu;
 	size_t       prev_selected_entry;
 
-	menuentry_t  entries[8];
+	menuentry_t *entries;
 	size_t       n_entries;
 };
 
@@ -66,6 +84,12 @@ static menu_t m_power_select_menu;
 static menu_t m_aprs_config_menu;
 static menu_t m_symbol_select_menu;
 static menu_t m_info_menu;
+
+static menuentry_t m_main_entries[MAIN_ENTRY_COUNT];
+static menuentry_t m_power_select_entries[POWER_SELECT_ENTRY_COUNT];
+static menuentry_t m_aprs_config_entries[APRS_CONFIG_ENTRY_COUNT];
+static menuentry_t m_symbol_select_entries[SYMBOL_SELECT_ENTRY_COUNT];
+static menuentry_t m_info_entries[INFO_ENTRY_COUNT];
 
 static size_t  m_selected_entry;
 static menu_t *m_active_menu;
@@ -343,7 +367,8 @@ void menusystem_init(menusystem_callback_t callback)
 	m_callback = callback;
 
 	// prepare the main menu
-	m_main_menu.n_entries = 7;
+	m_main_menu.n_entries = MAIN_ENTRY_COUNT;
+	m_main_menu.entries = m_main_entries;
 
 	m_main_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_main;
 	m_main_menu.entries[ENTRY_IDX_EXIT].text = "<<< Exit";
@@ -374,7 +399,8 @@ void menusystem_init(menusystem_callback_t callback)
 	m_main_menu.entries[MAIN_ENTRY_IDX_INFO].value[0] = '\0';
 
 	// prepare the power select menu
-	m_power_select_menu.n_entries = LORA_PWR_NUM_ENTRIES + 1;
+	m_power_select_menu.n_entries = POWER_SELECT_ENTRY_COUNT;
+	m_power_select_menu.entries = m_power_select_entries;
 
 	m_power_select_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_power_select;
 	m_power_select_menu.entries[ENTRY_IDX_EXIT].text = "<<< Cancel";
@@ -389,7 +415,8 @@ void menusystem_init(menusystem_callback_t callback)
 	}
 
 	// prepare the APRS config menu
-	m_aprs_config_menu.n_entries = 6;
+	m_aprs_config_menu.n_entries = APRS_CONFIG_ENTRY_COUNT;
+	m_aprs_config_menu.entries = m_aprs_config_entries;
 
 	m_aprs_config_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_aprs_config;
 	m_aprs_config_menu.entries[ENTRY_IDX_EXIT].text = "<<< Back";
@@ -416,7 +443,8 @@ void menusystem_init(menusystem_callback_t callback)
 	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].value[0] = '\0';
 
 	// prepare the symbol select menu
-	m_symbol_select_menu.n_entries = 6;
+	m_symbol_select_menu.n_entries = SYMBOL_SELECT_ENTRY_COUNT;
+	m_symbol_select_menu.entries = m_symbol_select_entries;
 
 	m_symbol_select_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_symbol_select;
 	m_symbol_select_menu.entries[ENTRY_IDX_EXIT].text = "<<< Cancel";
@@ -443,7 +471,8 @@ void menusystem_init(menusystem_callback_t callback)
 	strcpy(m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_TRUCK].value, "/k");
 
 	// prepare the info menu
-	m_info_menu.n_entries = 5;
+	m_info_menu.n_entries = INFO_ENTRY_COUNT;
+	m_info_menu.entries = m_info_entries;
 
 	m_info_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_info;
 	m_info_menu.entries[ENTRY_IDX_EXIT].text = "<<< Back";
