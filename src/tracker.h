@@ -28,6 +28,7 @@
 #include <sdk_errors.h>
 
 #include "nmea.h"
+#include "aprs.h"
 
 typedef enum {
 	TRACKER_EVT_TRANSMISSION_STARTED,
@@ -40,8 +41,13 @@ typedef void (*tracker_callback)(tracker_evt_t evt);
 ret_code_t tracker_init(tracker_callback callback);
 
 /**@brief Process a new position report in the tracker.
+ *
+ * @param data     Latest NMEA data from the GNSS module.
+ * @param args     Arguments for building the APRS frame. The frame_id field
+ *                 will be overwritten by this function.
+ * @returns        The result code of the internal function calls.
  */
-ret_code_t tracker_run(const nmea_data_t *data);
+ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args);
 
 /**@brief Force a transmission on the next valid GPS update.
  */

@@ -62,7 +62,13 @@ typedef enum {
 	APRS_FLAG_ADD_DAO           = (1 << 1),
 	APRS_FLAG_ADD_FRAME_COUNTER = (1 << 2),
 	APRS_FLAG_ADD_ALTITUDE      = (1 << 3),
+	APRS_FLAG_ADD_VBAT          = (1 << 4),
 } aprs_flag_t;
+
+typedef struct {
+	uint32_t frame_id;
+	uint16_t vbat_millivolt;
+} aprs_args_t;
 
 
 typedef struct {
@@ -94,7 +100,7 @@ void aprs_set_icon(char table, char icon);
 void aprs_set_icon_default(aprs_icon_t icon);
 void aprs_set_comment(const char *comment);
 bool aprs_can_build_frame(void);
-size_t aprs_build_frame(uint8_t *frame, uint32_t frame_id);
+size_t aprs_build_frame(uint8_t *frame, const aprs_args_t *args);
 
 uint32_t aprs_get_config_flags(void);
 void aprs_set_config_flags(uint32_t new_flags);

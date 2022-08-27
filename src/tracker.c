@@ -27,7 +27,6 @@
 #include <app_timer.h>
 #include <nrf_log.h>
 
-#include "aprs.h"
 #include "lora.h"
 #include "time_base.h"
 #include "utils.h"
@@ -61,7 +60,7 @@ ret_code_t tracker_init(tracker_callback callback)
 }
 
 
-ret_code_t tracker_run(const nmea_data_t *data)
+ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 {
 	bool do_tx = false;
 
@@ -127,7 +126,8 @@ ret_code_t tracker_run(const nmea_data_t *data)
 
 		aprs_update_pos_time(data->lat, data->lon, data->altitude, now / 1000);
 
-		frame_len = aprs_build_frame(message, ++m_tx_counter);
+		args->frame_id = ++m_tx_counter;
+		frame_len = aprs_build_frame(message, args);
 
 		NRF_LOG_INFO("Generated frame:");
 		NRF_LOG_HEXDUMP_INFO(message, frame_len);

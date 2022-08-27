@@ -56,7 +56,7 @@ enum aprs_config_entry_ids_t {
 
 enum aprs_config_adv_entry_ids_t {
 	APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID         = 1,
-	//APRS_CONFIG_ADV_ENTRY_IDX_VBAT              = 2,
+	APRS_CONFIG_ADV_ENTRY_IDX_VBAT              = 2,
 
 	APRS_CONFIG_ADV_ENTRY_COUNT
 };
@@ -184,6 +184,13 @@ static void menusystem_update_values(void)
 	// advanced APRS config menu
 	entry = &(m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID]);
 	if(aprs_flags & APRS_FLAG_ADD_FRAME_COUNTER) {
+		strncpy(entry->value,  "on", sizeof(entry->value));
+	} else {
+		strncpy(entry->value,  "off", sizeof(entry->value));
+	}
+
+	entry = &(m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_VBAT]);
+	if(aprs_flags & APRS_FLAG_ADD_VBAT) {
 		strncpy(entry->value,  "on", sizeof(entry->value));
 	} else {
 		strncpy(entry->value,  "off", sizeof(entry->value));
@@ -326,6 +333,11 @@ static void menu_handler_aprs_config_adv(menu_t *menu, menuentry_t *entry)
 
 		case APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID:
 			aprs_toggle_config_flag(APRS_FLAG_ADD_FRAME_COUNTER);
+			flags_changed = true;
+			break;
+
+		case APRS_CONFIG_ADV_ENTRY_IDX_VBAT:
+			aprs_toggle_config_flag(APRS_FLAG_ADD_VBAT);
 			flags_changed = true;
 			break;
 
@@ -495,6 +507,10 @@ void menusystem_init(menusystem_callback_t callback)
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID].handler = menu_handler_aprs_config_adv;
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID].text = "Frame counter";
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID].value[0] = '\0';
+
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_VBAT].handler = menu_handler_aprs_config_adv;
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_VBAT].text = "Battery voltage";
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_VBAT].value[0] = '\0';
 
 	// prepare the symbol select menu
 	m_symbol_select_menu.n_entries = SYMBOL_SELECT_ENTRY_COUNT;

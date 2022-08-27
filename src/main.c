@@ -685,7 +685,10 @@ static void cb_gps(const nmea_data_t *data)
 	//APP_ERROR_CHECK(lns_wrap_update_data(data));
 
 	if(m_tracker_active) {
-		tracker_run(data);
+		aprs_args_t aprs_args;
+		aprs_args.vbat_millivolt = m_bat_millivolt;
+
+		tracker_run(data, &aprs_args);
 	}
 }
 

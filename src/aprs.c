@@ -272,7 +272,27 @@ static char* encode_frame_id(char *str, size_t max_len, uint32_t frame_id)
 	}
 }
 
-static void update_info_field(uint32_t frame_id)
+static char* encode_vbat(char *str, size_t max_len, uint16_t vbat_millivolt)
+{
+	if(!(m_config_flags & APRS_FLAG_ADD_VBAT)) {
+		return str;
+	}
+
+	uint16_t vbat_int = vbat_millivolt / 1000;
+	uint16_t vbat_fract = (vbat_millivolt / 10) % 100;
+
+	int ret = snprintf(str, max_len, " %d.%02dV", vbat_int, vbat_fract);
+
+	if(ret < 0) {
+		return NULL; // error
+	} else if(ret < max_len) {
+		return str + ret; // everything encoded ok
+	} else {
+		return str + max_len - 1; // string was truncated
+	}
+}
+
+static void update_info_field(const aprs_args_t *args)
 {
 	char *info_end = (char*)m_info + sizeof(m_info);
 	char *infoptr = (char*)m_info;
@@ -315,7 +335,13 @@ static void update_info_field(uint32_t frame_id)
 	}
 
 	/* add frame counter */
-	retptr = encode_frame_id(infoptr, info_end - infoptr, frame_id);
+	retptr = encode_frame_id(infoptr, info_end - infoptr, args->frame_id);
+	if(retptr) {
+		infoptr = retptr;
+	}
+
+	/* add Vbat */
+	retptr = encode_vbat(infoptr, info_end - infoptr, args->vbat_millivolt);
 	if(retptr) {
 		infoptr = retptr;
 	}
@@ -418,7 +444,7 @@ bool aprs_can_build_frame(void)
 	return (m_src[0] != '\0') && (m_dest[0] != '\0');
 }
 
-size_t aprs_build_frame(uint8_t *frame, uint32_t frame_id)
+size_t aprs_build_frame(uint8_t *frame, const aprs_args_t *args)
 {
 	uint8_t *frameptr = frame;
 	uint8_t *infoptr = m_info;
@@ -438,7 +464,7 @@ size_t aprs_build_frame(uint8_t *frame, uint32_t frame_id)
 
 	*(frameptr++) = ':';
 
-	update_info_field(frame_id);
+	update_info_field(args);
 
 	while(*infoptr != '\0') {
 		*frameptr = *infoptr;
@@ -487,6 +513,8 @@ void aprs_toggle_config_flag(aprs_flag_t flag)
 	m_config_flags ^= flag;
 }
 
+
+/*** Parser functions ***/
 
 static int extract_text_until(const char *start, char marker, char *dest, size_t dest_len)
 {
