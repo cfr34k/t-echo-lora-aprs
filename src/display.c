@@ -100,7 +100,7 @@ void redraw_display(bool full_update)
 		}
 
 		if(!gps_active) {
-			line_color |= EPAPER_COLOR_FLAG_DASHED;
+			line_color |= EPAPER_LINE_DRAWING_MODE_DASHED;
 		}
 
 		gleft = 0;
@@ -113,7 +113,7 @@ void redraw_display(bool full_update)
 
 		// draw a stilized satellite
 
-		line_color &= (~EPAPER_COLOR_FLAG_DASHED);
+		line_color &= (~EPAPER_LINE_DRAWING_MODE_DASHED);
 
 		uint8_t center_x = line_height/2;
 		uint8_t center_y = line_height/2;
@@ -187,7 +187,7 @@ void redraw_display(bool full_update)
 		}
 
 		if(!m_lora_rx_active) {
-			line_color |= EPAPER_COLOR_FLAG_DASHED;
+			line_color |= EPAPER_LINE_DRAWING_MODE_DASHED;
 		}
 
 		gleft = 130;
@@ -211,7 +211,7 @@ void redraw_display(bool full_update)
 		}
 
 		if(!m_tracker_active) {
-			line_color |= EPAPER_COLOR_FLAG_DASHED;
+			line_color |= EPAPER_LINE_DRAWING_MODE_DASHED;
 		}
 
 		gleft = 100;
@@ -226,7 +226,7 @@ void redraw_display(bool full_update)
 		epaper_fb_draw_string("TX", line_color);
 
 		epaper_fb_move_to(0, yoffset + 2);
-		epaper_fb_line_to(EPAPER_WIDTH, yoffset + 2, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
+		epaper_fb_line_to(EPAPER_WIDTH, yoffset + 2, EPAPER_COLOR_BLACK | EPAPER_LINE_DRAWING_MODE_DASHED);
 
 		yoffset += line_height + 3;
 	}
@@ -287,9 +287,9 @@ void redraw_display(bool full_update)
 
 				// waves
 				epaper_fb_move_to( 55,  38);
-				epaper_fb_circle(10, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
-				epaper_fb_circle(20, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
-				epaper_fb_circle(30, EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DASHED);
+				epaper_fb_circle(10, EPAPER_COLOR_BLACK | EPAPER_LINE_DRAWING_MODE_DASHED);
+				epaper_fb_circle(20, EPAPER_COLOR_BLACK | EPAPER_LINE_DRAWING_MODE_DASHED);
+				epaper_fb_circle(30, EPAPER_COLOR_BLACK | EPAPER_LINE_DRAWING_MODE_DASHED);
 
 				epaper_fb_set_font(&din1451m10pt7b);
 				epaper_fb_move_to(0, 170);
@@ -526,7 +526,7 @@ void redraw_display(bool full_update)
 
 							epaper_fb_move_to(arrow_start_x, arrow_start_y);
 							epaper_fb_line_to(arrow_end_x, arrow_end_y,
-									EPAPER_COLOR_BLACK | EPAPER_COLOR_FLAG_DOTTED_LIGHT);
+									EPAPER_COLOR_BLACK | EPAPER_LINE_DRAWING_MODE_DOTTED);
 						}
 
 						epaper_fb_move_to(center_x - 5, center_y - r + line_height/3);

@@ -546,8 +546,7 @@ void epaper_fb_line_to(uint8_t xe, uint8_t ye, uint8_t color)
 	int16_t d_o  = 2*dy;
 	int16_t d_no = 2*(dy - dx);
 
-	bool is_dashed = (color & EPAPER_COLOR_FLAG_DASHED) != 0;
-	bool is_dotted = (color & EPAPER_COLOR_FLAG_DOTTED_LIGHT) != 0;
+	uint8_t line_drawing_mode = color & EPAPER_LINE_DRAWING_MODE_MASK;
 
 	while(x <= dx) {
 		int16_t tx = neg_x ? -x : x;
@@ -555,10 +554,12 @@ void epaper_fb_line_to(uint8_t xe, uint8_t ye, uint8_t color)
 
 		bool draw_pixel = true;
 
-		if(is_dashed) {
+		if(line_drawing_mode == EPAPER_LINE_DRAWING_MODE_DASHED) {
 			draw_pixel = (pixcount % 8) < 5;
-		} else if(is_dotted) {
+		} else if(line_drawing_mode == EPAPER_LINE_DRAWING_MODE_DOTTED_LIGHT) {
 			draw_pixel = (pixcount % 3) == 0;
+		} else if(line_drawing_mode == EPAPER_LINE_DRAWING_MODE_DOTTED) {
+			draw_pixel = (pixcount % 2) == 0;
 		}
 
 		if(draw_pixel) {
