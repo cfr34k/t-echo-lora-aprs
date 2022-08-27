@@ -47,11 +47,18 @@ enum info_entry_ids_t {
 enum aprs_config_entry_ids_t {
 	APRS_CONFIG_ENTRY_IDX_COMPRESSED        = 1,
 	APRS_CONFIG_ENTRY_IDX_ALTITUDE          = 2,
-	APRS_CONFIG_ENTRY_IDX_PACKET_ID         = 3,
-	APRS_CONFIG_ENTRY_IDX_DAO               = 4,
+	APRS_CONFIG_ENTRY_IDX_DAO               = 3,
+	APRS_CONFIG_ENTRY_IDX_ADVANCED          = 4,
 	APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL       = 5,
 
 	APRS_CONFIG_ENTRY_COUNT
+};
+
+enum aprs_config_adv_entry_ids_t {
+	APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID         = 1,
+	//APRS_CONFIG_ADV_ENTRY_IDX_VBAT              = 2,
+
+	APRS_CONFIG_ADV_ENTRY_COUNT
 };
 
 #define POWER_SELECT_ENTRY_COUNT   (LORA_PWR_NUM_ENTRIES + 1)
@@ -82,12 +89,14 @@ static menusystem_callback_t m_callback;
 static menu_t m_main_menu;
 static menu_t m_power_select_menu;
 static menu_t m_aprs_config_menu;
+static menu_t m_aprs_config_adv_menu;
 static menu_t m_symbol_select_menu;
 static menu_t m_info_menu;
 
 static menuentry_t m_main_entries[MAIN_ENTRY_COUNT];
 static menuentry_t m_power_select_entries[POWER_SELECT_ENTRY_COUNT];
 static menuentry_t m_aprs_config_entries[APRS_CONFIG_ENTRY_COUNT];
+static menuentry_t m_aprs_config_adv_entries[APRS_CONFIG_ADV_ENTRY_COUNT];
 static menuentry_t m_symbol_select_entries[SYMBOL_SELECT_ENTRY_COUNT];
 static menuentry_t m_info_entries[INFO_ENTRY_COUNT];
 
@@ -168,16 +177,17 @@ static void menusystem_update_values(void)
 		strncpy(entry->value,  "off", sizeof(entry->value));
 	}
 
-	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_PACKET_ID]);
+	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL]);
+	aprs_get_icon(&(entry->value[0]), &(entry->value[1]));
+	entry->value[2] = '\0';
+
+	// advanced APRS config menu
+	entry = &(m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID]);
 	if(aprs_flags & APRS_FLAG_ADD_FRAME_COUNTER) {
 		strncpy(entry->value,  "on", sizeof(entry->value));
 	} else {
 		strncpy(entry->value,  "off", sizeof(entry->value));
 	}
-
-	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL]);
-	aprs_get_icon(&(entry->value[0]), &(entry->value[1]));
-	entry->value[2] = '\0';
 
 	// info menu
 	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_SOURCE]);
@@ -273,18 +283,50 @@ static void menu_handler_aprs_config(menu_t *menu, menuentry_t *entry)
 			flags_changed = true;
 			break;
 
-		case APRS_CONFIG_ENTRY_IDX_PACKET_ID:
-			aprs_toggle_config_flag(APRS_FLAG_ADD_FRAME_COUNTER);
-			flags_changed = true;
-			break;
-
 		case APRS_CONFIG_ENTRY_IDX_ALTITUDE:
 			aprs_toggle_config_flag(APRS_FLAG_ADD_ALTITUDE);
 			flags_changed = true;
 			break;
 
+		case APRS_CONFIG_ENTRY_IDX_ADVANCED:
+			enter_submenu(&m_aprs_config_adv_menu, 0);
+			break;
+
 		case APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL:
 			enter_submenu(&m_symbol_select_menu, 0);
+			break;
+
+		default:
+			m_selected_entry = 0;
+			m_callback(MENUSYSTEM_EVT_REDRAW_REQUIRED, NULL);
+			break;
+	}
+
+	if(flags_changed) {
+		menusystem_evt_data_t evt_data;
+
+		evt_data.aprs_flags.flags = aprs_get_config_flags();
+		m_callback(MENUSYSTEM_EVT_APRS_FLAGS_CHANGED, &evt_data);
+
+		menusystem_update_values();
+	}
+}
+
+
+static void menu_handler_aprs_config_adv(menu_t *menu, menuentry_t *entry)
+{
+	size_t entry_idx = entry - &(menu->entries[0]);
+
+	bool flags_changed = false;
+
+	switch(entry_idx) {
+		case ENTRY_IDX_EXIT:
+			leave_submenu();
+			break;
+
+		case APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID:
+			aprs_toggle_config_flag(APRS_FLAG_ADD_FRAME_COUNTER);
+			flags_changed = true;
 			break;
 
 		default:
@@ -434,13 +476,25 @@ void menusystem_init(menusystem_callback_t callback)
 	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_DAO].text = "DAO";
 	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_DAO].value[0] = '\0';
 
-	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_PACKET_ID].handler = menu_handler_aprs_config;
-	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_PACKET_ID].text = "Frame counter";
-	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_PACKET_ID].value[0] = '\0';
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_ADVANCED].handler = menu_handler_aprs_config;
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_ADVANCED].text = "Advanced >>>";
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_ADVANCED].value[0] = '\0';
 
 	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].handler = menu_handler_aprs_config;
 	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].text = "Symbol >>>";
 	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].value[0] = '\0';
+
+	// prepare the APRS config menu
+	m_aprs_config_adv_menu.n_entries = APRS_CONFIG_ADV_ENTRY_COUNT;
+	m_aprs_config_adv_menu.entries = m_aprs_config_adv_entries;
+
+	m_aprs_config_adv_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_aprs_config_adv;
+	m_aprs_config_adv_menu.entries[ENTRY_IDX_EXIT].text = "<<< Back";
+	m_aprs_config_adv_menu.entries[ENTRY_IDX_EXIT].value[0] = '\0';
+
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID].handler = menu_handler_aprs_config_adv;
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID].text = "Frame counter";
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID].value[0] = '\0';
 
 	// prepare the symbol select menu
 	m_symbol_select_menu.n_entries = SYMBOL_SELECT_ENTRY_COUNT;
