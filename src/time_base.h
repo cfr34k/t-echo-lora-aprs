@@ -30,8 +30,8 @@
  * @brief Time Base subsystem.
  *
  * @details
- * This module tracks the current time in milliseconds. The current time value
- * can be set by the user.
+ * This module tracks the system uptime in milliseconds. It can be used as a
+ * monotonic time source.
  *
  * Internally, this is based on the app_timer framework which in turn uses an
  * RTC to track the time. The accuracy therefore depends on the RTC's clock
@@ -47,22 +47,14 @@
  */
 ret_code_t time_base_init(void);
 
-/**@brief Returns the number of milliseconds since an epoch.
+/**@brief Returns the number of milliseconds since @ref time_base_init().
  * @details
- * The epoch is defined by the device user and can be anything. It is changed
- * whenever @ref time_base_set() is called. Due to this, monotonicity cannot be
- * guaranteed by this module.
+ * The epoch is the time of the last call to @ref time_base_init(). It cannot
+ * be changed otherwise. Therefore, the value returned by this function
+ * increases monotonically from that point on.
  *
  * @returns   The current time value in milliseconds.
  */
 uint64_t time_base_get(void);
-
-/**@brief Set the current time.
- * @details
- * The internal time will be set immediately and continue running from there.
- *
- * @param[in] time    The new time value to set.
- */
-void time_base_set(uint64_t time);
 
 #endif // TIME_BASE_H

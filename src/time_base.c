@@ -93,9 +93,3 @@ uint64_t time_base_get(void)
 	update_time();
 	return m_cur_time;
 }
-
-
-void time_base_set(uint64_t time)
-{
-	m_cur_time = time;
-}
