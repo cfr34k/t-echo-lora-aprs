@@ -83,6 +83,7 @@ SRC_FILES += \
   $(PROJ_DIR)/src/lns_wrap.c \
   $(PROJ_DIR)/src/aprs_service.c \
   $(PROJ_DIR)/src/time_base.c \
+  $(PROJ_DIR)/src/wall_clock.c \
   $(PROJ_DIR)/src/tracker.c \
   $(PROJ_DIR)/src/utils.c \
   $(PROJ_DIR)/src/settings.c \

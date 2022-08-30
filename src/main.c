@@ -85,6 +85,7 @@
 
 #include "pinout.h"
 #include "time_base.h"
+#include "wall_clock.h"
 #include "epaper.h"
 #include "gps.h"
 #include "lora.h"
@@ -684,6 +685,10 @@ static void cb_gps(const nmea_data_t *data)
 
 	//APP_ERROR_CHECK(lns_wrap_update_data(data));
 
+	if(data->datetime_valid) {
+		wall_clock_set_from_gnss(&data->datetime);
+	}
+
 	if(m_tracker_active) {
 		aprs_args_t aprs_args;
 		aprs_args.vbat_millivolt = m_bat_millivolt;
@@ -1255,6 +1260,7 @@ int main(void)
 
 	periph_pwr_init();
 	time_base_init();
+	wall_clock_init();
 	epaper_init();
 	gps_init(cb_gps);
 	gps_reset();
