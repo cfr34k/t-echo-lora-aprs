@@ -37,6 +37,16 @@ standby (reachable via BLE; standby time depends on hardware configuration).
   - Configure source call sign, APRS symbol, and comment.
   - Notification support for received APRS messages.
 
+### APRS protocol support
+
+- Configurable symbol (through on-screen menu and BLE)
+- Human-readable (standard) format support:
+  - `!DAO!` for improved latitude/longitude precision (see [APRS 1.2 specification](http://www.aprs.org/aprs12/datum.txt))
+  - altitude
+- Compressed format support (see [APRS 1.0 specification](http://www.aprs.org/doc/APRS101.PDF))
+  - Encodes latitude, longitude, altitude and symbol in only 13 characters
+- Everything above can be transmitted and received/decoded!
+
 ## Screenshots
 
 Here are some screenshots of a pre-v0.3 development version from the [display
