@@ -158,7 +158,7 @@ nmea_data_t m_nmea_data;
 bool m_nmea_has_position = false;
 
 #define DISP_CYCLE_FIRST   DISP_STATE_GPS
-#define DISP_CYCLE_LAST    DISP_STATE_LORA_PACKET_RAW
+#define DISP_CYCLE_LAST    DISP_STATE_CLOCK
 
 display_state_t m_display_state = DISP_STATE_STARTUP;
 

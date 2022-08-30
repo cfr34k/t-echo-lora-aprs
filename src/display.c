@@ -31,6 +31,7 @@
 #include "nmea.h"
 #include "tracker.h"
 #include "utils.h"
+#include "wall_clock.h"
 
 #include "epaper.h"
 
@@ -587,6 +588,25 @@ void redraw_display(bool full_update)
 
 				yoffset += line_height;
 				epaper_fb_move_to(0, yoffset);
+				break;
+
+			case DISP_STATE_CLOCK:
+				{
+					struct tm utc;
+					wall_clock_get_utc(&utc);
+
+					snprintf(s, sizeof(s), "%02d:%02d", utc.tm_hour, utc.tm_min);
+					uint8_t textwidth = epaper_fb_calc_text_width(s);
+
+					epaper_fb_move_to(EPAPER_WIDTH/2 - textwidth/2, EPAPER_HEIGHT/2);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					snprintf(s, sizeof(s), "%04d-%02d-%02d", utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday);
+					textwidth = epaper_fb_calc_text_width(s);
+
+					epaper_fb_move_to(EPAPER_WIDTH/2 - textwidth/2, EPAPER_HEIGHT/2 + line_height);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+				}
 				break;
 
 			case DISP_STATE_END:
