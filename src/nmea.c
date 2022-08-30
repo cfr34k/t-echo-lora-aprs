@@ -314,20 +314,62 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 			*position_updated = true;
 		}
 	} else if(strcmp(token, "GNRMC") == 0) {
-		// parse Ground speed and heading
+		// parse date, time, ground speed and heading
 		size_t info_token_idx = 0;
 
 		float speed_knots = 0.0f, heading = 0.0f;
 		bool data_valid = false;
 
+		int8_t time_h = -1, time_m = -1, time_s = -1;
+		int8_t date_d = -1, date_m = -1, date_y = -1;
+		char timeparser_tmp[3];
+		timeparser_tmp[2] = '\0';
+
 		while((token = nmea_tokenize(NULL, ','))) {
 			switch(info_token_idx) {
+				case 0: // time
+					if(strlen(token) < 6) {
+						continue;
+					}
+
+					timeparser_tmp[0] = token[0];
+					timeparser_tmp[1] = token[1];
+					time_h = strtod(timeparser_tmp, NULL);
+
+					timeparser_tmp[0] = token[2];
+					timeparser_tmp[1] = token[3];
+					time_m = strtod(timeparser_tmp, NULL);
+
+					timeparser_tmp[0] = token[4];
+					timeparser_tmp[1] = token[5];
+					time_s = strtod(timeparser_tmp, NULL);
+
+					break;
+
 				case 6: // speed
 					speed_knots = strtof(token, NULL);
 					break;
 
 				case 7: // heading
 					heading = strtof(token, NULL);
+					break;
+
+				case 8: // date
+					if(strlen(token) < 6) {
+						continue;
+					}
+
+					timeparser_tmp[0] = token[0];
+					timeparser_tmp[1] = token[1];
+					date_d = strtod(timeparser_tmp, NULL);
+
+					timeparser_tmp[0] = token[2];
+					timeparser_tmp[1] = token[3];
+					date_m = strtod(timeparser_tmp, NULL);
+
+					timeparser_tmp[0] = token[4];
+					timeparser_tmp[1] = token[5];
+					date_y = strtod(timeparser_tmp, NULL);
 					break;
 
 				case 11: // quality indicator
@@ -345,8 +387,31 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 			data->speed = speed_knots * 0.5144444f;
 			data->heading = heading;
 			data->speed_heading_valid = true;
+
+			if(time_h >= 0 && time_h <= 23
+						&& time_m >= 0 && time_m <= 59
+						&& time_s >= 0 && time_s <= 59
+						&& date_d >= 1 && date_d <= 31
+						&& date_m >= 1 && date_m <= 12
+						&& date_y >= 0 && date_y <= 99) {
+				// WARNING: this assignment will only work properly until 2099.
+				// Alternatively the GNZDA sentence, which contains the full
+				// year, could be parsed for date and time, but I'm not sure if
+				// that’s available on all devices.
+				data->datetime.time_h = time_h;
+				data->datetime.time_m = time_m;
+				data->datetime.time_s = time_s;
+				data->datetime.date_d = date_d;
+				data->datetime.date_m = date_m;
+				data->datetime.date_y = 2000 + (uint16_t)date_y;
+
+				data->datetime_valid = true;
+			} else {
+				data->datetime_valid = true;
+			}
 		} else {
 			data->speed_heading_valid = false;
+			data->datetime_valid = false;
 		}
 
 		if(position_updated != NULL) {

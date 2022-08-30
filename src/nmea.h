@@ -63,6 +63,13 @@ typedef struct
 
 typedef struct
 {
+	uint8_t time_h, time_m, time_s;
+	uint8_t date_d, date_m;
+	uint16_t date_y;
+} nmea_datetime_t;
+
+typedef struct
+{
 	float lat;
 	float lon;
 	float altitude;
@@ -83,6 +90,9 @@ typedef struct
 	float pdop;
 	float hdop;
 	float vdop;
+
+	nmea_datetime_t datetime;
+	bool            datetime_valid;
 } nmea_data_t;
 
 
