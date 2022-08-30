@@ -22,10 +22,6 @@
  * SOFTWARE.
  */
 
-#include <app_timer.h>
-#include <sdk_macros.h>
-#include <nrf_log.h>
-
 #include "time_base.h"
 
 #include "wall_clock.h"
@@ -52,9 +48,9 @@ uint64_t wall_clock_get_unix(void)
 
 void wall_clock_get_utc(struct tm *time)
 {
-	time_t unix = wall_clock_get_unix();
+	time_t unix_time = wall_clock_get_unix();
 
-	*time = *gmtime(&unix);
+	*time = *gmtime(&unix_time);
 }
 
 
@@ -70,10 +66,10 @@ void wall_clock_set_from_gnss(const nmea_datetime_t *datetime)
 	utc.tm_mon = datetime->date_m - 1; // tm_mon expects 0 to 11
 	utc.tm_year = datetime->date_y - 1900;
 
-	time_t unix = mktime(&utc);
+	time_t unix_time = mktime(&utc);
 
-	if(unix >= 0) {
-		m_unix_time_ref = unix;
+	if(unix_time >= 0) {
+		m_unix_time_ref = unix_time;
 		m_time_base_ref = time_base_get();
 	}
 }
