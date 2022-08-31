@@ -161,14 +161,10 @@ bool m_nmea_has_position = false;
 #define DISP_CYCLE_LAST    DISP_STATE_CLOCK
 
 display_state_t m_display_state = DISP_STATE_STARTUP;
+uint8_t         m_display_rx_index = 0;
 
-uint8_t m_display_message[256];
-uint8_t m_display_message_len = 0;
-
-aprs_frame_t m_aprs_decoded_message;
-bool         m_aprs_decode_ok = false;
-
-float m_rssi, m_snr, m_signalRssi;
+aprs_rx_raw_data_t m_last_undecodable_data;
+uint64_t m_last_undecodable_timestamp;
 
 bool m_lora_rx_busy = false;
 bool m_lora_tx_busy = false;
@@ -702,24 +698,50 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 {
 	ret_code_t err_code;
 
+	bool     decode_ok;
+	uint64_t rx_timestamp;
+
+	aprs_frame_t decoded_frame;
+	aprs_rx_raw_data_t raw;
+
 	switch(evt)
 	{
 		case LORA_EVT_PACKET_RECEIVED:
 			// try to parse the packet.
-			m_aprs_decode_ok = aprs_parse_frame(data->rx_packet_data.data, data->rx_packet_data.data_len, &m_aprs_decoded_message);
+			rx_timestamp = wall_clock_get_unix();
+			decode_ok = aprs_parse_frame(
+			                       data->rx_packet_data.data,
+			                       data->rx_packet_data.data_len,
+			                       &decoded_frame);
 
-			memcpy(m_display_message, data->rx_packet_data.data, data->rx_packet_data.data_len);
-			m_display_message_len = data->rx_packet_data.data_len;
+			if(decode_ok) {
+				raw.rssi       = data->rx_packet_data.rssi;
+				raw.signalRssi = data->rx_packet_data.signalRssi;
+				raw.snr        = data->rx_packet_data.snr;
 
-			m_rssi = data->rx_packet_data.rssi;
-			m_signalRssi = data->rx_packet_data.signalRssi;
-			m_snr = data->rx_packet_data.snr;
+				memcpy(raw.data, data->rx_packet_data.data, data->rx_packet_data.data_len);
+				raw.data_len = data->rx_packet_data.data_len;
 
-			if(m_aprs_decode_ok) {
-				m_display_state = DISP_STATE_LORA_PACKET_DECODED;
+				uint8_t idx = aprs_rx_history_insert(
+						&decoded_frame,
+						&raw,
+						rx_timestamp);
+
+				m_display_rx_index = idx;
 			} else {
-				m_display_state = DISP_STATE_LORA_PACKET_RAW;
+				m_last_undecodable_data.rssi       = data->rx_packet_data.rssi;
+				m_last_undecodable_data.signalRssi = data->rx_packet_data.signalRssi;
+				m_last_undecodable_data.snr        = data->rx_packet_data.snr;
+
+				memcpy(m_last_undecodable_data.data, data->rx_packet_data.data, data->rx_packet_data.data_len);
+				m_last_undecodable_data.data_len = data->rx_packet_data.data_len;
+
+				m_last_undecodable_timestamp = rx_timestamp;
+
+				m_display_rx_index = APRS_RX_HISTORY_SIZE;
 			}
+
+			m_display_state = DISP_STATE_LORA_RX_OVERVIEW;
 
 			err_code = aprs_service_notify_rx_message(
 					&m_aprs_service,

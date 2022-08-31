@@ -86,6 +86,28 @@ typedef struct {
 	char symbol;
 } aprs_frame_t;
 
+#define APRS_RX_HISTORY_SIZE 3
+
+typedef struct {
+	uint8_t      data[256];
+	uint8_t      data_len;
+
+	float rssi;
+	float snr;
+	float signalRssi;
+} aprs_rx_raw_data_t;
+
+typedef struct {
+	aprs_rx_raw_data_t raw;
+	aprs_frame_t       decoded;
+	uint64_t           rx_timestamp;
+} aprs_rx_history_entry_t;
+
+typedef struct {
+	aprs_rx_history_entry_t history[APRS_RX_HISTORY_SIZE];
+	uint8_t                 num_entries;
+} aprs_rx_history_t;
+
 
 void aprs_init(void);
 void aprs_set_dest(const char *dest);
@@ -110,5 +132,19 @@ void aprs_toggle_config_flag(aprs_flag_t flag);
 
 bool aprs_parse_frame(const uint8_t *frame, size_t len, aprs_frame_t *result);
 const char* aprs_get_parser_error(void);
+
+/**@brief Insert the given frame in the history and return its index.
+ * @details
+ * If a frame with the received call already exists in the history, that frame
+ * is replaced by the new frame. If it does not exist and the history is full
+ * before the new frame is inserted, the oldest frame in the history is
+ * replaced.
+ */
+uint8_t aprs_rx_history_insert(
+		const aprs_frame_t *frame,
+		const aprs_rx_raw_data_t *raw,
+		uint64_t rx_timestamp);
+
+const aprs_rx_history_t* aprs_get_rx_history(void);
 
 #endif // APRS_H

@@ -60,8 +60,8 @@ extern uint16_t m_bat_millivolt;
 extern aprs_frame_t m_aprs_decoded_message;
 extern bool         m_aprs_decode_ok;
 
-extern uint8_t m_display_message[256];
-extern uint8_t m_display_message_len;
+extern aprs_rx_raw_data_t m_last_undecodable_data;
+extern uint64_t m_last_undecodable_timestamp;
 
 extern float m_rssi, m_snr, m_signalRssi;
 
@@ -464,6 +464,9 @@ void redraw_display(bool full_update)
 				epaper_fb_move_to(0, yoffset);
 				break;
 
+			case DISP_STATE_LORA_RX_OVERVIEW:
+				break;
+
 			case DISP_STATE_LORA_PACKET_DECODED:
 				if(m_aprs_decode_ok) {
 					epaper_fb_draw_string(m_aprs_decoded_message.source, EPAPER_COLOR_BLACK);
@@ -568,7 +571,7 @@ void redraw_display(bool full_update)
 				break;
 
 			case DISP_STATE_LORA_PACKET_RAW:
-				epaper_fb_draw_data_wrapped(m_display_message, m_display_message_len, EPAPER_COLOR_BLACK);
+				epaper_fb_draw_data_wrapped(m_last_undecodable_data.data, m_last_undecodable_data.data_len, EPAPER_COLOR_BLACK);
 
 				yoffset = epaper_fb_get_cursor_pos_y() + 3 * line_height / 2;
 				epaper_fb_move_to(0, yoffset);

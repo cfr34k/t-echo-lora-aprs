@@ -22,10 +22,13 @@
  * SOFTWARE.
  */
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+
+#include <assert.h>
 
 #include <math.h>
 
@@ -87,6 +90,8 @@ static char m_comment[APRS_MAX_COMMENT_LEN+1];
 static char m_error_message[256];
 
 static uint32_t m_config_flags;
+
+static aprs_rx_history_t m_rx_history;
 
 
 static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
@@ -365,6 +370,8 @@ void aprs_init(void)
 
 	m_comment[0] = '\0';
 	m_comment[APRS_MAX_COMMENT_LEN] = '\0';
+
+	m_rx_history.num_entries = 0;
 
 	// default flags (compatible with v0.3)
 	m_config_flags = APRS_FLAG_ADD_FRAME_COUNTER | APRS_FLAG_ADD_ALTITUDE;
@@ -862,4 +869,59 @@ bool aprs_parse_frame(const uint8_t *frame, size_t len, aprs_frame_t *result)
 const char* aprs_get_parser_error(void)
 {
 	return m_error_message;
+}
+
+
+uint8_t aprs_rx_history_insert(
+		const aprs_frame_t *frame,
+		const aprs_rx_raw_data_t *raw,
+		uint64_t rx_timestamp)
+{
+	aprs_rx_history_entry_t *insert_pos = NULL;
+
+	// first try: append at the end
+	if(m_rx_history.num_entries < APRS_RX_HISTORY_SIZE) {
+		insert_pos = &m_rx_history.history[m_rx_history.num_entries];
+		m_rx_history.num_entries++;
+	}
+
+	// second try: check if the source call sign already exists
+	if(insert_pos == NULL) {
+		const char *newsrc = frame->source;
+		for(uint8_t i = 0; i < m_rx_history.num_entries; i++) {
+			const char *oldsrc = m_rx_history.history[i].decoded.source;
+
+			if(strcmp(newsrc, oldsrc) == 0) {
+				insert_pos = &m_rx_history.history[i];
+				break;
+			}
+		}
+	}
+
+	// third try: replace the oldest entry
+	if(insert_pos == NULL) {
+		uint64_t oldest_timestamp = UINT64_MAX;
+
+		for(uint8_t i = 0; i < m_rx_history.num_entries; i++) {
+			uint64_t timestamp = m_rx_history.history[i].rx_timestamp;
+			if(timestamp < oldest_timestamp) {
+				oldest_timestamp = timestamp;
+				insert_pos = &m_rx_history.history[i];
+			}
+		}
+	}
+
+	assert(insert_pos != NULL);
+
+	insert_pos->decoded = *frame;
+	insert_pos->rx_timestamp = rx_timestamp;
+	insert_pos->raw = *raw;
+
+	return (insert_pos - m_rx_history.history);
+}
+
+
+const aprs_rx_history_t* aprs_get_rx_history(void)
+{
+	return &m_rx_history;
 }
