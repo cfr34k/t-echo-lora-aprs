@@ -27,8 +27,8 @@ bool     m_tracker_active = true;
 bool     m_gps_warmup_active = true;
 
 nmea_data_t m_nmea_data = {
-	42.345f,
-	11.123f,
+	49.7225f,
+	11.0568f,
 	100.0f,
 	true,
 
@@ -138,7 +138,14 @@ bool m_aprs_decode_ok = true;
 uint8_t m_display_message[256] = "Hello World!";
 uint8_t m_display_message_len = 12;
 
+uint8_t m_display_rx_index = 0;
+
 float m_rssi = -100, m_snr = 42, m_signalRssi = -127;
+
+aprs_rx_raw_data_t m_last_undecodable_data = {
+	"Th1s i5 pret7y b0rken!",
+	22, -120.0f, -10.23f, -42.0f};
+uint64_t m_last_undecodable_timestamp = 1662056932;
 
 static bool m_redraw_required = true;
 
@@ -233,9 +240,44 @@ int main(int argc, char **argv) {
 	aprs_set_icon('/', 'b');
 	aprs_set_source("DL5TKL-4");
 	aprs_set_dest("APZTK1");
+
 	menusystem_init(cb_menusystem);
 
 	screen = init_sdl();
+
+	// add some frames to the RX history
+	aprs_frame_t frame;
+	aprs_rx_raw_data_t raw = {"", 0, -23.0, 10.0, -142.0};
+
+	char *data = "<\xff\001DO9HM-9>APLC12,qAR,DB0REN:!/573'QID4>I1QLoRa-System";
+	size_t len = strlen(data);
+
+	memcpy(raw.data, data, len);
+	raw.data_len = len;
+
+	if(aprs_parse_frame((uint8_t*)data, strlen(data), &frame)) {
+		aprs_rx_history_insert(&frame, &raw, time(NULL)-10);
+	}
+
+	data = "<\xff\001DB1DH-7>APLT00,WIDE1-1,qAU,DB0FOR-10:!4941.77NL01049.66E>276/030/A=000872 !wp$!";
+	len = strlen(data);
+
+	memcpy(raw.data, data, len);
+	raw.data_len = len;
+
+	if(aprs_parse_frame((uint8_t*)data, strlen(data), &frame)) {
+		aprs_rx_history_insert(&frame, &raw, time(NULL)-10000);
+	}
+
+	data = "<\xff\001DH0BRO-14>APLC12,qAO,DO2TE-10:!\\6!czQGSQYI2QLoRaCube-System";
+	len = strlen(data);
+
+	memcpy(raw.data, data, len);
+	raw.data_len = len;
+
+	if(aprs_parse_frame((uint8_t*)data, strlen(data), &frame)) {
+		aprs_rx_history_insert(&frame, &raw, time(NULL)-1000000);
+	}
 
 	while(running && SDL_WaitEvent(&event)) {
 		if(event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)) {
@@ -254,6 +296,12 @@ int main(int argc, char **argv) {
 		} else if(event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_DOWN) {
 			if(menusystem_is_active()) {
 				menusystem_input(MENUSYSTEM_INPUT_NEXT);
+			}
+
+			if(m_display_state == DISP_STATE_LORA_RX_OVERVIEW) {
+				m_display_rx_index++;
+				m_display_rx_index %= APRS_RX_HISTORY_SIZE+1;
+				m_redraw_required = true;
 			}
 		}
 

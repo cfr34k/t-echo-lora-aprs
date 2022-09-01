@@ -65,6 +65,8 @@ extern uint64_t m_last_undecodable_timestamp;
 
 extern float m_rssi, m_snr, m_signalRssi;
 
+extern uint8_t m_display_rx_index;
+
 /**@brief Redraw the e-Paper display.
  */
 void redraw_display(bool full_update)
@@ -72,8 +74,12 @@ void redraw_display(bool full_update)
 	char s[32];
 	char tmp1[16], tmp2[16], tmp3[16];
 
+	const aprs_rx_history_t *aprs_history = aprs_get_rx_history();
+
 	uint8_t line_height = epaper_fb_get_line_height();
 	uint8_t yoffset = line_height;
+
+	uint64_t unix_now = wall_clock_get_unix();
 
 	// calculate GNSS satellite count
 	uint8_t gps_sats_tracked = 0;
@@ -465,6 +471,150 @@ void redraw_display(bool full_update)
 				break;
 
 			case DISP_STATE_LORA_RX_OVERVIEW:
+				yoffset -= line_height;
+
+				for(uint8_t i = 0; i < APRS_RX_HISTORY_SIZE+1; i++) {
+					yoffset += 2*line_height;
+
+					uint8_t fg_color, bg_color;
+
+					if(i == m_display_rx_index) {
+						fg_color = EPAPER_COLOR_WHITE;
+						bg_color = EPAPER_COLOR_BLACK;
+					} else {
+						fg_color = EPAPER_COLOR_BLACK;
+						bg_color = EPAPER_COLOR_WHITE;
+					}
+
+					epaper_fb_fill_rect(0, yoffset - 2*line_height, EPAPER_WIDTH, yoffset, bg_color);
+
+#define HISTORY_TEXT_BASE_OFFSET 6
+
+					if(i < APRS_RX_HISTORY_SIZE) {
+						// decoded entries
+						const aprs_rx_history_entry_t *entry = &aprs_history->history[i];
+
+						epaper_fb_move_to(0, yoffset - line_height - HISTORY_TEXT_BASE_OFFSET);
+						epaper_fb_draw_string(entry->decoded.source, fg_color);
+
+						// time since reception
+						uint32_t timedelta = unix_now - entry->rx_timestamp;
+
+						if(timedelta < 60) {
+							snprintf(s, sizeof(s), "%us", timedelta);
+						} else if(timedelta < 360*60) {
+							snprintf(s, sizeof(s), "%um", timedelta/60);
+						} else if(timedelta < 72*3600) {
+							snprintf(s, sizeof(s), "%uh", timedelta/3600);
+						} else {
+							snprintf(s, sizeof(s), "%ud", timedelta/86400);
+						}
+
+						epaper_fb_move_to(0, yoffset - HISTORY_TEXT_BASE_OFFSET);
+						epaper_fb_draw_string(s, fg_color);
+
+						// calculate distance and course if we know our own position
+						if(m_nmea_has_position) {
+							float distance = great_circle_distance_m(
+									m_nmea_data.lat, m_nmea_data.lon,
+									entry->decoded.lat, entry->decoded.lon);
+
+							float direction = direction_angle(
+									m_nmea_data.lat, m_nmea_data.lon,
+									entry->decoded.lat, entry->decoded.lon);
+
+							if(distance < 1000.0f) {
+								snprintf(s, sizeof(s), "%dm", (int)(distance + 0.5f));
+							} else {
+								format_float(s, sizeof(s), distance * 1e-3f, 1);
+								strcat(s, "km");
+							}
+
+							epaper_fb_move_to(60, yoffset - HISTORY_TEXT_BASE_OFFSET);
+							epaper_fb_draw_string(s, fg_color);
+
+							// draw a nice arrow for the course
+
+							uint8_t center_x = EPAPER_WIDTH - 3*line_height/2;
+							uint8_t center_y = yoffset - line_height;
+
+							// precalculate rotation arguments
+							float rot_cos = cosf(direction * 3.14159f / 180.0f);
+							float rot_sin = sinf(direction * 3.14159f / 180.0f);
+
+							// start point at bottom
+							float point_x = 0.0f;
+							float point_y = (line_height-2);
+
+							float rpoint_x = point_x * rot_cos - point_y * rot_sin;
+							float rpoint_y = point_x * rot_sin + point_y * rot_cos;
+
+							epaper_fb_move_to(
+									center_x + (int8_t)(rpoint_x + 0.5f),
+									center_y + (int8_t)(rpoint_y + 0.5f));
+
+							// tip at top
+							point_x = 0.0f;
+							point_y = -(line_height-2);
+
+							float tip_x = point_x * rot_cos - point_y * rot_sin;
+							float tip_y = point_x * rot_sin + point_y * rot_cos;
+
+							epaper_fb_line_to(
+									center_x + (int8_t)(tip_x + 0.5f),
+									center_y + (int8_t)(tip_y + 0.5f),
+									fg_color);
+
+							// line to the left of the tip
+							point_x = -6.0f;
+							point_y = -(line_height-2) + 6.0f;
+
+							rpoint_x = point_x * rot_cos - point_y * rot_sin;
+							rpoint_y = point_x * rot_sin + point_y * rot_cos;
+
+							epaper_fb_line_to(
+									center_x + (int8_t)(rpoint_x + 0.5f),
+									center_y + (int8_t)(rpoint_y + 0.5f),
+									fg_color);
+
+							// line to the right of the tip
+							point_x = 6.0f;
+							point_y = -(line_height-2) + 6.0f;
+
+							rpoint_x = point_x * rot_cos - point_y * rot_sin;
+							rpoint_y = point_x * rot_sin + point_y * rot_cos;
+
+							// first move to the tip again
+							epaper_fb_move_to(
+									center_x + (int8_t)(tip_x + 0.5f),
+									center_y + (int8_t)(tip_y + 0.5f));
+
+							epaper_fb_line_to(
+									center_x + (int8_t)(rpoint_x + 0.5f),
+									center_y + (int8_t)(rpoint_y + 0.5f),
+									fg_color);
+						}
+
+					} else {
+						// failed packet time
+						epaper_fb_move_to(0, yoffset - line_height - HISTORY_TEXT_BASE_OFFSET);
+
+						uint32_t timedelta = unix_now - m_last_undecodable_timestamp;
+
+						if(timedelta < 60) {
+							snprintf(tmp1, sizeof(tmp1), "%us", timedelta);
+						} else if(timedelta < 360*60) {
+							snprintf(tmp1, sizeof(tmp1), "%um", timedelta/60);
+						} else if(timedelta < 72*3600) {
+							snprintf(tmp1, sizeof(tmp1), "%uh", timedelta/3600);
+						} else {
+							snprintf(tmp1, sizeof(tmp1), "%ud", timedelta/86400);
+						}
+
+						snprintf(s, sizeof(s), "Last error: %s ago", tmp1);
+						epaper_fb_draw_string(s, fg_color);
+					}
+				}
 				break;
 
 			case DISP_STATE_LORA_PACKET_DECODED:
