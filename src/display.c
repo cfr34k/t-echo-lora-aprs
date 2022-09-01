@@ -501,13 +501,13 @@ void redraw_display(bool full_update)
 						uint32_t timedelta = unix_now - entry->rx_timestamp;
 
 						if(timedelta < 60) {
-							snprintf(s, sizeof(s), "%us", timedelta);
+							snprintf(s, sizeof(s), "%lus", timedelta);
 						} else if(timedelta < 360*60) {
-							snprintf(s, sizeof(s), "%um", timedelta/60);
+							snprintf(s, sizeof(s), "%lum", timedelta/60);
 						} else if(timedelta < 72*3600) {
-							snprintf(s, sizeof(s), "%uh", timedelta/3600);
+							snprintf(s, sizeof(s), "%luh", timedelta/3600);
 						} else {
-							snprintf(s, sizeof(s), "%ud", timedelta/86400);
+							snprintf(s, sizeof(s), "%lud", timedelta/86400);
 						}
 
 						epaper_fb_move_to(0, yoffset - HISTORY_TEXT_BASE_OFFSET);
@@ -602,13 +602,13 @@ void redraw_display(bool full_update)
 						uint32_t timedelta = unix_now - m_last_undecodable_timestamp;
 
 						if(timedelta < 60) {
-							snprintf(tmp1, sizeof(tmp1), "%us", timedelta);
+							snprintf(tmp1, sizeof(tmp1), "%lus", timedelta);
 						} else if(timedelta < 360*60) {
-							snprintf(tmp1, sizeof(tmp1), "%um", timedelta/60);
+							snprintf(tmp1, sizeof(tmp1), "%lum", timedelta/60);
 						} else if(timedelta < 72*3600) {
-							snprintf(tmp1, sizeof(tmp1), "%uh", timedelta/3600);
+							snprintf(tmp1, sizeof(tmp1), "%luh", timedelta/3600);
 						} else {
-							snprintf(tmp1, sizeof(tmp1), "%ud", timedelta/86400);
+							snprintf(tmp1, sizeof(tmp1), "%lud", timedelta/86400);
 						}
 
 						snprintf(s, sizeof(s), "Last error: %s ago", tmp1);
