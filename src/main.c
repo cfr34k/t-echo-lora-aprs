@@ -833,6 +833,9 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 				if(!m_lora_tx_busy) {
 					if(menusystem_is_active()) {
 						menusystem_input(MENUSYSTEM_INPUT_NEXT);
+					} else if(m_display_state == DISP_STATE_LORA_RX_OVERVIEW) {
+						m_display_rx_index++;
+						m_display_rx_index %= (APRS_RX_HISTORY_SIZE + 1);
 					}
 				}
 			}
