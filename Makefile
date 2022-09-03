@@ -348,7 +348,7 @@ $(foreach target, $(TARGETS), $(call define_target, $(target)))
 $(OUTPUT_DIRECTORY)/$(TARGETS)/main.c.o: .git/refs/heads
 $(OUTPUT_DIRECTORY)/$(TARGETS)/menusystem.c.o: .git/refs/heads
 
-.PHONY: flash flash_softdevice erase uf2 uf2_sd
+.PHONY: flash flash_softdevice erase uf2 uf2_sd release
 
 # Flash the program
 flash: default
@@ -380,6 +380,17 @@ $(UF2_FILE): $(OUTHEXFILE)
 $(UF2_FILE_WITH_SD): $(OUTHEXFILE) $(SOFTDEVICE_HEX)
 	mergehex -m $^ -o $(OUTPUT_DIRECTORY)/merged.hex
 	$(UF2CONV) $(OUTPUT_DIRECTORY)/merged.hex -f 0xADA52840 -c -o $@
+
+UF2_FILE_VERSIONED = $(OUTPUT_DIRECTORY)/t-echo-lora-aprs-$(VERSION).uf2
+UF2_FILE_VERSIONED_WITH_SD = $(OUTPUT_DIRECTORY)/t-echo-lora-aprs-with-sd-$(VERSION).uf2
+
+$(UF2_FILE_VERSIONED): $(UF2_FILE)
+	cp $^ $@
+
+$(UF2_FILE_VERSIONED_WITH_SD): $(UF2_FILE_WITH_SD)
+	cp $^ $@
+
+release: $(UF2_FILE_VERSIONED) $(UF2_FILE_VERSIONED_WITH_SD)
 
 SDK_CONFIG_FILE := ../config/sdk_config.h
 CMSIS_CONFIG_TOOL := $(SDK_ROOT)/external_tools/cmsisconfig/CMSIS_Configuration_Wizard.jar

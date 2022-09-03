@@ -98,7 +98,8 @@ The device is operated using the two free buttons: the touch button on the
 top of the device and the push button on the bottom left. The top left button
 is the hardware reset button for the SoC.
 
-In any state, the touch button enables the display backlight for three seconds.
+In any state, the touch button enables the display backlight for three seconds
+and refreshes the display.
 
 In normal state (the state entered after firmware boot), a short press on the
 lower-left push button switches to the next display state (i.e. tracker state,
@@ -159,6 +160,15 @@ The resulting image (`_build/nrf52840_xxaa.uf2`) can only be used to upgrade
 devices that run different versions of this LoRa-APRS firmware. However, it is
 much smaller and therefore faster to download and flash.
 
+Just for the sake of completeness: The pre-built binaries are generated with an
+additional `make` target that copies the UF2 images above to new names
+including the version number (like `t-echo-lora-aprs-v0.6.uf2`). Run it as
+follows:
+
+```sh
+make release
+```
+
 ## Flashing the firmware
 
 This firmware is compatible with the [T-Echo’s preinstalled
@@ -178,11 +188,11 @@ your PC.
 
 When you first install the LoRa-APRS firmware, you must also install the
 correct SoftDevice (Bluetooth stack).  Therefore, download the latest
-`nrf52840_xxaa_with_sd.uf2` from the [Releases
+`t-echo-lora-aprs-with-sd-vX.Y.uf2` from the [Releases
 page](https://github.com/cfr34k/t-echo-lora-aprs/releases) (or use the one you
 built yourself) which contains both the SoftDevice and the regular firmware
-build. Copy `nrf52840_xxaa_with_sd.uf2` to the `TECHOBOOT`. When the copy
-operation is complete, the device should disconnect, reset, and boot the
+build. Copy `t-echo-lora-aprs-with-sd-vX.Y.uf2` to the `TECHOBOOT`. When the
+copy operation is complete, the device should disconnect, reset, and boot the
 LoRa-APRS firmware.
 
 After initial installation, **you have to configure your call sign to be able to
@@ -192,7 +202,7 @@ transmit LoRa packets** (see _Configuring the firmware_ below).
 
 If the SoftDevice is unchanged, only the firmware part needs to be updated. To
 do so, [download](https://github.com/cfr34k/t-echo-lora-aprs/releases) or build
-`nrf52840_xxaa.uf2`. Copy that file to `TECHOBOOT` and you are done.
+`t-echo-lora-aprs-vX.Y.uf2`. Copy that file to `TECHOBOOT` and you are done.
 
 ## Configuring the firmware
 
