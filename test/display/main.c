@@ -249,7 +249,7 @@ int main(int argc, char **argv) {
 	aprs_frame_t frame;
 	aprs_rx_raw_data_t raw = {"", 0, -23.0, 10.0, -142.0};
 
-	char *data = "<\xff\001DO9HM-9>APLC12,qAR,DB0REN:!/573'QID4>I1QLoRa-System";
+	char *data = "<\xff\001DO9HM-9>APLC12,qAR,DB0REN:!/573'QID4>I1QLoRa-System; more text added for testing";
 	size_t len = strlen(data);
 
 	memcpy(raw.data, data, len);

@@ -57,21 +57,29 @@ extern bool m_lora_tx_busy;
 extern uint8_t  m_bat_percent;
 extern uint16_t m_bat_millivolt;
 
-extern aprs_frame_t m_aprs_decoded_message;
-extern bool         m_aprs_decode_ok;
-
 extern aprs_rx_raw_data_t m_last_undecodable_data;
 extern uint64_t m_last_undecodable_timestamp;
 
-extern float m_rssi, m_snr, m_signalRssi;
-
 extern uint8_t m_display_rx_index;
+
+static int format_timedelta(char *buf, size_t buf_len, uint32_t timedelta)
+{
+	if(timedelta < 60) {
+		return snprintf(buf, buf_len, "%lus", timedelta);
+	} else if(timedelta < 360*60) {
+		return snprintf(buf, buf_len, "%lum", timedelta/60);
+	} else if(timedelta < 72*3600) {
+		return snprintf(buf, buf_len, "%luh", timedelta/3600);
+	} else {
+		return snprintf(buf, buf_len, "%lud", timedelta/86400);
+	}
+}
 
 /**@brief Redraw the e-Paper display.
  */
 void redraw_display(bool full_update)
 {
-	char s[32];
+	char s[64];
 	char tmp1[16], tmp2[16], tmp3[16];
 
 	const aprs_rx_history_t *aprs_history = aprs_get_rx_history();
@@ -500,15 +508,7 @@ void redraw_display(bool full_update)
 						// time since reception
 						uint32_t timedelta = unix_now - entry->rx_timestamp;
 
-						if(timedelta < 60) {
-							snprintf(s, sizeof(s), "%lus", timedelta);
-						} else if(timedelta < 360*60) {
-							snprintf(s, sizeof(s), "%lum", timedelta/60);
-						} else if(timedelta < 72*3600) {
-							snprintf(s, sizeof(s), "%luh", timedelta/3600);
-						} else {
-							snprintf(s, sizeof(s), "%lud", timedelta/86400);
-						}
+						format_timedelta(s, sizeof(s), timedelta);
 
 						epaper_fb_move_to(0, yoffset - HISTORY_TEXT_BASE_OFFSET);
 						epaper_fb_draw_string(s, fg_color);
@@ -601,15 +601,7 @@ void redraw_display(bool full_update)
 
 						uint32_t timedelta = unix_now - m_last_undecodable_timestamp;
 
-						if(timedelta < 60) {
-							snprintf(tmp1, sizeof(tmp1), "%lus", timedelta);
-						} else if(timedelta < 360*60) {
-							snprintf(tmp1, sizeof(tmp1), "%lum", timedelta/60);
-						} else if(timedelta < 72*3600) {
-							snprintf(tmp1, sizeof(tmp1), "%luh", timedelta/3600);
-						} else {
-							snprintf(tmp1, sizeof(tmp1), "%lud", timedelta/86400);
-						}
+						format_timedelta(tmp1, sizeof(tmp1), timedelta);
 
 						snprintf(s, sizeof(s), "Last error: %s ago", tmp1);
 						epaper_fb_draw_string(s, fg_color);
@@ -617,72 +609,67 @@ void redraw_display(bool full_update)
 				}
 				break;
 
-			case DISP_STATE_LORA_PACKET_DECODED:
-				if(m_aprs_decode_ok) {
-					epaper_fb_draw_string(m_aprs_decoded_message.source, EPAPER_COLOR_BLACK);
+			case DISP_STATE_LORA_PACKET_DETAIL:
+				if(m_display_rx_index < APRS_RX_HISTORY_SIZE) {
+					const aprs_rx_history_entry_t *entry = &aprs_history->history[m_display_rx_index];
+
+					epaper_fb_draw_string(entry->decoded.source, EPAPER_COLOR_BLACK);
 
 					yoffset += line_height;
 					epaper_fb_move_to(0, yoffset);
 
-					format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lat, 6);
+					format_float(tmp1, sizeof(tmp1), entry->decoded.lat, 6);
 					snprintf(s, sizeof(s), "Lat: %s", tmp1);
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 					yoffset += line_height;
 					epaper_fb_move_to(0, yoffset);
 
-					format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.lon, 6);
+					format_float(tmp1, sizeof(tmp1), entry->decoded.lon, 6);
 					snprintf(s, sizeof(s), "Lon: %s", tmp1);
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 					yoffset += line_height;
 					epaper_fb_move_to(0, yoffset);
 
-					format_float(tmp1, sizeof(tmp1), m_aprs_decoded_message.alt, 1);
+					format_float(tmp1, sizeof(tmp1), entry->decoded.alt, 1);
 					snprintf(s, sizeof(s), "Alt: %s m", tmp1);
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
-					yoffset += line_height;
+					uint8_t altitude_yoffset = yoffset; // store it for later use
+
+					yoffset += 5 * line_height / 4;
 					epaper_fb_move_to(0, yoffset);
 
-					strncpy(s, m_aprs_decoded_message.comment, sizeof(s));
-					if(strlen(s) > 20) {
-						s[18] = '\0';
+					strncpy(s, entry->decoded.comment, sizeof(s));
+					if(strlen(s) > 40) {
+						s[38] = '\0';
 						strcat(s, "...");
 					}
-					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+					epaper_fb_draw_string_wrapped(s, EPAPER_COLOR_BLACK);
 
-					yoffset += line_height;
-					epaper_fb_move_to(0, yoffset);
+					yoffset = epaper_fb_get_cursor_pos_y();
 
 					if(m_nmea_has_position) {
 						float distance = great_circle_distance_m(
 								m_nmea_data.lat, m_nmea_data.lon,
-								m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
+								entry->decoded.lat, entry->decoded.lon);
 
 						float direction = direction_angle(
 								m_nmea_data.lat, m_nmea_data.lon,
-								m_aprs_decoded_message.lat, m_aprs_decoded_message.lon);
-
-						yoffset += line_height/8; // quarter-line extra spacing
-						epaper_fb_move_to(0, yoffset);
+								entry->decoded.lat, entry->decoded.lon);
 
 						format_float(tmp1, sizeof(tmp1), distance / 1000.0f, 3);
-						snprintf(s, sizeof(s), "Distance: %s km", tmp1);
+						snprintf(s, sizeof(s), "%s km", tmp1);
+
+						uint8_t text_width = epaper_fb_calc_text_width(s);
+
+						epaper_fb_move_to(EPAPER_WIDTH - text_width, altitude_yoffset);
 						epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-						yoffset += line_height;
-						epaper_fb_move_to(0, yoffset);
-
-						format_float(tmp1, sizeof(tmp1), direction, 1);
-						snprintf(s, sizeof(s), "Direction: %s deg", tmp1);
-						epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-
-						yoffset += line_height;
 
 						static const uint8_t r = 30;
 						uint8_t center_x = EPAPER_WIDTH - r - 5;
-						uint8_t center_y = line_height*2 + r;
+						uint8_t center_y = line_height*2 + r - 5;
 
 						uint8_t arrow_start_x = center_x;
 						uint8_t arrow_start_y = center_y;
@@ -710,37 +697,39 @@ void redraw_display(bool full_update)
 						epaper_fb_move_to(center_x - 5, center_y - r + line_height/3);
 						epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
 					}
-				} else { /* show error message */
+				} else {
+					/* show error message */
 					epaper_fb_draw_string("Decoder Error:", EPAPER_COLOR_BLACK);
 
 					yoffset += line_height;
 					epaper_fb_move_to(0, yoffset);
 
 					epaper_fb_draw_string_wrapped(aprs_get_parser_error(), EPAPER_COLOR_BLACK);
+
+					yoffset = epaper_fb_get_cursor_pos_y() + line_height * 5 / 4;
+					epaper_fb_move_to(0, yoffset);
+
+					/* ... and raw message */
+					epaper_fb_draw_data_wrapped(m_last_undecodable_data.data, m_last_undecodable_data.data_len, EPAPER_COLOR_BLACK);
+
+					yoffset = epaper_fb_get_cursor_pos_y();
 				}
-				break;
 
-			case DISP_STATE_LORA_PACKET_RAW:
-				epaper_fb_draw_data_wrapped(m_last_undecodable_data.data, m_last_undecodable_data.data_len, EPAPER_COLOR_BLACK);
-
-				yoffset = epaper_fb_get_cursor_pos_y() + 3 * line_height / 2;
+				yoffset += 5 * line_height / 4;
 				epaper_fb_move_to(0, yoffset);
 
 				epaper_fb_draw_string("R: ", EPAPER_COLOR_BLACK);
 
-				format_float(tmp1, sizeof(tmp1), m_rssi, 1);
+				format_float(tmp1, sizeof(tmp1), m_last_undecodable_data.rssi, 1);
 				epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
 				epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);
 
-				format_float(tmp1, sizeof(tmp1), m_snr, 2);
+				format_float(tmp1, sizeof(tmp1), m_last_undecodable_data.snr, 2);
 				epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
 				epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);
 
-				format_float(tmp1, sizeof(tmp1), m_signalRssi, 1);
+				format_float(tmp1, sizeof(tmp1), m_last_undecodable_data.signalRssi, 1);
 				epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
-
-				yoffset += line_height;
-				epaper_fb_move_to(0, yoffset);
 				break;
 
 			case DISP_STATE_CLOCK:
