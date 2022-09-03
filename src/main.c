@@ -704,6 +704,8 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 	aprs_frame_t decoded_frame;
 	aprs_rx_raw_data_t raw;
 
+	bool switch_to_rxd = (m_display_state != DISP_STATE_LORA_PACKET_DETAIL);
+
 	switch(evt)
 	{
 		case LORA_EVT_PACKET_RECEIVED:
@@ -728,7 +730,9 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 						rx_timestamp,
 						m_display_rx_index);
 
-				m_display_rx_index = idx;
+				if(switch_to_rxd) {
+					m_display_rx_index = idx;
+				}
 			} else {
 				m_last_undecodable_data.rssi       = data->rx_packet_data.rssi;
 				m_last_undecodable_data.signalRssi = data->rx_packet_data.signalRssi;
@@ -739,10 +743,14 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 
 				m_last_undecodable_timestamp = rx_timestamp;
 
-				m_display_rx_index = APRS_RX_HISTORY_SIZE;
+				if(switch_to_rxd) {
+					m_display_rx_index = APRS_RX_HISTORY_SIZE;
+				}
 			}
 
-			m_display_state = DISP_STATE_LORA_RX_OVERVIEW;
+			if(switch_to_rxd) {
+				m_display_state = DISP_STATE_LORA_RX_OVERVIEW;
+			}
 
 			err_code = aprs_service_notify_rx_message(
 					&m_aprs_service,
