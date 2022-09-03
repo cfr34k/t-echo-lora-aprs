@@ -256,7 +256,7 @@ int main(int argc, char **argv) {
 	raw.data_len = len;
 
 	if(aprs_parse_frame((uint8_t*)data, strlen(data), &frame)) {
-		aprs_rx_history_insert(&frame, &raw, time(NULL)-10);
+		aprs_rx_history_insert(&frame, &raw, time(NULL)-10, 255);
 	}
 
 	data = "<\xff\001DB1DH-7>APLT00,WIDE1-1,qAU,DB0FOR-10:!4941.77NL01049.66E>276/030/A=000872 !wp$!";
@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
 	raw.data_len = len;
 
 	if(aprs_parse_frame((uint8_t*)data, strlen(data), &frame)) {
-		aprs_rx_history_insert(&frame, &raw, time(NULL)-10000);
+		aprs_rx_history_insert(&frame, &raw, time(NULL)-10000, 255);
 	}
 
 	data = "<\xff\001DH0BRO-14>APLC12,qAO,DO2TE-10:!\\6!czQGSQYI2QLoRaCube-System";
@@ -276,7 +276,7 @@ int main(int argc, char **argv) {
 	raw.data_len = len;
 
 	if(aprs_parse_frame((uint8_t*)data, strlen(data), &frame)) {
-		aprs_rx_history_insert(&frame, &raw, time(NULL)-1000000);
+		aprs_rx_history_insert(&frame, &raw, time(NULL)-1000000, 255);
 	}
 
 	while(running && SDL_WaitEvent(&event)) {

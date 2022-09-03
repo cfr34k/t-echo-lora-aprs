@@ -725,7 +725,8 @@ void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 				uint8_t idx = aprs_rx_history_insert(
 						&decoded_frame,
 						&raw,
-						rx_timestamp);
+						rx_timestamp,
+						m_display_rx_index);
 
 				m_display_rx_index = idx;
 			} else {

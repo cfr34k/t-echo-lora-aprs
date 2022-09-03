@@ -875,7 +875,8 @@ const char* aprs_get_parser_error(void)
 uint8_t aprs_rx_history_insert(
 		const aprs_frame_t *frame,
 		const aprs_rx_raw_data_t *raw,
-		uint64_t rx_timestamp)
+		uint64_t rx_timestamp,
+		uint8_t protected_index)
 {
 	aprs_rx_history_entry_t *insert_pos = NULL;
 
@@ -898,11 +899,16 @@ uint8_t aprs_rx_history_insert(
 		m_rx_history.num_entries++;
 	}
 
-	// third try: replace the oldest entry
+	// third try: replace the oldest entry, but never the protected one (which
+	// is likely currently being viewed)
 	if(insert_pos == NULL) {
 		uint64_t oldest_timestamp = UINT64_MAX;
 
 		for(uint8_t i = 0; i < m_rx_history.num_entries; i++) {
+			if(i == protected_index) {
+				continue;
+			}
+
 			uint64_t timestamp = m_rx_history.history[i].rx_timestamp;
 			if(timestamp < oldest_timestamp) {
 				oldest_timestamp = timestamp;

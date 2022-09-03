@@ -139,11 +139,16 @@ const char* aprs_get_parser_error(void);
  * is replaced by the new frame. If it does not exist and the history is full
  * before the new frame is inserted, the oldest frame in the history is
  * replaced.
+ *
+ * You can specify the index of an entry to protect. That entry will never be
+ * replaced, except if the callsign matches. Set protected_index to
+ * APRS_RX_HISTORY_SIZE or greater to disable the protection.
  */
 uint8_t aprs_rx_history_insert(
 		const aprs_frame_t *frame,
 		const aprs_rx_raw_data_t *raw,
-		uint64_t rx_timestamp);
+		uint64_t rx_timestamp,
+		uint8_t protected_index);
 
 const aprs_rx_history_t* aprs_get_rx_history(void);
 
