@@ -418,7 +418,8 @@ void redraw_display(bool full_update)
 					yoffset += line_height;
 					epaper_fb_move_to(0, yoffset);
 
-					strncpy(s, "Check settings.", sizeof(s));
+					epaper_fb_draw_string("Source call not set!", EPAPER_COLOR_BLACK);
+					break;
 				} else {
 					snprintf(s, sizeof(s), "Tracker %s.",
 							m_tracker_active ? "running" : "stopped");
@@ -426,56 +427,73 @@ void redraw_display(bool full_update)
 
 				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
-				yoffset += line_height + line_height / 2;
+				yoffset += 5 * line_height/4;
 				epaper_fb_move_to(0, yoffset);
 
+				uint8_t altitude_yoffset = yoffset;
+
 				if(m_nmea_data.pos_valid) {
-					format_float(tmp1, sizeof(tmp1), m_nmea_data.hdop, 1);
-					format_float(tmp2, sizeof(tmp2), m_nmea_data.vdop, 1);
-					format_float(tmp3, sizeof(tmp3), m_nmea_data.pdop, 1);
-
-					snprintf(s, sizeof(s), "DOP H: %s V: %s P: %s",
-							tmp1, tmp2, tmp3);
-
+					format_float(tmp1, sizeof(tmp1), m_nmea_data.lat, 6);
+					snprintf(s, sizeof(s), "Lat: %s", tmp1);
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 					yoffset += line_height;
 					epaper_fb_move_to(0, yoffset);
 
-					format_float(tmp1, sizeof(tmp1), m_nmea_data.lat, 5);
-					format_float(tmp2, sizeof(tmp2), m_nmea_data.lon, 5);
-
-					snprintf(s, sizeof(s), "%s/%s, %d m",
-							tmp1, tmp2, (int)(m_nmea_data.altitude + 0.5));
-
+					format_float(tmp1, sizeof(tmp1), m_nmea_data.lon, 6);
+					snprintf(s, sizeof(s), "Lon: %s", tmp1);
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					yoffset += line_height;
+					epaper_fb_move_to(0, yoffset);
+
+					format_float(tmp1, sizeof(tmp1), m_nmea_data.altitude, 1);
+					snprintf(s, sizeof(s), "Alt: %s m", tmp1);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					altitude_yoffset = yoffset;
 				} else {
 					epaper_fb_draw_string("No fix :-(", EPAPER_COLOR_BLACK);
 				}
 
-				yoffset += line_height;
-				epaper_fb_move_to(0, yoffset);
-
-				if(m_nmea_data.speed_heading_valid) {
-					format_float(tmp1, sizeof(tmp1), m_nmea_data.speed, 1);
-
-					snprintf(s, sizeof(s), "%s m/s - %d deg",
-							tmp1, (int)(m_nmea_data.heading + 0.5));
-
-					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
-				} else {
-					epaper_fb_draw_string("No speed / heading info.", EPAPER_COLOR_BLACK);
-				}
-
-				yoffset += line_height;
+				yoffset += line_height * 5 / 4;
 				epaper_fb_move_to(0, yoffset);
 
 				snprintf(s, sizeof(s), "TX count: %lu", tracker_get_tx_counter());
 
 				epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
-				yoffset += line_height;
+				yoffset += line_height * 5 / 4;
 				epaper_fb_move_to(0, yoffset);
+
+				if(m_nmea_data.speed_heading_valid) {
+					float speed_kmph = m_nmea_data.speed * 3.6f;
+
+					format_float(tmp1, sizeof(tmp1), speed_kmph, 1);
+					snprintf(s, sizeof(s), "%s km/h", tmp1);
+
+					epaper_fb_move_to(EPAPER_WIDTH - epaper_fb_calc_text_width(s), altitude_yoffset);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					static const uint8_t r = 30;
+					uint8_t center_x = EPAPER_WIDTH - r - 5;
+					uint8_t center_y = line_height*2 + r - 5;
+
+					epaper_fb_move_to(center_x, center_y);
+					epaper_fb_circle(r, EPAPER_COLOR_BLACK);
+					epaper_fb_circle(2, EPAPER_COLOR_BLACK);
+
+					uint8_t arrow_start_x = center_x;
+					uint8_t arrow_start_y = center_y;
+
+					uint8_t arrow_end_x = center_x + r * sinf(m_nmea_data.heading * (3.14f / 180.0f));
+					uint8_t arrow_end_y = center_y - r * cosf(m_nmea_data.heading * (3.14f / 180.0f));
+
+					epaper_fb_move_to(arrow_start_x, arrow_start_y);
+					epaper_fb_line_to(arrow_end_x, arrow_end_y, EPAPER_COLOR_BLACK);
+				} else {
+					epaper_fb_draw_string("No speed / heading info.", EPAPER_COLOR_BLACK);
+				}
 				break;
 
 			case DISP_STATE_LORA_RX_OVERVIEW:
@@ -730,6 +748,7 @@ void redraw_display(bool full_update)
 
 				epaper_fb_draw_string("R: ", EPAPER_COLOR_BLACK);
 
+				// FIXME!!!
 				format_float(tmp1, sizeof(tmp1), m_last_undecodable_data.rssi, 1);
 				epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
 				epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);

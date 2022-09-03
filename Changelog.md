@@ -20,6 +20,10 @@
   - For packets that cannot be decoded, a screen similar to the previous raw
     data screen is shown:
     - Show error message, raw packet and signal properties on one screen.
+- Improved the tracker status screen:
+  - Heading is now shown similar to the course on the packet detail screen.
+  - Speed is in km/h and moved below the heading display.
+  - DOP was removed (still available from the GNSS screen).
 - Pressing the touch button now always refreshes the current screen.
 
 
