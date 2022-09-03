@@ -259,6 +259,8 @@ int main(int argc, char **argv) {
 		aprs_rx_history_insert(&frame, &raw, time(NULL)-10, 255);
 	}
 
+	raw.signalRssi = -123.0f;
+
 	data = "<\xff\001DB1DH-7>APLT00,WIDE1-1,qAU,DB0FOR-10:!4941.77NL01049.66E>276/030/A=000872 !wp$!";
 	len = strlen(data);
 

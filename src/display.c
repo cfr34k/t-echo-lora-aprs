@@ -725,6 +725,22 @@ void redraw_display(bool full_update)
 						epaper_fb_move_to(center_x - 5, center_y - r + line_height/3);
 						epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
 					}
+
+					yoffset += 5 * line_height / 4;
+					epaper_fb_move_to(0, yoffset);
+
+					epaper_fb_draw_string("R: ", EPAPER_COLOR_BLACK);
+
+					format_float(tmp1, sizeof(tmp1), entry->raw.rssi, 1);
+					epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
+					epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);
+
+					format_float(tmp1, sizeof(tmp1), entry->raw.snr, 2);
+					epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
+					epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);
+
+					format_float(tmp1, sizeof(tmp1), entry->raw.signalRssi, 1);
+					epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
 				} else {
 					/* show error message */
 					epaper_fb_draw_string("Decoder Error:", EPAPER_COLOR_BLACK);
@@ -740,25 +756,22 @@ void redraw_display(bool full_update)
 					/* ... and raw message */
 					epaper_fb_draw_data_wrapped(m_last_undecodable_data.data, m_last_undecodable_data.data_len, EPAPER_COLOR_BLACK);
 
-					yoffset = epaper_fb_get_cursor_pos_y();
+					yoffset = epaper_fb_get_cursor_pos_y() + 5 * line_height / 4;
+					epaper_fb_move_to(0, yoffset);
+
+					epaper_fb_draw_string("R: ", EPAPER_COLOR_BLACK);
+
+					format_float(tmp1, sizeof(tmp1), m_last_undecodable_data.rssi, 1);
+					epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
+					epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);
+
+					format_float(tmp1, sizeof(tmp1), m_last_undecodable_data.snr, 2);
+					epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
+					epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);
+
+					format_float(tmp1, sizeof(tmp1), m_last_undecodable_data.signalRssi, 1);
+					epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
 				}
-
-				yoffset += 5 * line_height / 4;
-				epaper_fb_move_to(0, yoffset);
-
-				epaper_fb_draw_string("R: ", EPAPER_COLOR_BLACK);
-
-				// FIXME!!!
-				format_float(tmp1, sizeof(tmp1), m_last_undecodable_data.rssi, 1);
-				epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
-				epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);
-
-				format_float(tmp1, sizeof(tmp1), m_last_undecodable_data.snr, 2);
-				epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
-				epaper_fb_draw_string(" / ", EPAPER_COLOR_BLACK);
-
-				format_float(tmp1, sizeof(tmp1), m_last_undecodable_data.signalRssi, 1);
-				epaper_fb_draw_string(tmp1, EPAPER_COLOR_BLACK);
 				break;
 
 			case DISP_STATE_CLOCK:
