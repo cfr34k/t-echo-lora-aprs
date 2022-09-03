@@ -879,13 +879,7 @@ uint8_t aprs_rx_history_insert(
 {
 	aprs_rx_history_entry_t *insert_pos = NULL;
 
-	// first try: append at the end
-	if(m_rx_history.num_entries < APRS_RX_HISTORY_SIZE) {
-		insert_pos = &m_rx_history.history[m_rx_history.num_entries];
-		m_rx_history.num_entries++;
-	}
-
-	// second try: check if the source call sign already exists
+	// first try: check if the source call sign already exists
 	if(insert_pos == NULL) {
 		const char *newsrc = frame->source;
 		for(uint8_t i = 0; i < m_rx_history.num_entries; i++) {
@@ -896,6 +890,12 @@ uint8_t aprs_rx_history_insert(
 				break;
 			}
 		}
+	}
+
+	// second try: append at the end
+	if(m_rx_history.num_entries < APRS_RX_HISTORY_SIZE) {
+		insert_pos = &m_rx_history.history[m_rx_history.num_entries];
+		m_rx_history.num_entries++;
 	}
 
 	// third try: replace the oldest entry
