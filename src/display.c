@@ -605,12 +605,16 @@ void redraw_display(bool full_update)
 						// failed packet time
 						epaper_fb_move_to(0, yoffset - line_height - HISTORY_TEXT_BASE_OFFSET);
 
-						uint32_t timedelta = unix_now - m_last_undecodable_timestamp;
+						if(m_last_undecodable_timestamp > 0) {
+							uint32_t timedelta = unix_now - m_last_undecodable_timestamp;
 
-						format_timedelta(tmp1, sizeof(tmp1), timedelta);
+							format_timedelta(tmp1, sizeof(tmp1), timedelta);
 
-						snprintf(s, sizeof(s), "Last error: %s ago", tmp1);
-						epaper_fb_draw_string(s, fg_color);
+							snprintf(s, sizeof(s), "Last error: %s ago", tmp1);
+							epaper_fb_draw_string(s, fg_color);
+						} else {
+							epaper_fb_draw_string("Last error: never", fg_color);
+						}
 					}
 				}
 				break;
