@@ -1,10 +1,10 @@
-# In development
+# Version 0.6
 
 ## New and changed features
 
 - Track the current wall clock time (in UTC) and synchronize it to GNSS when enabled.
 - Added a clock screen showing the current time and date.
-- Added decoder overview screen showing the receiver history, including time of
+- Added decoder overview screen showing the receiver history, including time since
   the last error.
   - For each decoded station, the time since reception and call sign are always shown.
   - If own location is available, distance and course are also displayed.
