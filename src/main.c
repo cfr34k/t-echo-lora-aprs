@@ -837,6 +837,12 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 						m_display_rx_index++;
 						m_display_rx_index %= (APRS_RX_HISTORY_SIZE + 1);
 					}
+
+					// always refresh the display when touch button is pressed
+					// (only uses minimal additional power because the
+					// backlight is on anyways and the display therefore
+					// already powered).
+					m_epaper_update_requested = true;
 				}
 			}
 			break;
