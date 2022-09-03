@@ -835,7 +835,14 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 					if(menusystem_is_active()) {
 						menusystem_input(MENUSYSTEM_INPUT_NEXT);
 					} else if(m_display_state == DISP_STATE_LORA_RX_OVERVIEW) {
-						m_display_rx_index++;
+						const aprs_rx_history_t *history = aprs_get_rx_history();
+
+						// skip unset entries
+						do {
+							m_display_rx_index++;
+						} while(m_display_rx_index < APRS_RX_HISTORY_SIZE
+								&& history->history[m_display_rx_index].rx_timestamp == 0);
+
 						m_display_rx_index %= (APRS_RX_HISTORY_SIZE + 1);
 					}
 

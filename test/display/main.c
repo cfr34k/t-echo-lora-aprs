@@ -276,7 +276,7 @@ int main(int argc, char **argv) {
 	raw.data_len = len;
 
 	if(aprs_parse_frame((uint8_t*)data, strlen(data), &frame)) {
-		aprs_rx_history_insert(&frame, &raw, time(NULL)-1000000, 255);
+		//aprs_rx_history_insert(&frame, &raw, time(NULL)-1000000, 255);
 	}
 
 	while(running && SDL_WaitEvent(&event)) {

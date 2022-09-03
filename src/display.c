@@ -502,6 +502,12 @@ void redraw_display(bool full_update)
 						// decoded entries
 						const aprs_rx_history_entry_t *entry = &aprs_history->history[i];
 
+						// skip entries that have reception time 0, i.e. are not set.
+						if(entry->rx_timestamp == 0) {
+							continue;
+						}
+
+						// source call
 						epaper_fb_move_to(0, yoffset - line_height - HISTORY_TEXT_BASE_OFFSET);
 						epaper_fb_draw_string(entry->decoded.source, fg_color);
 
