@@ -1,3 +1,28 @@
+# In development
+
+## New and changed features
+
+- Track the current wall clock time (in UTC) and synchronize it to GNSS when enabled.
+- Added a clock screen showing the current time and date.
+- Added decoder overview screen showing the receiver history, including time of
+  the last error.
+  - For each decoded station, the time since reception and call sign are always shown.
+  - If own location is available, distance and course are also displayed.
+- Overview screen is a mini menu where one station can be selected for the details screen.
+- Merged decoded packet and raw packet data screens into one “packet details”
+  screen. The contents depend on the entry selected in the overview screen:
+  - For decoded packets, the details screen corresponds to the previous decoded
+    packet screen, with the following changes:
+    - Moved distance to the received station below the graphical course representation.
+    - Removed numeric course to the station.
+    - Show two lines of APRS comment.
+    - Show received signal properties (RSSI, SNR, SignalRSSI).
+  - For packets that cannot be decoded, a screen similar to the previous raw
+    data screen is shown:
+    - Show error message, raw packet and signal properties on one screen.
+- Pressing the touch button now always refreshes the current screen.
+
+
 # Version 0.5
 
 ## New and changed features
