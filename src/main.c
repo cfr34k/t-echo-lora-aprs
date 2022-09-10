@@ -1038,7 +1038,7 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 
 	if(gps_active_now && !gps_active_pre) {
 		APP_ERROR_CHECK(gps_power_on());
-		APP_ERROR_CHECK(gps_send_factory_reset_command());
+		APP_ERROR_CHECK(gps_send_config());
 
 		// as the GPS is a major power drain, we increase the voltage monitor's
 		// update rate while it is on.

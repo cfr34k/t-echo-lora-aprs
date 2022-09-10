@@ -40,7 +40,7 @@ typedef enum {
 	GPS_RESET_WAIT1,
 	GPS_RESET_ACTIVE,
 	GPS_RESET_WAIT2,
-	GPS_RESET_SEND_FULL_COLDSTART_CMD,
+	GPS_RESET_SEND_CONFIG,
 	GPS_RESET_COMPLETE
 } gps_reset_state_t;
 
@@ -148,12 +148,13 @@ void cb_gps_reset_timer(void *p_context)
 			APP_ERROR_CHECK(err_code);
 			break;
 
-		case GPS_RESET_SEND_FULL_COLDSTART_CMD:
+		case GPS_RESET_SEND_CONFIG:
 			{
 				m_reset_state = GPS_RESET_COMPLETE;
 
-				static uint8_t cmd[] = "$PMTK103*30\r\n";
-				APP_ERROR_CHECK(nrfx_uarte_tx(&m_uarte, cmd, 13));
+				//static uint8_t cmd[] = "\r\n$PMTK103*30\r\n"; // cold boot
+				static uint8_t cmd[] = "$PMTK314,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n"; // set sentence interval config
+				APP_ERROR_CHECK(nrfx_uarte_tx(&m_uarte, cmd, strlen((const char*)cmd)));
 			}
 			break;
 
@@ -283,8 +284,8 @@ void gps_loop(void)
 }
 
 
-ret_code_t gps_send_factory_reset_command(void)
+ret_code_t gps_send_config(void)
 {
-	m_reset_state = GPS_RESET_SEND_FULL_COLDSTART_CMD;
+	m_reset_state = GPS_RESET_SEND_CONFIG;
 	return app_timer_start(m_gps_reset_timer, APP_TIMER_TICKS(5000), NULL);
 }
