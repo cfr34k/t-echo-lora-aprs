@@ -673,23 +673,31 @@ static void cb_voltage_monitor(int16_t *meas_millivolt, uint8_t bat_percent)
 }
 
 /**@brief Callback function for the GPS. */
-static void cb_gps(const nmea_data_t *data)
+static void cb_gps(gps_evt_t evt, const nmea_data_t *data)
 {
-	// make a copy for display rendering
-	m_nmea_data = *data;
-	m_nmea_has_position = m_nmea_has_position || m_nmea_data.pos_valid;
+	switch(evt) {
+		case GPS_EVT_RESET_COMPLETE:
+			APP_ERROR_CHECK(gps_power_off());
+			break;
 
-	//APP_ERROR_CHECK(lns_wrap_update_data(data));
+		case GPS_EVT_DATA_RECEIVED:
+			// make a copy for display rendering
+			m_nmea_data = *data;
+			m_nmea_has_position = m_nmea_has_position || m_nmea_data.pos_valid;
 
-	if(data->datetime_valid) {
-		wall_clock_set_from_gnss(&data->datetime);
-	}
+			//APP_ERROR_CHECK(lns_wrap_update_data(data));
 
-	if(m_tracker_active) {
-		aprs_args_t aprs_args;
-		aprs_args.vbat_millivolt = m_bat_millivolt;
+			if(data->datetime_valid) {
+				wall_clock_set_from_gnss(&data->datetime);
+			}
 
-		tracker_run(data, &aprs_args);
+			if(m_tracker_active) {
+				aprs_args_t aprs_args;
+				aprs_args.vbat_millivolt = m_bat_millivolt;
+
+				tracker_run(data, &aprs_args);
+			}
+			break;
 	}
 }
 

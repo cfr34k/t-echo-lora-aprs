@@ -31,7 +31,12 @@
 
 #include "nmea.h"
 
-typedef void (* gps_callback_t)(const nmea_data_t *data);
+typedef enum {
+	GPS_EVT_RESET_COMPLETE,
+	GPS_EVT_DATA_RECEIVED
+} gps_evt_t;
+
+typedef void (* gps_callback_t)(gps_evt_t evt, const nmea_data_t *data);
 
 ret_code_t gps_init(gps_callback_t callback);
 
