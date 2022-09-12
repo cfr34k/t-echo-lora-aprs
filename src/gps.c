@@ -291,8 +291,12 @@ void gps_loop(void)
 }
 
 
-ret_code_t gps_send_config(void)
+ret_code_t gps_cold_restart(void)
 {
-	m_reset_state = GPS_RESET_SEND_CONFIG;
-	return app_timer_start(m_gps_reset_timer, APP_TIMER_TICKS(5000), NULL);
+	if(!m_is_powered) {
+		return NRF_ERROR_INVALID_STATE;
+	}
+
+	static uint8_t cmd[] = "$PCAS10,2*1E\r\n"; // cold restart (forget everything except configuration)
+	return nrfx_uarte_tx(&m_uarte, cmd, strlen((const char*)cmd));
 }
