@@ -1,3 +1,22 @@
+# In development
+
+## New and changed features
+
+- Allow to cold-restart the GNSS module via the menu.
+- Changes in the menu:
+  - New submenu _GNSS Utilities_ in main menu.
+  - Renamed the _GNSS Warmup_ to _Keep GNSS powered_ and moved it to the new
+    _GNSS Utilities_ submenu.
+  - Added a new menu entry _Cold restart_ to the _GNSS Utilities_ submenu.
+
+## Fixed bugs
+
+- #4 _No GNSS satellite status displayed on some devices_ should be fixed with
+  this release. Now the [CASIC
+  command](https://espruino.microco.sm/api/v1/files/68b597874e0a617692ebebc6a878032f76b34272.pdf)
+  to enable all (and only) the necessary NMEA sentences is sent to the module
+  at each firmware boot.
+
 # Version 0.6
 
 ## New and changed features
