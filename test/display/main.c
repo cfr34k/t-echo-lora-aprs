@@ -24,7 +24,7 @@ bool     m_lora_tx_busy = false;
 bool     m_lora_rx_active = false;
 bool     m_lora_tx_active = true;
 bool     m_tracker_active = true;
-bool     m_gps_warmup_active = true;
+bool     m_gnss_keep_active = true;
 
 nmea_data_t m_nmea_data = {
 	49.7225f,
@@ -207,11 +207,16 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 			break;
 
 		case MENUSYSTEM_EVT_GNSS_WARMUP_ENABLE:
-			// TODO
+			m_gnss_keep_active = true;
 			break;
 
 		case MENUSYSTEM_EVT_GNSS_WARMUP_DISABLE:
-			m_lora_tx_active = true;
+			m_gnss_keep_active = false;
+			break;
+
+		case MENUSYSTEM_EVT_GNSS_COLD_REBOOT:
+			m_gnss_keep_active = true;
+			printf("GNSS cold reboot requested.\n");
 			break;
 
 		case MENUSYSTEM_EVT_APRS_SYMBOL_CHANGED:

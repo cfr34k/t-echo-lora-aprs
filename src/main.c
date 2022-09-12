@@ -171,7 +171,7 @@ bool m_lora_tx_busy = false;
 
 bool m_lora_rx_active = false;
 bool m_tracker_active = false;
-bool m_gps_warmup_active = false;
+bool m_gnss_keep_active = false;
 
 
 BLE_BAS_DEF(m_ble_bas); // battery service
@@ -975,7 +975,9 @@ void cb_settings(settings_evt_t evt, settings_id_t id)
  */
 void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 {
-	bool gps_active_pre = m_gps_warmup_active || m_tracker_active;
+	bool gps_active_pre = m_gnss_keep_active || m_tracker_active;
+
+	bool gnss_cold_reboot_request = false;
 
 	switch(evt) {
 		case MENUSYSTEM_EVT_EXIT_MENU:
@@ -1004,11 +1006,16 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 			break;
 
 		case MENUSYSTEM_EVT_GNSS_WARMUP_ENABLE:
-			m_gps_warmup_active = true;
+			m_gnss_keep_active = true;
 			break;
 
 		case MENUSYSTEM_EVT_GNSS_WARMUP_DISABLE:
-			m_gps_warmup_active = false;
+			m_gnss_keep_active = false;
+			break;
+
+		case MENUSYSTEM_EVT_GNSS_COLD_REBOOT:
+			m_gnss_keep_active = true; // power is required for cold restart
+			gnss_cold_reboot_request = true;
 			break;
 
 		case MENUSYSTEM_EVT_APRS_SYMBOL_CHANGED:
@@ -1042,11 +1049,10 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 			break;
 	}
 
-	bool gps_active_now = m_gps_warmup_active || m_tracker_active;
+	bool gps_active_now = m_gnss_keep_active || m_tracker_active;
 
 	if(gps_active_now && !gps_active_pre) {
 		APP_ERROR_CHECK(gps_power_on());
-		APP_ERROR_CHECK(gps_send_config());
 
 		// as the GPS is a major power drain, we increase the voltage monitor's
 		// update rate while it is on.
@@ -1058,6 +1064,10 @@ void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 		// GPS is off -> go to lower rate again
 		voltage_monitor_stop();
 		voltage_monitor_start(VOLTAGE_MONITOR_INTERVAL_IDLE);
+	}
+
+	if(gnss_cold_reboot_request) {
+		APP_ERROR_CHECK(gps_cold_restart());
 	}
 
 	m_epaper_update_requested = true;

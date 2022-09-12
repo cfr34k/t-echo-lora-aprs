@@ -17,7 +17,7 @@
 enum main_entry_ids_t {
 	MAIN_ENTRY_IDX_RX           = 1,
 	MAIN_ENTRY_IDX_TRACKER      = 2,
-	MAIN_ENTRY_IDX_GNSS_WARMUP  = 3,
+	MAIN_ENTRY_IDX_GNSS_UTILS   = 3,
 	MAIN_ENTRY_IDX_POWER        = 4,
 	MAIN_ENTRY_IDX_APRS         = 5,
 	MAIN_ENTRY_IDX_INFO         = 6,
@@ -61,6 +61,13 @@ enum aprs_config_adv_entry_ids_t {
 	APRS_CONFIG_ADV_ENTRY_COUNT
 };
 
+enum gnss_utils_config_entry_ids_t {
+	GNSS_UTILS_ENTRY_IDX_KEEP_ACTIVE       = 1,
+	GNSS_UTILS_ENTRY_IDX_COLD_RESTART      = 2,
+
+	GNSS_UTILS_ENTRY_COUNT
+};
+
 #define POWER_SELECT_ENTRY_COUNT   (LORA_PWR_NUM_ENTRIES + 1)
 
 typedef struct menuentry_s menuentry_t;
@@ -92,6 +99,7 @@ static menu_t m_aprs_config_menu;
 static menu_t m_aprs_config_adv_menu;
 static menu_t m_symbol_select_menu;
 static menu_t m_info_menu;
+static menu_t m_gnss_utils_menu;
 
 static menuentry_t m_main_entries[MAIN_ENTRY_COUNT];
 static menuentry_t m_power_select_entries[POWER_SELECT_ENTRY_COUNT];
@@ -99,6 +107,7 @@ static menuentry_t m_aprs_config_entries[APRS_CONFIG_ENTRY_COUNT];
 static menuentry_t m_aprs_config_adv_entries[APRS_CONFIG_ADV_ENTRY_COUNT];
 static menuentry_t m_symbol_select_entries[SYMBOL_SELECT_ENTRY_COUNT];
 static menuentry_t m_info_entries[INFO_ENTRY_COUNT];
+static menuentry_t m_gnss_utils_entries[INFO_ENTRY_COUNT];
 
 static size_t  m_selected_entry;
 static menu_t *m_active_menu;
@@ -107,7 +116,7 @@ static menu_t *m_active_menu;
 // import some variables from main.c to make updating the menu easier
 extern bool m_lora_rx_active;
 extern bool m_tracker_active;
-extern bool m_gps_warmup_active;
+extern bool m_gnss_keep_active;
 
 
 static void enter_submenu(menu_t *menu, size_t initial_index)
@@ -141,13 +150,6 @@ static void menusystem_update_values(void)
 
 	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_TRACKER]);
 	if(m_tracker_active) {
-		strncpy(entry->value, "on", sizeof(entry->value));
-	} else {
-		strncpy(entry->value, "off", sizeof(entry->value));
-	}
-
-	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_WARMUP]);
-	if(m_gps_warmup_active) {
 		strncpy(entry->value, "on", sizeof(entry->value));
 	} else {
 		strncpy(entry->value, "off", sizeof(entry->value));
@@ -209,6 +211,14 @@ static void menusystem_update_values(void)
 	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_POWER]);
 	strncpy(entry->value, lora_power_to_str(lora_get_power()), sizeof(entry->value));
 
+	// GNSS utility menu
+	entry = &(m_gnss_utils_menu.entries[GNSS_UTILS_ENTRY_IDX_KEEP_ACTIVE]);
+	if(m_gnss_keep_active) {
+		strncpy(entry->value, "on", sizeof(entry->value));
+	} else {
+		strncpy(entry->value, "off", sizeof(entry->value));
+	}
+
 }
 
 
@@ -240,13 +250,8 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 			menusystem_update_values();
 			break;
 
-		case MAIN_ENTRY_IDX_GNSS_WARMUP:
-			if(m_gps_warmup_active) {
-				m_callback(MENUSYSTEM_EVT_GNSS_WARMUP_DISABLE, NULL);
-			} else {
-				m_callback(MENUSYSTEM_EVT_GNSS_WARMUP_ENABLE, NULL);
-			}
-			menusystem_update_values();
+		case MAIN_ENTRY_IDX_GNSS_UTILS:
+			enter_submenu(&m_gnss_utils_menu, 0);
 			break;
 
 		case MAIN_ENTRY_IDX_POWER:
@@ -416,6 +421,32 @@ static void menu_handler_info(menu_t *menu, menuentry_t *entry)
 }
 
 
+static void menu_handler_gnss_utils(menu_t *menu, menuentry_t *entry)
+{
+	size_t entry_idx = entry - &(menu->entries[0]);
+
+	switch(entry_idx) {
+		case ENTRY_IDX_EXIT:
+			leave_submenu();
+			break;
+
+		case GNSS_UTILS_ENTRY_IDX_KEEP_ACTIVE:
+			if(m_gnss_keep_active) {
+				m_callback(MENUSYSTEM_EVT_GNSS_WARMUP_DISABLE, NULL);
+			} else {
+				m_callback(MENUSYSTEM_EVT_GNSS_WARMUP_ENABLE, NULL);
+			}
+			menusystem_update_values();
+			break;
+
+		case GNSS_UTILS_ENTRY_IDX_COLD_RESTART:
+			m_callback(MENUSYSTEM_EVT_GNSS_COLD_REBOOT, NULL);
+			menusystem_update_values();
+			break;
+	}
+}
+
+
 void menusystem_init(menusystem_callback_t callback)
 {
 	m_callback = callback;
@@ -436,9 +467,9 @@ void menusystem_init(menusystem_callback_t callback)
 	m_main_menu.entries[MAIN_ENTRY_IDX_TRACKER].text = "Tracker";
 	m_main_menu.entries[MAIN_ENTRY_IDX_TRACKER].value[0] = '\0';
 
-	m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_WARMUP].handler = menu_handler_main;
-	m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_WARMUP].text = "GNSS Warmup";
-	m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_WARMUP].value[0] = '\0';
+	m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_UTILS].handler = menu_handler_main;
+	m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_UTILS].text = "GNSS Utilities >";
+	m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_UTILS].value[0] = '\0';
 
 	m_main_menu.entries[MAIN_ENTRY_IDX_POWER].handler = menu_handler_main;
 	m_main_menu.entries[MAIN_ENTRY_IDX_POWER].text = "TX Power >";
@@ -563,6 +594,22 @@ void menusystem_init(menusystem_callback_t callback)
 	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL].handler = menu_handler_info;
 	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL].text = "Symbol";
 	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL].value[0] = '\0';
+
+	// prepare the GNSS utilities menu
+	m_gnss_utils_menu.n_entries = GNSS_UTILS_ENTRY_COUNT;
+	m_gnss_utils_menu.entries = m_gnss_utils_entries;
+
+	m_gnss_utils_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_gnss_utils;
+	m_gnss_utils_menu.entries[ENTRY_IDX_EXIT].text = "<<< Back";
+	m_gnss_utils_menu.entries[ENTRY_IDX_EXIT].value[0] = '\0';
+
+	m_gnss_utils_menu.entries[GNSS_UTILS_ENTRY_IDX_KEEP_ACTIVE].handler = menu_handler_gnss_utils;
+	m_gnss_utils_menu.entries[GNSS_UTILS_ENTRY_IDX_KEEP_ACTIVE].text = "Keep GNSS powered";
+	m_gnss_utils_menu.entries[GNSS_UTILS_ENTRY_IDX_KEEP_ACTIVE].value[0] = '\0';
+
+	m_gnss_utils_menu.entries[GNSS_UTILS_ENTRY_IDX_COLD_RESTART].handler = menu_handler_gnss_utils;
+	m_gnss_utils_menu.entries[GNSS_UTILS_ENTRY_IDX_COLD_RESTART].text = "Cold restart";
+	m_gnss_utils_menu.entries[GNSS_UTILS_ENTRY_IDX_COLD_RESTART].value[0] = '\0';
 
 	m_active_menu = NULL;
 }

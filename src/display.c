@@ -47,7 +47,7 @@ extern bool m_nmea_has_position;
 
 extern bool m_lora_rx_active;
 extern bool m_tracker_active;
-extern bool m_gps_warmup_active;
+extern bool m_gnss_keep_active;
 
 extern display_state_t m_display_state;
 
@@ -126,7 +126,7 @@ void redraw_display(bool full_update)
 		uint8_t fill_color, line_color;
 		uint8_t gwidth, gleft, gright, gbottom, gtop;
 
-		bool gps_active = (m_gps_warmup_active || m_tracker_active);
+		bool gps_active = (m_gnss_keep_active || m_tracker_active);
 
 		// Satellite info box
 
