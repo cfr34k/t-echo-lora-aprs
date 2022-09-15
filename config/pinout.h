@@ -45,4 +45,9 @@
 
 #define PIN_BTN_TOUCH   NRF_GPIO_PIN_MAP(0, 11)
 
+#define BME280_7BIT_ADDR   0x77   // 0x77 if SDO = Vdd, 0x76 if SDO = GND
+
+#define PIN_BME280_SDA   NRF_GPIO_PIN_MAP(0, 26)
+#define PIN_BME280_SCL   NRF_GPIO_PIN_MAP(0, 27)
+
 #endif // PINOUT_H

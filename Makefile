@@ -68,6 +68,7 @@ SRC_FILES += \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_timer.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_ppi.c \
   $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_nvmc.c \
+  $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_twim.c \
   $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_ppi.c \
   $(SDK_ROOT)/components/libraries/bsp/bsp.c \
   $(PROJ_DIR)/src/epaper.c \
@@ -77,6 +78,8 @@ SRC_FILES += \
   $(PROJ_DIR)/src/nmea.c \
   $(PROJ_DIR)/src/gps.c \
   $(PROJ_DIR)/src/lora.c \
+  $(PROJ_DIR)/src/bme280_comp.c \
+  $(PROJ_DIR)/src/bme280.c \
   $(PROJ_DIR)/src/leds.c \
   $(PROJ_DIR)/src/buttons.c \
   $(PROJ_DIR)/src/aprs.c \

@@ -4124,13 +4124,13 @@
 // <e> NRFX_TWIM_ENABLED - nrfx_twim - TWIM peripheral driver
 //==========================================================
 #ifndef NRFX_TWIM_ENABLED
-#define NRFX_TWIM_ENABLED 0
+#define NRFX_TWIM_ENABLED 1
 #endif
 // <q> NRFX_TWIM0_ENABLED  - Enable TWIM0 instance
  
 
 #ifndef NRFX_TWIM0_ENABLED
-#define NRFX_TWIM0_ENABLED 0
+#define NRFX_TWIM0_ENABLED 1
 #endif
 
 // <q> NRFX_TWIM1_ENABLED  - Enable TWIM1 instance
@@ -5647,83 +5647,6 @@
 #endif
 
 // </e>
-
-// <e> TWI_ENABLED - nrf_drv_twi - TWI/TWIM peripheral driver - legacy layer
-//==========================================================
-#ifndef TWI_ENABLED
-#define TWI_ENABLED 0
-#endif
-// <o> TWI_DEFAULT_CONFIG_FREQUENCY  - Frequency
- 
-// <26738688=> 100k 
-// <67108864=> 250k 
-// <104857600=> 400k 
-
-#ifndef TWI_DEFAULT_CONFIG_FREQUENCY
-#define TWI_DEFAULT_CONFIG_FREQUENCY 26738688
-#endif
-
-// <q> TWI_DEFAULT_CONFIG_CLR_BUS_INIT  - Enables bus clearing procedure during init
- 
-
-#ifndef TWI_DEFAULT_CONFIG_CLR_BUS_INIT
-#define TWI_DEFAULT_CONFIG_CLR_BUS_INIT 0
-#endif
-
-// <q> TWI_DEFAULT_CONFIG_HOLD_BUS_UNINIT  - Enables bus holding after uninit
- 
-
-#ifndef TWI_DEFAULT_CONFIG_HOLD_BUS_UNINIT
-#define TWI_DEFAULT_CONFIG_HOLD_BUS_UNINIT 0
-#endif
-
-// <o> TWI_DEFAULT_CONFIG_IRQ_PRIORITY  - Interrupt priority
- 
-
-// <i> Priorities 0,2 (nRF51) and 0,1,4,5 (nRF52) are reserved for SoftDevice
-// <0=> 0 (highest) 
-// <1=> 1 
-// <2=> 2 
-// <3=> 3 
-// <4=> 4 
-// <5=> 5 
-// <6=> 6 
-// <7=> 7 
-
-#ifndef TWI_DEFAULT_CONFIG_IRQ_PRIORITY
-#define TWI_DEFAULT_CONFIG_IRQ_PRIORITY 6
-#endif
-
-// <e> TWI0_ENABLED - Enable TWI0 instance
-//==========================================================
-#ifndef TWI0_ENABLED
-#define TWI0_ENABLED 0
-#endif
-// <q> TWI0_USE_EASY_DMA  - Use EasyDMA (if present)
- 
-
-#ifndef TWI0_USE_EASY_DMA
-#define TWI0_USE_EASY_DMA 0
-#endif
-
-// </e>
-
-// <e> TWI1_ENABLED - Enable TWI1 instance
-//==========================================================
-#ifndef TWI1_ENABLED
-#define TWI1_ENABLED 0
-#endif
-// <q> TWI1_USE_EASY_DMA  - Use EasyDMA (if present)
- 
-
-#ifndef TWI1_USE_EASY_DMA
-#define TWI1_USE_EASY_DMA 0
-#endif
-
-// </e>
-
-// </e>
-
 
 // <e> UART1_ENABLED - Enable UART1 instance
 //==========================================================
