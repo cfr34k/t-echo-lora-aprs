@@ -36,6 +36,7 @@
 #define PERIPH_PWR_FLAG_GPS                 (1 << 4)
 #define PERIPH_PWR_FLAG_LORA                (1 << 5)
 #define PERIPH_PWR_FLAG_LEDS                (1 << 6)
+#define PERIPH_PWR_FLAG_BME280              (1 << 7)
 
 #define PERIPH_PWR_FLAG_ALL                 0xFFFFFFFF
 

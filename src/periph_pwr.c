@@ -105,6 +105,9 @@ static uint32_t modules_required_by_activity(periph_pwr_activity_flag_t activity
 
 		case PERIPH_PWR_FLAG_LEDS:
 			return MODULE_FLAG_3V3_REG | MODULE_FLAG_PWR_ON; // well, it's true…
+
+		case PERIPH_PWR_FLAG_BME280:
+			return MODULE_FLAG_3V3_REG | MODULE_FLAG_PWR_ON;
 	}
 
 	return 0;

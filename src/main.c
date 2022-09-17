@@ -161,7 +161,7 @@ nmea_data_t m_nmea_data;
 bool m_nmea_has_position = false;
 
 #define DISP_CYCLE_FIRST   DISP_STATE_GPS
-#define DISP_CYCLE_LAST    DISP_STATE_CLOCK
+#define DISP_CYCLE_LAST    DISP_STATE_CLOCK_BME280
 
 display_state_t m_display_state = DISP_STATE_STARTUP;
 uint8_t         m_display_rx_index = 0;
@@ -1372,7 +1372,7 @@ int main(void)
 	gps_reset();
 	lora_init(cb_lora);
 	tracker_init(cb_tracker);
-	bme280_init(cb_bme280);
+	APP_ERROR_CHECK(bme280_init(cb_bme280));
 
 	voltage_monitor_init(cb_voltage_monitor);
 
