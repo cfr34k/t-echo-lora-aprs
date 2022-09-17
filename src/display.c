@@ -32,6 +32,7 @@
 #include "tracker.h"
 #include "utils.h"
 #include "wall_clock.h"
+#include "bme280.h"
 
 #include "epaper.h"
 
@@ -777,22 +778,72 @@ void redraw_display(bool full_update)
 				}
 				break;
 
-			case DISP_STATE_CLOCK:
+			case DISP_STATE_CLOCK_BME280:
 				{
 					struct tm utc;
 					wall_clock_get_utc(&utc);
 
+					if(bme280_is_present()) {
+						yoffset = EPAPER_HEIGHT / 4;
+					} else {
+						yoffset = EPAPER_HEIGHT / 2;
+					}
+
 					snprintf(s, sizeof(s), "%02d:%02d", utc.tm_hour, utc.tm_min);
 					uint8_t textwidth = epaper_fb_calc_text_width(s);
 
-					epaper_fb_move_to(EPAPER_WIDTH/2 - textwidth/2, EPAPER_HEIGHT/2);
+					epaper_fb_move_to(EPAPER_WIDTH/2 - textwidth/2, yoffset);
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
 
 					snprintf(s, sizeof(s), "%04d-%02d-%02d", utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday);
 					textwidth = epaper_fb_calc_text_width(s);
 
-					epaper_fb_move_to(EPAPER_WIDTH/2 - textwidth/2, EPAPER_HEIGHT/2 + line_height);
+					yoffset += line_height;
+
+					epaper_fb_move_to(EPAPER_WIDTH/2 - textwidth/2, yoffset);
 					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+					if(bme280_is_present()) {
+						yoffset += line_height/2;
+
+						epaper_fb_move_to(0, yoffset);
+						epaper_fb_line_to(EPAPER_WIDTH, yoffset, EPAPER_COLOR_BLACK | EPAPER_LINE_DRAWING_MODE_DASHED);
+
+						yoffset += line_height;
+
+						epaper_fb_move_to(0, yoffset);
+						epaper_fb_draw_string("Temperature:", EPAPER_COLOR_BLACK);
+
+						format_float(tmp1, sizeof(tmp1), bme280_get_temperature(), 2);
+						snprintf(s, sizeof(s), "%s C", tmp1);
+
+						epaper_fb_move_to(EPAPER_WIDTH - epaper_fb_calc_text_width(s), yoffset);
+						epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+						yoffset += line_height;
+
+						epaper_fb_move_to(0, yoffset);
+						epaper_fb_draw_string("Humidity:", EPAPER_COLOR_BLACK);
+
+						format_float(tmp1, sizeof(tmp1), bme280_get_humidity(), 2);
+						snprintf(s, sizeof(s), "%s %%", tmp1);
+
+						epaper_fb_move_to(EPAPER_WIDTH - epaper_fb_calc_text_width(s), yoffset);
+						epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+						yoffset += line_height;
+
+						epaper_fb_move_to(0, yoffset);
+						epaper_fb_draw_string("Pressure:", EPAPER_COLOR_BLACK);
+
+						format_float(tmp1, sizeof(tmp1), bme280_get_pressure(), 2);
+						snprintf(s, sizeof(s), "%s hPa", tmp1);
+
+						epaper_fb_move_to(EPAPER_WIDTH - epaper_fb_calc_text_width(s), yoffset);
+						epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+
+						yoffset += line_height;
+					}
 				}
 				break;
 
