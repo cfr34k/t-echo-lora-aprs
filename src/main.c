@@ -247,7 +247,7 @@ void readout_bme280_if_already_powered(void)
 			&& periph_pwr_is_activity_power_already_available(PERIPH_PWR_FLAG_BME280)
 			&& (now >= m_bme280_next_readout_time)) {
 		APP_ERROR_CHECK(bme280_start_readout());
-		m_bme280_next_readout_time = now;
+		m_bme280_next_readout_time = now + 60000; // only refresh once per minute
 	}
 }
 
@@ -260,6 +260,7 @@ void readout_bme280_if_already_powered(void)
  * Currently implemented jobs are:
  *
  * - Trigger a full e-Paper refresh every 1 hour.
+ * - Trigger a BME280 readout every minute, but only if it is powered already.
  */
 void cb_minute_tick_timer(void *arg)
 {
