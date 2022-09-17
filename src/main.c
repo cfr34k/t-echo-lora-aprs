@@ -153,6 +153,7 @@ static bool m_epaper_update_requested = false;                                  
 static bool m_epaper_force_full_refresh = false;                                /**< e-Paper needs a full refresh from time to time to get rid of ghosting. */
 
 static bool m_bme280_updated = false;
+static uint64_t m_bme280_next_readout_time = 0;
 
 uint8_t  m_bat_percent;
 uint16_t m_bat_millivolt;
@@ -238,6 +239,19 @@ void cb_backlight_timer(void *arg)
 }
 
 
+void readout_bme280_if_already_powered(void)
+{
+	uint64_t now = time_base_get();
+
+	if(bme280_is_ready()
+			&& periph_pwr_is_activity_power_already_available(PERIPH_PWR_FLAG_BME280)
+			&& (now >= m_bme280_next_readout_time)) {
+		APP_ERROR_CHECK(bme280_start_readout());
+		m_bme280_next_readout_time = now;
+	}
+}
+
+
 /**@brief Timeout handler for the minute tick.
  *
  * This timer handles various background jobs that are executed at very low
@@ -255,9 +269,7 @@ void cb_minute_tick_timer(void *arg)
 		m_epaper_force_full_refresh = true;
 	}
 
-	if(bme280_is_ready()) {
-		APP_ERROR_CHECK(bme280_start_readout());
-	}
+	readout_bme280_if_already_powered();
 
 	tick_count++;
 }
@@ -880,6 +892,9 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 	APP_ERROR_CHECK(app_timer_stop(m_backlight_timer));
 	led_on(LED_EPAPER_BACKLIGHT);
 	APP_ERROR_CHECK(app_timer_start(m_backlight_timer, APP_TIMER_TICKS(3000), NULL));
+
+	// ensure the BME280 readout is up to date if the user is interacting with the device
+	readout_bme280_if_already_powered();
 
 	switch(pin)
 	{

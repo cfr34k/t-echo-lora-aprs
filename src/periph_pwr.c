@@ -194,3 +194,11 @@ ret_code_t periph_pwr_stop_activity(periph_pwr_activity_flag_t activity)
 
 	return NRF_SUCCESS;
 }
+
+
+bool periph_pwr_is_activity_power_already_available(periph_pwr_activity_flag_t activity)
+{
+	uint32_t modules = modules_required_by_activity(activity);
+
+	return (m_active_modules & modules) == modules;
+}

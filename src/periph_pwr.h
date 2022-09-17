@@ -28,6 +28,7 @@
 #include <sdk_errors.h>
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define PERIPH_PWR_FLAG_INIT                (1 << 0)
 #define PERIPH_PWR_FLAG_CONNECTED           (1 << 1)
@@ -61,6 +62,16 @@ ret_code_t periph_pwr_start_activity(periph_pwr_activity_flag_t activity);
   * @retval    err_code    Result code from powering down the modules.
   */
 ret_code_t periph_pwr_stop_activity(periph_pwr_activity_flag_t activity);
+
+/**@brief Check whether the necessary modules for the given activity are alreay on.
+ * @details
+ * This function can be used to check whether the given activity can be enabled
+ * without requiring additional modules to be switched on.
+  *
+  * @param[in] activity    The activity flag to clear.
+  * @returns               True if all necessary modules are already powered, false if not.
+  */
+bool periph_pwr_is_activity_power_already_available(periph_pwr_activity_flag_t activity);
 
 
 #endif // PERIPH_PWR_H
