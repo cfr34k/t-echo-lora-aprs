@@ -14,9 +14,13 @@ typedef enum {
 	BME280_STATE_READ_CHIPID,
 	BME280_STATE_READ_CAL1,
 	BME280_STATE_READ_CAL2,
+	BME280_STATE_SET_CONFIG,
 	//...
 	BME280_STATE_NOT_PRESENT,
 	BME280_STATE_INITIALIZED,
+	BME280_STATE_START_MEASUREMENT,
+	BME280_STATE_CHECK_COMPLETION,
+	BME280_STATE_READOUT,
 } bme280_state_t;
 
 // calibration value cache, shared with bme280_comp.c
@@ -47,7 +51,7 @@ static bme280_callback_t m_callback;
 
 static bme280_state_t m_state;
 
-static nrfx_twim_t m_twim = NRFX_TWIM_INSTANCE(0);
+static nrfx_twim_t m_twim = NRFX_TWIM_INSTANCE(1);
 
 static uint8_t m_twi_tx_buf[32];
 static uint8_t m_twi_rx_buf[32];
@@ -59,8 +63,6 @@ static float m_pressure;
 
 static ret_code_t start_transfer_for_current_state(void)
 {
-	ret_code_t err_code = NRF_ERROR_NOT_SUPPORTED;
-
 	uint8_t bytes2send = 0;
 	uint8_t bytes2receive = 0;
 
@@ -90,6 +92,29 @@ static ret_code_t start_transfer_for_current_state(void)
 			bytes2receive = 0xE7 + 1 - 0xE1;
 			break;
 
+		case BME280_STATE_SET_CONFIG:
+			m_twi_tx_buf[bytes2send++] = 0xF5; // config register
+			m_twi_tx_buf[bytes2send++] = (0x05 << 5) | (0x00 << 1) | 0x00; // 1 ms standby (not relevant), filter off, 3-wire SPI disabled
+			break;
+
+		case BME280_STATE_START_MEASUREMENT:
+			m_twi_tx_buf[bytes2send++] = 0xF2; // humidity control register
+			m_twi_tx_buf[bytes2send++] = 0x01; // enable, oversampling x1
+			m_twi_tx_buf[bytes2send++] = 0xF4; // measurement control register
+			m_twi_tx_buf[bytes2send++] = (0x01 << 5) | (0x01 << 2) | 0x01; // pressure x1, temp x1, forced mode
+			break;
+
+		case BME280_STATE_CHECK_COMPLETION:
+			m_twi_tx_buf[bytes2send++] = 0xF3; // status register
+			bytes2receive = 1;
+			break;
+
+		case BME280_STATE_READOUT:
+			// read all the data registers in a burst, starting at press_msb
+			m_twi_tx_buf[bytes2send++] = 0xF7;
+			bytes2receive = 8;
+			break;
+
 		default:
 			return NRF_ERROR_INVALID_STATE;
 	}
@@ -113,8 +138,6 @@ static ret_code_t start_transfer_for_current_state(void)
 	}
 
 	return nrfx_twim_xfer(&m_twim, &xfer, 0);
-
-	return err_code;
 }
 
 
@@ -131,6 +154,7 @@ static ret_code_t handle_completed_transfer(const nrfx_twim_xfer_desc_t *transfe
 			// check whether this really is a BME280
 			if(m_twi_rx_buf[0] != 0x60) {
 				m_state = BME280_STATE_NOT_PRESENT;
+				bme280_powersave();
 				m_callback(BME280_EVT_INIT_NOT_PRESENT);
 			} else {
 				m_state = BME280_STATE_READ_CAL1;
@@ -168,11 +192,59 @@ static ret_code_t handle_completed_transfer(const nrfx_twim_xfer_desc_t *transfe
 
 			dig_H6 = m_twi_rx_buf[6]; // 0xE7
 
+			m_state = BME280_STATE_SET_CONFIG;
+			return start_transfer_for_current_state();
+
+		case BME280_STATE_SET_CONFIG:
 			m_state = BME280_STATE_INITIALIZED;
+			bme280_powersave();
 			m_callback(BME280_EVT_INIT_DONE);
 			break;
 
+		case BME280_STATE_START_MEASUREMENT:
+			m_state = BME280_STATE_CHECK_COMPLETION;
+			return start_transfer_for_current_state();
+
+		case BME280_STATE_CHECK_COMPLETION:
+			if((m_twi_rx_buf[0] & 0x09) != 0) {
+				// either "measuring" or "im_update" is active, so measurement is not complete yet.
+				// => check status again
+				return start_transfer_for_current_state();
+			} else {
+				m_state = BME280_STATE_READOUT;
+				return start_transfer_for_current_state();
+			}
+			break;
+
+		case BME280_STATE_READOUT:
+			bme280_powersave();
+
+			{ // convert the readings
+				int32_t press_raw =
+					((int32_t)(int8_t)m_twi_rx_buf[0] << 12) // press_msb (0xF7)
+					| ((int32_t)m_twi_rx_buf[1] << 4)        // press_lsb (0xF8)
+					| ((int32_t)m_twi_rx_buf[2] >> 4);       // press_xlsb (0xF9)
+
+				int32_t temp_raw =
+					((int32_t)(int8_t)m_twi_rx_buf[3] << 12) // temp_msb (0xFA)
+					| ((int32_t)m_twi_rx_buf[4] << 4)        // temp_lsb (0xFB)
+					| ((int32_t)m_twi_rx_buf[5] >> 4);       // temp_xlsb (0xFC)
+
+				int32_t hum_raw =
+					((int32_t)(int8_t)m_twi_rx_buf[6] << 8) // hum_msb (0xFD)
+					| (int32_t)m_twi_rx_buf[7];            // hum_lsb (0xFE)
+
+				m_pressure = bme280_comp_pressure(press_raw);
+				m_temperature = bme280_comp_temperature(temp_raw);
+				m_humidity = bme280_comp_humidity(hum_raw);
+			}
+
+			m_state = BME280_STATE_INITIALIZED;
+			m_callback(BME280_EVT_READOUT_COMPLETE);
+			break;
+
 		default:
+			bme280_powersave();
 			return NRF_ERROR_INVALID_STATE;
 	}
 
@@ -185,6 +257,7 @@ static void cb_twim(nrfx_twim_evt_t const * p_event, void * p_context)
 	switch(p_event->type) {
 		case NRFX_TWIM_EVT_ADDRESS_NACK:
 			m_state = BME280_STATE_NOT_PRESENT;
+			bme280_powersave();
 			m_callback(BME280_EVT_INIT_NOT_PRESENT);
 			break;
 
@@ -192,6 +265,7 @@ static void cb_twim(nrfx_twim_evt_t const * p_event, void * p_context)
 		case NRFX_TWIM_EVT_OVERRUN:
 		case NRFX_TWIM_EVT_BUS_ERROR:
 			m_state = BME280_STATE_COMMUNICATION_ERROR;
+			bme280_powersave();
 			m_callback(BME280_EVT_COMMUNICATION_ERROR);
 			break;
 
@@ -233,10 +307,26 @@ ret_code_t bme280_start_readout(void)
 {
 	ret_code_t err_code;
 
+	if(m_state != BME280_STATE_INITIALIZED) {
+		return NRF_ERROR_INVALID_STATE;
+	}
+
 	err_code = setup_twim();
 	VERIFY_SUCCESS(err_code);
 
 	return NRF_SUCCESS;
+}
+
+
+bool bme280_is_ready(void)
+{
+	return (m_state == BME280_STATE_INITIALIZED);
+}
+
+
+void bme280_powersave(void)
+{
+	nrfx_twim_uninit(&m_twim);
 }
 
 

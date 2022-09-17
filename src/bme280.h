@@ -2,6 +2,7 @@
 #define BME280_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef SDL_DISPLAY
 	// compiling for the display emulator
@@ -24,6 +25,10 @@ typedef void (*bme280_callback_t)(bme280_evt_t evt);
 
 ret_code_t bme280_init(bme280_callback_t callback);
 ret_code_t bme280_start_readout(void);
+
+bool bme280_is_ready(void);
+
+void bme280_powersave(void);
 
 float bme280_get_temperature(void);
 float bme280_get_humidity(void);
