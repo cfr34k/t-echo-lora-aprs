@@ -257,22 +257,22 @@ static ret_code_t handle_completed_transfer(const nrfx_twim_xfer_desc_t *transfe
 
 			{ // convert the readings
 				int32_t press_raw =
-					((int32_t)(int8_t)m_twi_rx_buf[0] << 12) // press_msb (0xF7)
+					((int32_t)m_twi_rx_buf[0] << 12) // press_msb (0xF7)
 					| ((int32_t)m_twi_rx_buf[1] << 4)        // press_lsb (0xF8)
 					| ((int32_t)m_twi_rx_buf[2] >> 4);       // press_xlsb (0xF9)
 
 				int32_t temp_raw =
-					((int32_t)(int8_t)m_twi_rx_buf[3] << 12) // temp_msb (0xFA)
+					((int32_t)m_twi_rx_buf[3] << 12) // temp_msb (0xFA)
 					| ((int32_t)m_twi_rx_buf[4] << 4)        // temp_lsb (0xFB)
 					| ((int32_t)m_twi_rx_buf[5] >> 4);       // temp_xlsb (0xFC)
 
 				int32_t hum_raw =
-					((int32_t)(int8_t)m_twi_rx_buf[6] << 8) // hum_msb (0xFD)
+					((int32_t)m_twi_rx_buf[6] << 8) // hum_msb (0xFD)
 					| (int32_t)m_twi_rx_buf[7];            // hum_lsb (0xFE)
 
-				m_pressure = bme280_comp_pressure(press_raw);
 				m_temperature = bme280_comp_temperature(temp_raw);
 				m_humidity = bme280_comp_humidity(hum_raw);
+				m_pressure = bme280_comp_pressure(press_raw);
 			}
 
 			m_state = BME280_STATE_INITIALIZED;
