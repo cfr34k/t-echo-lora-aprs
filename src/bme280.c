@@ -318,6 +318,13 @@ ret_code_t bme280_start_readout(void)
 }
 
 
+bool bme280_is_present(void)
+{
+	return (m_state != BME280_STATE_NOT_PRESENT)
+		&& (m_state != BME280_STATE_COMMUNICATION_ERROR);
+}
+
+
 bool bme280_is_ready(void)
 {
 	return (m_state == BME280_STATE_INITIALIZED);

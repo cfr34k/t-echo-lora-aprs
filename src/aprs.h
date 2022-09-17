@@ -68,6 +68,11 @@ typedef enum {
 typedef struct {
 	uint32_t frame_id;
 	uint16_t vbat_millivolt;
+
+	bool  transmit_env_data;
+	float temperature_celsius;
+	float humidity_rH;
+	float pressure_hPa;
 } aprs_args_t;
 
 

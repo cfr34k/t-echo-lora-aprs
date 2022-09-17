@@ -26,6 +26,7 @@ typedef void (*bme280_callback_t)(bme280_evt_t evt);
 ret_code_t bme280_init(bme280_callback_t callback);
 ret_code_t bme280_start_readout(void);
 
+bool bme280_is_present(void);
 bool bme280_is_ready(void);
 
 void bme280_powersave(void);

@@ -98,6 +98,7 @@
 #include "settings.h"
 #include "menusystem.h"
 #include "display.h"
+#include "bme280.h"
 
 #include "aprs.h"
 
@@ -150,6 +151,8 @@ static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        
 
 static bool m_epaper_update_requested = false;                                  /**< If set to true, the e-paper display will be redrawn ASAP from the main loop. */
 static bool m_epaper_force_full_refresh = false;                                /**< e-Paper needs a full refresh from time to time to get rid of ghosting. */
+
+static bool m_bme280_updated = false;
 
 uint8_t  m_bat_percent;
 uint16_t m_bat_millivolt;
@@ -250,6 +253,10 @@ void cb_minute_tick_timer(void *arg)
 
 	if(tick_count % 60 == 0) {
 		m_epaper_force_full_refresh = true;
+	}
+
+	if(bme280_is_ready()) {
+		APP_ERROR_CHECK(bme280_start_readout());
 	}
 
 	tick_count++;
@@ -695,6 +702,13 @@ static void cb_gps(gps_evt_t evt, const nmea_data_t *data)
 				aprs_args_t aprs_args;
 				aprs_args.vbat_millivolt = m_bat_millivolt;
 
+				aprs_args.transmit_env_data = m_bme280_updated;
+				if(m_bme280_updated) {
+					aprs_args.temperature_celsius = bme280_get_temperature();
+					aprs_args.humidity_rH         = bme280_get_humidity();
+					aprs_args.pressure_hPa        = bme280_get_pressure();
+				}
+
 				tracker_run(data, &aprs_args);
 			}
 			break;
@@ -826,7 +840,33 @@ static void cb_tracker(tracker_evt_t evt)
 {
 	switch(evt) {
 		case TRACKER_EVT_TRANSMISSION_STARTED:
+			m_bme280_updated = false;
 			m_epaper_update_requested = true;
+			break;
+	}
+}
+
+
+/**@brief BME280 event handler.
+ */
+static void cb_bme280(bme280_evt_t evt)
+{
+	switch(evt) {
+		case BME280_EVT_INIT_DONE:
+			NRF_LOG_INFO("BME280 detected.");
+			break;
+
+		case BME280_EVT_INIT_NOT_PRESENT:
+			NRF_LOG_WARNING("BME280 is not present.");
+			break;
+
+		case BME280_EVT_COMMUNICATION_ERROR:
+			NRF_LOG_ERROR("BME280 communication error.");
+			break;
+
+		case BME280_EVT_READOUT_COMPLETE:
+			m_bme280_updated = true;
+			NRF_LOG_INFO("BME280 readout complete.");
 			break;
 	}
 }
@@ -1332,6 +1372,7 @@ int main(void)
 	gps_reset();
 	lora_init(cb_lora);
 	tracker_init(cb_tracker);
+	bme280_init(cb_bme280);
 
 	voltage_monitor_init(cb_voltage_monitor);
 
