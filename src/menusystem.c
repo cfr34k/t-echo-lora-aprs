@@ -10,6 +10,7 @@
 
 #include "menusystem.h"
 #include "aprs.h"
+#include "bme280.h"
 
 
 #define ENTRY_IDX_EXIT               0
@@ -57,6 +58,7 @@ enum aprs_config_entry_ids_t {
 enum aprs_config_adv_entry_ids_t {
 	APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID         = 1,
 	APRS_CONFIG_ADV_ENTRY_IDX_VBAT              = 2,
+	APRS_CONFIG_ADV_ENTRY_IDX_WEATHER           = 3,
 
 	APRS_CONFIG_ADV_ENTRY_COUNT
 };
@@ -193,6 +195,15 @@ static void menusystem_update_values(void)
 
 	entry = &(m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_VBAT]);
 	if(aprs_flags & APRS_FLAG_ADD_VBAT) {
+		strncpy(entry->value,  "on", sizeof(entry->value));
+	} else {
+		strncpy(entry->value,  "off", sizeof(entry->value));
+	}
+
+	entry = &(m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_WEATHER]);
+	if(!bme280_is_present()) {
+		strncpy(entry->value,  "N/A", sizeof(entry->value));
+	} else if(aprs_flags & APRS_FLAG_ADD_WEATHER) {
 		strncpy(entry->value,  "on", sizeof(entry->value));
 	} else {
 		strncpy(entry->value,  "off", sizeof(entry->value));
@@ -344,6 +355,13 @@ static void menu_handler_aprs_config_adv(menu_t *menu, menuentry_t *entry)
 		case APRS_CONFIG_ADV_ENTRY_IDX_VBAT:
 			aprs_toggle_config_flag(APRS_FLAG_ADD_VBAT);
 			flags_changed = true;
+			break;
+
+		case APRS_CONFIG_ADV_ENTRY_IDX_WEATHER:
+			if(bme280_is_present()) {
+				aprs_toggle_config_flag(APRS_FLAG_ADD_WEATHER);
+				flags_changed = true;
+			}
 			break;
 
 		default:
@@ -542,6 +560,10 @@ void menusystem_init(menusystem_callback_t callback)
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_VBAT].handler = menu_handler_aprs_config_adv;
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_VBAT].text = "Battery voltage";
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_VBAT].value[0] = '\0';
+
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_WEATHER].handler = menu_handler_aprs_config_adv;
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_WEATHER].text = "Weather report";
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_WEATHER].value[0] = '\0';
 
 	// prepare the symbol select menu
 	m_symbol_select_menu.n_entries = SYMBOL_SELECT_ENTRY_COUNT;
