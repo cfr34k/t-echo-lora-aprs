@@ -3,11 +3,28 @@
 ## New and changed features
 
 - Allow to cold-restart the GNSS module via the menu.
+- Added support for the BME280 environment sensor:
+  - detect the sensor on firmware startup (may not be available)
+  - read temperature, humidity and pressure values every minute (at most)
+  - as the sensor is connected to the peripheral power which also supplies the
+    GNSS module, a measurement is only started if peripheral power is already on.
+  - measurement is triggered
+    - by a timer every 60 seconds
+    - by any button press
+- Weather reports based on the BME280’s values can be transmitted via APRS:
+  - optional, configurable via the advanced APRS configuration menu.
+  - Weather reports are transmitted when a transmission is triggered by the
+    tracker, i.e. no additional packets are sent. They include the latest
+    BME280 readings available at that time.
+  - In weather reports, the symbol code is forced to `/_`. This is required by
+    the APRS specification. All other data is included as usual.
 - Changes in the menu:
   - New submenu _GNSS Utilities_ in main menu.
-  - Renamed the _GNSS Warmup_ to _Keep GNSS powered_ and moved it to the new
-    _GNSS Utilities_ submenu.
-  - Added a new menu entry _Cold restart_ to the _GNSS Utilities_ submenu.
+    - Renamed the _GNSS Warmup_ to _Keep GNSS powered_ and moved it to the new
+      _GNSS Utilities_ submenu.
+    - Added a new menu entry _Cold restart_ to the _GNSS Utilities_ submenu.
+  - New entry _Weather report_ in _APRS Config → Advanced_ which allows to
+    enable transmission of weather reports.
 
 ## Fixed bugs
 
