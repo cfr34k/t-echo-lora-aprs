@@ -297,6 +297,32 @@ static char* encode_vbat(char *str, size_t max_len, uint16_t vbat_millivolt)
 	}
 }
 
+static char* encode_weather(char *str, size_t max_len, const aprs_args_t *args)
+{
+	if(!(m_config_flags & APRS_FLAG_ADD_WEATHER)) {
+		return str;
+	}
+
+	if(!args->transmit_env_data) {
+		// data was already transmitted or no data available
+		return str;
+	}
+
+	int32_t temp_fahrenheit = (int32_t)((args->temperature_celsius * 9.0f / 5.0f + 32.0f) + 0.5f);
+	int32_t humidity = (int32_t)(args->humidity_rH + 0.5f) % 100; // h00 = 100%
+	int32_t pressure_dPa = (int32_t)(args->pressure_hPa * 10.0f + 0.5f); // resolution = 0.1 hPa = 10 Pa
+
+	int ret = snprintf(str, max_len, " t%03ldh%02ldb%05ld", temp_fahrenheit, humidity, pressure_dPa);
+
+	if(ret < 0) {
+		return NULL; // error
+	} else if(ret < max_len) {
+		return str + ret; // everything encoded ok
+	} else {
+		return str + max_len - 1; // string was truncated
+	}
+}
+
 static void update_info_field(const aprs_args_t *args)
 {
 	char *info_end = (char*)m_info + sizeof(m_info);
@@ -347,6 +373,12 @@ static void update_info_field(const aprs_args_t *args)
 
 	/* add Vbat */
 	retptr = encode_vbat(infoptr, info_end - infoptr, args->vbat_millivolt);
+	if(retptr) {
+		infoptr = retptr;
+	}
+
+	/* add weather report */
+	retptr = encode_weather(infoptr, info_end - infoptr, args);
 	if(retptr) {
 		infoptr = retptr;
 	}
