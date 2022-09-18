@@ -106,7 +106,7 @@ static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
 	}
 }
 
-static char* encode_position_readable(char *str, size_t max_len)
+static char* encode_position_readable(char *str, size_t max_len, char table, char symbol)
 {
 	float lat = m_lat;
 	float lon = m_lon;
@@ -168,8 +168,8 @@ static char* encode_position_readable(char *str, size_t max_len)
 	}
 
 	int ret = snprintf(str, max_len, "%02i%02i.%02i%c%c%03i%02i.%02i%c%c%s",
-			lat_deg, lat_min, lat_min_fract, lat_ns, m_table,
-			lon_deg, lon_min, lon_min_fract, lon_ew, m_icon,
+			lat_deg, lat_min, lat_min_fract, lat_ns, table,
+			lon_deg, lon_min, lon_min_fract, lon_ew, symbol,
 			dao);
 
 	if(ret < 0) {
@@ -181,7 +181,7 @@ static char* encode_position_readable(char *str, size_t max_len)
 	}
 }
 
-static char* encode_position_compressed(char *str, size_t max_len)
+static char* encode_position_compressed(char *str, size_t max_len, char table, char symbol)
 {
 	/*
 	 * compressed format: /YYYYXXXX$csT
@@ -199,8 +199,8 @@ static char* encode_position_compressed(char *str, size_t max_len)
 	}
 
 	// set APRS symbol
-	str[0] = m_table;
-	str[9] = m_icon;
+	str[0] = table;
+	str[9] = symbol;
 
 	// compressed latitude calculation
 	uint32_t lat_compressed = (90.0f - m_lat) * 380926.0f;
@@ -312,7 +312,7 @@ static char* encode_weather(char *str, size_t max_len, const aprs_args_t *args)
 	int32_t humidity = (int32_t)(args->humidity_rH + 0.5f) % 100; // h00 = 100%
 	int32_t pressure_dPa = (int32_t)(args->pressure_hPa * 10.0f + 0.5f); // resolution = 0.1 hPa = 10 Pa
 
-	int ret = snprintf(str, max_len, " t%03ldh%02ldb%05ld", temp_fahrenheit, humidity, pressure_dPa);
+	int ret = snprintf(str, max_len, "t%03ldh%02ldb%05ld", temp_fahrenheit, humidity, pressure_dPa);
 
 	if(ret < 0) {
 		return NULL; // error
@@ -329,6 +329,15 @@ static void update_info_field(const aprs_args_t *args)
 	char *infoptr = (char*)m_info;
 	char *retptr;
 
+	bool is_weather_report = (m_config_flags & APRS_FLAG_ADD_WEATHER) && args->transmit_env_data;
+
+	char table = m_table, symbol = m_icon;
+
+	if(is_weather_report) {
+		table = '/';
+		symbol = '_';
+	}
+
 	/* packet type: position, no APRS messaging */
 	*infoptr = '!';
 	infoptr++;
@@ -336,13 +345,21 @@ static void update_info_field(const aprs_args_t *args)
 	/* encode position */
 
 	if(m_config_flags & APRS_FLAG_COMPRESS_LOCATION) {
-		retptr = encode_position_compressed(infoptr, info_end - infoptr);
+		retptr = encode_position_compressed(infoptr, info_end - infoptr, table, symbol);
 	} else {
-		retptr = encode_position_readable(infoptr, info_end - infoptr);
+		retptr = encode_position_readable(infoptr, info_end - infoptr, table, symbol);
 	}
 
 	if(retptr) {
 		infoptr = retptr;
+	}
+
+	/* add weather report */
+	if(is_weather_report) {
+		retptr = encode_weather(infoptr, info_end - infoptr, args);
+		if(retptr) {
+			infoptr = retptr;
+		}
 	}
 
 	/* add comment */
@@ -373,12 +390,6 @@ static void update_info_field(const aprs_args_t *args)
 
 	/* add Vbat */
 	retptr = encode_vbat(infoptr, info_end - infoptr, args->vbat_millivolt);
-	if(retptr) {
-		infoptr = retptr;
-	}
-
-	/* add weather report */
-	retptr = encode_weather(infoptr, info_end - infoptr, args);
 	if(retptr) {
 		infoptr = retptr;
 	}
