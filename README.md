@@ -275,6 +275,28 @@ exploration/debugging app like [nRF Connect for
 Mobile](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-mobile)
 to write the available BLE characteristics.
 
+## Troubleshooting
+
+### Bluetooth Low Energy
+
+#### The T-Echo refuses BLE connections
+
+Probably the BLE security keys are messed up. The T-Echo refuses any connection
+with a wrong or missing key. Try the following:
+
+- Remove the T-Echo from your phone’s or computer’s Bluetooth device list. That
+  removes the keys on that side. Then try to connect again.
+- If it still does not work, clear the keys on the T-Echo as follows:
+  - Press the reset button once.
+  - When the startup screen starts flickering, press and hold the bottom
+    button. Hold the bottom button until the menu screen appears.
+  - Release the bottom button. The keys should now be erased and you should be
+    able to connect.
+
+Please note that if you remove the keys from the T-Echo, any other device you
+used to connect before will no longer be able to connect. You have to remove
+the T-Echo connection from all other devices.
+
 ## License
 
 For license information, see [COPYING](COPYING).
