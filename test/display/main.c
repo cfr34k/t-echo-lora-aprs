@@ -26,6 +26,8 @@ bool     m_lora_tx_active = true;
 bool     m_tracker_active = true;
 bool     m_gnss_keep_active = true;
 
+char m_passkey[6] = {'4', '2', '2', '3', '0', '5'};
+
 nmea_data_t m_nmea_data = {
 	49.7225f,
 	11.0568f,

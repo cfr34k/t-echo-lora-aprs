@@ -128,7 +128,7 @@
 #define SEC_PARAM_MITM                  0                                       /**< Man In The Middle protection not required. */
 #define SEC_PARAM_LESC                  0                                       /**< LE Secure Connections not enabled. */
 #define SEC_PARAM_KEYPRESS              0                                       /**< Keypress notifications not enabled. */
-#define SEC_PARAM_IO_CAPABILITIES       BLE_GAP_IO_CAPS_NONE                    /**< No I/O capabilities. */
+#define SEC_PARAM_IO_CAPABILITIES       BLE_GAP_IO_CAPS_DISPLAY_ONLY            /**< Only display, no keyboard. */
 #define SEC_PARAM_OOB                   0                                       /**< Out Of Band data not available. */
 #define SEC_PARAM_MIN_KEY_SIZE          7                                       /**< Minimum encryption key size. */
 #define SEC_PARAM_MAX_KEY_SIZE          16                                      /**< Maximum encryption key size. */
@@ -165,6 +165,7 @@ bool m_nmea_has_position = false;
 #define DISP_CYCLE_LAST    DISP_STATE_CLOCK_BME280
 
 display_state_t m_display_state = DISP_STATE_STARTUP;
+display_state_t m_prev_display_state = DISP_CYCLE_FIRST;
 uint8_t         m_display_rx_index = 0;
 
 aprs_rx_raw_data_t m_last_undecodable_data;
@@ -176,6 +177,8 @@ bool m_lora_tx_busy = false;
 bool m_lora_rx_active = false;
 bool m_tracker_active = false;
 bool m_gnss_keep_active = false;
+
+char m_passkey[6];
 
 
 BLE_BAS_DEF(m_ble_bas); // battery service
@@ -613,6 +616,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 			// LED indication will be changed when advertising starts.
 
 			periph_pwr_stop_activity(PERIPH_PWR_FLAG_CONNECTED);
+
+			if(m_display_state == DISP_STATE_PASSKEY) {
+				m_display_state = m_prev_display_state;
+				m_epaper_update_requested = true;
+			}
 			break;
 
 		case BLE_GAP_EVT_CONNECTED:
@@ -654,6 +662,14 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 			err_code = sd_ble_gap_disconnect(p_ble_evt->evt.gatts_evt.conn_handle,
 					BLE_HCI_REMOTE_USER_TERMINATED_CONNECTION);
 			APP_ERROR_CHECK(err_code);
+			break;
+
+		case BLE_GAP_EVT_PASSKEY_DISPLAY:
+			memcpy(m_passkey, p_ble_evt->evt.gap_evt.params.passkey_display.passkey, sizeof(m_passkey));
+
+			m_prev_display_state = m_display_state;
+			m_display_state = DISP_STATE_PASSKEY;
+			m_epaper_update_requested = true;
 			break;
 
 		default:
@@ -931,6 +947,9 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 			if(evt == APP_BUTTON_PUSH) {
 				if(menusystem_is_active()) {
 					menusystem_input(MENUSYSTEM_INPUT_CONFIRM);
+				} else if(m_display_state == DISP_STATE_PASSKEY) {
+					m_display_state = m_prev_display_state;
+					m_epaper_update_requested = true;
 				} else {
 					// cycle through the displays
 					if(m_display_state == DISP_CYCLE_LAST) {

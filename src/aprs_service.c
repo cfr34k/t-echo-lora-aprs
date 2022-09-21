@@ -134,7 +134,7 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 	add_char_params.char_props.write  = 1;
 
 	add_char_params.read_access       = SEC_OPEN;
-	add_char_params.write_access      = SEC_JUST_WORKS;
+	add_char_params.write_access      = SEC_MITM;
 
 	fill_user_desc(&add_user_desc, "My Call");
 	add_char_params.p_user_descr = &add_user_desc;
@@ -153,7 +153,7 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 	add_char_params.char_props.write  = 1;
 
 	add_char_params.read_access       = SEC_OPEN;
-	add_char_params.write_access      = SEC_JUST_WORKS;
+	add_char_params.write_access      = SEC_MITM;
 
 	fill_user_desc(&add_user_desc, "Comment");
 	add_char_params.p_user_descr = &add_user_desc;
@@ -176,7 +176,7 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 	add_char_params.char_props.write  = 1;
 
 	add_char_params.read_access       = SEC_OPEN;
-	add_char_params.write_access      = SEC_JUST_WORKS;
+	add_char_params.write_access      = SEC_MITM;
 
 	fill_user_desc(&add_user_desc, "Symbol code");
 	add_char_params.p_user_descr = &add_user_desc;

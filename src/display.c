@@ -63,6 +63,8 @@ extern uint64_t m_last_undecodable_timestamp;
 
 extern uint8_t m_display_rx_index;
 
+extern char m_passkey[6];
+
 static int format_timedelta(char *buf, size_t buf_len, uint32_t timedelta)
 {
 	if(timedelta < 60) {
@@ -336,6 +338,30 @@ void redraw_display(bool full_update)
 				epaper_fb_draw_string("Lora-APRS by DL5TKL", EPAPER_COLOR_BLACK);
 				epaper_fb_move_to(0, 190);
 				epaper_fb_draw_string(VERSION, EPAPER_COLOR_BLACK);
+				break;
+
+			case DISP_STATE_PASSKEY:
+				{
+					const char *text = "BLE Security Request";
+					uint8_t width = epaper_fb_calc_text_width(text);
+
+					epaper_fb_move_to(EPAPER_WIDTH/2 - width/2, 50);
+					epaper_fb_draw_string(text, EPAPER_COLOR_BLACK);
+
+					text = "PassKey:";
+					width = epaper_fb_calc_text_width(text);
+
+					epaper_fb_move_to(EPAPER_WIDTH/2 - width/2, 80);
+					epaper_fb_draw_string(text, EPAPER_COLOR_BLACK);
+
+					memcpy(s, m_passkey, 6);
+					s[6] = '\0';
+
+					width = epaper_fb_calc_text_width(s);
+
+					epaper_fb_move_to(EPAPER_WIDTH/2 - width/2, 80 + 2*line_height);
+					epaper_fb_draw_string(s, EPAPER_COLOR_BLACK);
+				}
 				break;
 
 			case DISP_STATE_GPS:
