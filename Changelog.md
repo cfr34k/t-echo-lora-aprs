@@ -2,6 +2,13 @@
 
 ## New and changed features
 
+- Raise the BLE security level:
+  - The device now supports BLE 4.0 passkey pairing: The T-Echo shows a passkey
+    that you have to type at your phone/laptop. A successful passkey pairing
+    ensures man-in-the-middle protection.
+  - Passkey pairing is now required to write to any characteristic. Thus (for
+    example) the call sign can only be changed if you can see the T-Echo’s
+    passkey.
 - Allow to cold-restart the GNSS module via the menu.
 - Added support for the BME280 environment sensor:
   - detect the sensor on firmware startup (may not be available)

@@ -36,6 +36,7 @@ standby (reachable via BLE; standby time depends on hardware configuration).
 - Bluetooth Low Energy:
   - Configure source call sign, APRS symbol, and comment.
   - Notification support for received APRS messages.
+  - Secured by BLE 4.0 passkey pairing.
 
 ### APRS protocol support
 
