@@ -1,4 +1,4 @@
-# In development
+# Version 0.7
 
 ## New and changed features
 
@@ -40,6 +40,7 @@
   command](https://espruino.microco.sm/api/v1/files/68b597874e0a617692ebebc6a878032f76b34272.pdf)
   to enable all (and only) the necessary NMEA sentences is sent to the module
   at each firmware boot.
+
 
 # Version 0.6
 
