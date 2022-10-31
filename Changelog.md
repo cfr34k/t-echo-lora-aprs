@@ -1,3 +1,25 @@
+# Version 0.8
+
+## New and changed features
+
+- Implement quick RX/TX toggling by holding the touch button and shortly
+  pressing the lower-left button.  The button combination enables or disables
+  receiver and tracker in the following order:
+  - both RX and TX off
+  - RX on, TX off
+  - both RX and TX on
+  - TX on, RX off
+  - both RX and TX off again
+
+## Fixed bugs
+
+- Fixed small inconsistencies in the button handling module.
+
+## Thanks
+
+- to Tom DL5NEN for suggesting the quick RX/TX switching method.
+
+
 # Version 0.7
 
 ## New and changed features
