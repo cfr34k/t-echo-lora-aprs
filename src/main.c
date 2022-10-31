@@ -237,7 +237,7 @@ static void pm_evt_handler(pm_evt_t const * p_evt)
 
 /**@brief Timeout handler for the LED backlight.
  */
-void cb_backlight_timer(void *arg)
+static void cb_backlight_timer(void *arg)
 {
 	led_off(LED_EPAPER_BACKLIGHT);
 }
@@ -266,7 +266,7 @@ void readout_bme280_if_already_powered(void)
  * - Trigger a full e-Paper refresh every 1 hour.
  * - Trigger a BME280 readout every minute, but only if it is powered already.
  */
-void cb_minute_tick_timer(void *arg)
+static void cb_minute_tick_timer(void *arg)
 {
 	static uint32_t tick_count = 1;
 
@@ -746,7 +746,7 @@ static void cb_gps(gps_evt_t evt, const nmea_data_t *data)
 }
 
 
-void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
+static void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 {
 	ret_code_t err_code;
 
@@ -988,7 +988,7 @@ static void cb_buttons(uint8_t btn_id, uint8_t evt)
 
 /**@brief Settings callback.
  */
-void cb_settings(settings_evt_t evt, settings_id_t id)
+static void cb_settings(settings_evt_t evt, settings_id_t id)
 {
 	uint8_t buffer[64];
 	size_t  len;
