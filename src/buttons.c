@@ -31,7 +31,7 @@
 
 #define NBUTTONS 2
 
-app_button_handler_t m_callback = NULL;
+buttons_callback_t   m_callback = NULL;
 uint8_t              m_longpress_btn_id;
 uint8_t              m_longpress_btn_pin;
 
@@ -48,8 +48,19 @@ static app_button_cfg_t btn_config[NBUTTONS] = {
 static void cb_longpress_timer(void *ctx)
 {
 	if(app_button_is_pushed(m_longpress_btn_id)) {
-		m_callback(m_longpress_btn_pin, BUTTONS_EVT_LONGPRESS);
+		m_callback(m_longpress_btn_id, BUTTONS_EVT_LONGPRESS);
 	}
+}
+
+
+static uint8_t find_button_id_by_pin(uint8_t pin)
+{
+	for(uint8_t i = 0; i < NBUTTONS; i++) {
+		if(btn_config[i].pin_no == pin) {
+			return i;
+		}
+	}
+	return 0xFF;
 }
 
 
@@ -59,16 +70,12 @@ static void cb_app_button(uint8_t pin, uint8_t evt)
 		return;
 	}
 
-	m_callback(pin, evt);
+	uint8_t btn_id = find_button_id_by_pin(pin);
+
+	m_callback(btn_id, evt);
 
 	m_longpress_btn_pin = pin;
-
-	for(uint8_t i = 0; i < NBUTTONS; i++) {
-		if(btn_config[i].pin_no == pin) {
-			m_longpress_btn_id = i;
-			break;
-		}
-	}
+	m_longpress_btn_id = btn_id;
 
 	APP_ERROR_CHECK(app_timer_stop(m_longpress_timer));
 	APP_ERROR_CHECK(app_timer_start(m_longpress_timer, APP_TIMER_TICKS(1000), NULL));
@@ -81,7 +88,7 @@ bool buttons_button_is_pressed(uint8_t btn)
 }
 
 
-ret_code_t buttons_init(app_button_handler_t callback)
+ret_code_t buttons_init(buttons_callback_t callback)
 {
 	m_callback = callback;
 

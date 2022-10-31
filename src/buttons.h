@@ -32,8 +32,10 @@
 
 #define BUTTONS_EVT_LONGPRESS 0x11
 
+typedef void (*buttons_callback_t)(uint8_t btn_id, uint8_t evt);
+
 bool buttons_button_is_pressed(uint8_t btn);
 
-ret_code_t buttons_init(app_button_handler_t callback);
+ret_code_t buttons_init(buttons_callback_t callback);
 
 #endif // BUTTONS_H

@@ -903,7 +903,7 @@ static void cb_bme280(bme280_evt_t evt)
 
 /**@brief Buttons callback.
  */
-void cb_buttons(uint8_t pin, uint8_t evt)
+static void cb_buttons(uint8_t btn_id, uint8_t evt)
 {
 	// enable backlight on any button event
 	APP_ERROR_CHECK(app_timer_stop(m_backlight_timer));
@@ -913,9 +913,9 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 	// ensure the BME280 readout is up to date if the user is interacting with the device
 	readout_bme280_if_already_powered();
 
-	switch(pin)
+	switch(btn_id)
 	{
-		case PIN_BTN_TOUCH:
+		case BUTTONS_BTN_TOUCH:
 			if(evt == APP_BUTTON_PUSH) {
 				// The transmitter interferes with the touch button, so we
 				// ignore "critical" inputs while a packet is transmitted.
@@ -943,7 +943,7 @@ void cb_buttons(uint8_t pin, uint8_t evt)
 			}
 			break;
 
-		case PIN_BUTTON_1:
+		case BUTTONS_BTN_1:
 			if(evt == APP_BUTTON_PUSH) {
 				if(menusystem_is_active()) {
 					menusystem_input(MENUSYSTEM_INPUT_CONFIRM);
