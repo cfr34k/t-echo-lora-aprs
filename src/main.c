@@ -193,6 +193,7 @@ static ble_uuid_t m_adv_uuids[] =                                               
 
 
 static void advertising_start(bool erase_bonds);
+static void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data);
 
 
 /**@brief Callback function for asserts in the SoftDevice.
@@ -950,6 +951,20 @@ static void cb_buttons(uint8_t btn_id, uint8_t evt)
 				} else if(m_display_state == DISP_STATE_PASSKEY) {
 					m_display_state = m_prev_display_state;
 					m_epaper_update_requested = true;
+				} else if(buttons_button_is_pressed(BUTTONS_BTN_TOUCH)) {
+					// cycle through various module enable states:
+					// all off -> RX on -> RX+TX on -> TX on -> all off.
+					// Transitions are processed by the menusystem callback function to
+					// avoid code duplication.
+					if(!m_lora_rx_active && !m_tracker_active) {
+						cb_menusystem(MENUSYSTEM_EVT_RX_ENABLE, NULL);
+					} else if(m_lora_rx_active && !m_tracker_active) {
+						cb_menusystem(MENUSYSTEM_EVT_TRACKER_ENABLE, NULL);
+					} else if(m_lora_rx_active && m_tracker_active) {
+						cb_menusystem(MENUSYSTEM_EVT_RX_DISABLE, NULL);
+					} else {
+						cb_menusystem(MENUSYSTEM_EVT_TRACKER_DISABLE, NULL);
+					}
 				} else {
 					// cycle through the displays
 					if(m_display_state == DISP_CYCLE_LAST) {
@@ -1048,7 +1063,7 @@ void cb_settings(settings_evt_t evt, settings_id_t id)
 
 /**@brief Menusystem callback.
  */
-void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
+static void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *data)
 {
 	bool gps_active_pre = m_gnss_keep_active || m_tracker_active;
 
