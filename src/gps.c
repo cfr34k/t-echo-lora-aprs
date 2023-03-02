@@ -147,8 +147,9 @@ void cb_gps_reset_timer(void *p_context)
 		case GPS_RESET_SEND_CONFIG:
 			{
 				//static uint8_t cmd[] = "\r\n$PMTK103*30\r\n"; // cold boot (MTK version)
-				//static uint8_t cmd[] = "$PMTK314,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n"; // set sentence interval config (MTK version)
-				static uint8_t cmd[] = "$PCAS03,1,0,1,1,1,0,0,0,0,0,,,0,0,,,,0*32\r\n"; // set sentence interval config (CASIC version)
+				static uint8_t cmd[] =
+					"$PMTK314,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n" // set sentence interval config (MTK version)
+					"$PCAS03,1,0,1,1,1,0,0,0,0,0,,,0,0,,,,0*32\r\n"; // set sentence interval config (CASIC version)
 
 				APP_ERROR_CHECK(nrfx_uarte_tx(&m_uarte, cmd, strlen((const char*)cmd)));
 
