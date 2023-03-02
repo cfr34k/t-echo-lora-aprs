@@ -169,7 +169,7 @@ static ret_code_t start_transfer_for_current_state(void)
 		// TX only
 		xfer = (nrfx_twim_xfer_desc_t)NRFX_TWIM_XFER_DESC_TX(
 				BME280_7BIT_ADDR, m_twi_tx_buf, bytes2send);
-	} else if(bytes2send != 0) {
+	} else if(bytes2receive != 0) {
 		// RX only
 		xfer = (nrfx_twim_xfer_desc_t)NRFX_TWIM_XFER_DESC_RX(
 				BME280_7BIT_ADDR, m_twi_rx_buf, bytes2receive);
