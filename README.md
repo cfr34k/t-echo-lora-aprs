@@ -12,6 +12,9 @@ the T-Echo. With the standard 800 mAh battery, it achieves more than 10 hours
 of active tracking, multiple days of lora reception and 1 to 4 months of
 standby (reachable via BLE; standby time depends on hardware configuration).
 
+Please note: if you have questions regarding the usage of this firmware, check
+the [FAQ section](#frequently-asked-questions) below before opening an issue.
+
 ## Features
 
 - Ultra low power usage:
@@ -275,11 +278,21 @@ exploration/debugging app like [nRF Connect for
 Mobile](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-mobile)
 to write the available BLE characteristics.
 
-## Troubleshooting
+## Frequently Asked Questions
 
-### Bluetooth Low Energy
+### How to I switch to another/the original firmware?
 
-#### The T-Echo refuses BLE connections
+If you tried to flash another firmware, but it does not boot after you had my
+firmware installed, please flash your backup of `CURRENT.UF2` first. That
+reliably resets the flash contents to whatever was delivered with your T-Echo
+and should always restore it to a working state.
+
+If you don’t have the backup file, well, that’s a problem. You can try using
+the one I created from one of my devices (see [this
+comment](https://github.com/cfr34k/t-echo-lora-aprs/issues/7#issuecomment-1387688548),
+but I cannot guarantee anything.
+
+### I cannot connect via Bluetooth anymore. / The T-Echo refuses BLE connections.
 
 Probably the BLE security keys are messed up. The T-Echo refuses any connection
 with a wrong or missing key. Try the following:
