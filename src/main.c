@@ -1397,7 +1397,6 @@ int main(void)
 	gpio_init();
 	timers_init();
 	power_management_init();
-	ble_stack_init();
 
 	// settings set some values in this module, so we must initialize it first.
 	aprs_init();
@@ -1405,6 +1404,7 @@ int main(void)
 	// load the settings (must be done before peer_manager_init()!)
 	settings_init(cb_settings);
 
+	ble_stack_init();
 	gap_params_init();
 	gatt_init();
 	advertising_init();
