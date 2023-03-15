@@ -1,3 +1,11 @@
+# Not released yet
+
+## Fixed bugs
+
+- Fixed a crash/hang on startup (during settings storage initialization) that
+  could happen when this firmware is first installed.
+
+
 # Version 0.8
 
 ## New and changed features
