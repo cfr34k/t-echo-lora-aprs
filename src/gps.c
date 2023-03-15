@@ -46,7 +46,7 @@ typedef enum {
 
 #define GPS_RESET_MS_WAIT1      10  // power-on delay
 #define GPS_RESET_MS_ACTIVE    200  // apply reset for this duration
-#define GPS_RESET_MS_WAIT2     100  // boot time after reset
+#define GPS_RESET_MS_WAIT2    3000  // boot time after reset
 #define GPS_RESET_MS_WAIT3    1000  // time between configuration and power-off
 
 
