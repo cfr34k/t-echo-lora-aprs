@@ -144,7 +144,7 @@ NRF_BLE_QWR_DEF(m_qwr);                                                         
 BLE_ADVERTISING_DEF(m_advertising);                                             /**< Advertising module instance. */
 
 APP_TIMER_DEF(m_backlight_timer);
-APP_TIMER_DEF(m_minute_tick_timer);
+APP_TIMER_DEF(m_lowspeed_tick_timer);
 APP_TIMER_DEF(m_startup_timer);
 
 static uint16_t m_conn_handle = BLE_CONN_HANDLE_INVALID;                        /**< Handle of the current connection. */
@@ -251,30 +251,37 @@ void readout_bme280_if_already_powered(void)
 			&& periph_pwr_is_activity_power_already_available(PERIPH_PWR_FLAG_BME280)
 			&& (now >= m_bme280_next_readout_time)) {
 		APP_ERROR_CHECK(bme280_start_readout());
-		m_bme280_next_readout_time = now + 60000; // only refresh once per minute
+		m_bme280_next_readout_time = now + 15000; // only refresh once per minute
 	}
 }
 
 
-/**@brief Timeout handler for the minute tick.
+/**@brief Timeout handler for low-frequency background jobs
  *
  * This timer handles various background jobs that are executed at very low
- * rate. The timer is executed once per minute.
+ * rate. The timer is executed every 15 seconds.
  *
  * Currently implemented jobs are:
  *
  * - Trigger a full e-Paper refresh every 1 hour.
- * - Trigger a BME280 readout every minute, but only if it is powered already.
+ * - Trigger a BME280 readout every tick, but only if it is powered already.
+ * - Update the display on every tick, but only if it is powered already.
  */
-static void cb_minute_tick_timer(void *arg)
+static void cb_lowspeed_tick_timer(void *arg)
 {
 	static uint32_t tick_count = 1;
 
-	if(tick_count % 60 == 0) {
+	readout_bme280_if_already_powered();
+
+	if(tick_count % 240 == 0) {
 		m_epaper_force_full_refresh = true;
+		m_epaper_update_requested = true;
 	}
 
-	readout_bme280_if_already_powered();
+	// refresh epaper if power is on anyways
+	if(periph_pwr_is_activity_power_already_available(PERIPH_PWR_FLAG_EPAPER_UPDATE)) {
+		m_epaper_update_requested = true;
+	}
 
 	tick_count++;
 }
@@ -306,7 +313,7 @@ static void timers_init(void)
 	err_code = app_timer_create(&m_backlight_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_backlight_timer);
 	APP_ERROR_CHECK(err_code);
 
-	err_code = app_timer_create(&m_minute_tick_timer, APP_TIMER_MODE_REPEATED, cb_minute_tick_timer);
+	err_code = app_timer_create(&m_lowspeed_tick_timer, APP_TIMER_MODE_REPEATED, cb_lowspeed_tick_timer);
 	APP_ERROR_CHECK(err_code);
 
 	err_code = app_timer_create(&m_startup_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_startup_timer);
@@ -533,7 +540,7 @@ static void application_timers_start(void)
 {
 	ret_code_t err_code;
 
-	err_code = app_timer_start(m_minute_tick_timer, APP_TIMER_TICKS(60000), NULL);
+	err_code = app_timer_start(m_lowspeed_tick_timer, APP_TIMER_TICKS(15000), NULL);
 	APP_ERROR_CHECK(err_code);
 
 	err_code = app_timer_start(m_startup_timer, APP_TIMER_TICKS(6000), NULL);
