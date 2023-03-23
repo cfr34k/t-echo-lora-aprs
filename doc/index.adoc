@@ -1,0 +1,15 @@
+= LoRa-APRS Firmware for the LilyGo T-Echo
+
+This is a custom firmware for the T-Echo devices made by Lilygo.
+
+With this firmware the T-Echo becomes a LoRa-APRS tracker that can report your
+current location (and more) to the APRS network. The LoRa technology makes it
+possible to achieve large coverage even with these low power devices. Up to 5
+km are usually possible in cities, 20 km in rural areas and more than 100 km
+with a direct line of sight.
+
+This documentation is split in various documents:
+
+- link:features.adoc[Feature description]
+- link:operation.adoc[Device operation]
+- link:technical.adoc[Technical details]

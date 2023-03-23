@@ -1,0 +1,100 @@
+= Features of T-Echo LoRa APRS
+
+This page gives an overview of the firmware’s features.
+
+== Low Power
+
+A major goal of this firmware is to make the best of the low power capabilities
+of the T-Echo. Therefore, at any time, only the necessary hardware is powered.
+Hardware that cannot be switched off (like the Bluetooth SoC) is kept in the
+lowest usable power state when not in use.
+
+To give you an impression of what this means, here are some current
+measurements and the battery runtimes they correspond to if the T-Echo is only
+in this mode:
+
+- Idle, no user interaction, RX and TX switched off: 100 μA ⇒ 6 months standby
+- Only RX on: 5 mA ⇒ 7 days receiving non-stop
+- Tracker active: 40 mA base current (for GNSS mostly) + 60 mA pulses while
+  transmitting = 50 mA average ⇒ 17 hours non-stop tracking
+
+Unfortunately, LilyGo made some suboptimal design decisions. For example, it is
+not possible to light up the RGB LED without powering on the GNSS module which
+consumes *a lot* of current (40 mA). Therefore, the LEDs are not powered
+actively, but only light up if they are powered anyway. The same holds for the
+e-Paper display which, by itself, would be really low-power, but unfortunately
+the GNSS is powered while the display refreshes. To mitigate this, the display
+is only force-refreshed once per hour and only updated otherwise if it is
+powered already.
+
+Also, please note that there is no hardware on the T-Echo to switch it off
+completely. If you want to save your battery from being drained, open the case
+and disconnect the plug. It is not possible to stop the battery drain in
+software.
+
+== APRS Reception
+
+This firmware can receive and decode LoRa-APRS packets. For successfully
+decoded packets, it shows the other station’s call sign, coordinates,
+direction, distance, APRS comment and signal strength. A history of up to three
+different received stations is kept and one of them can be chosen for detailed
+tracking.
+
+== Tracking and APRS Transmission
+
+This firmware features a “Smart beacon” tracker. That means that packets are
+transmitted depending on the T-Echo’s movement.
+
+A transmission is triggered if any of these conditions is met:
+
+- Your course has changed by more than 30° since the last transmission and your
+  speed is at least 1.0 meters per second (3.6 km/h).
+- Your current location is (at least) 2.0 km from the location of the last
+  transmission.
+- 15 minutes have passed without transmission.
+
+Packets are never transmitted faster than every 15 seconds.
+
+This firmware uses the same packet format as the popular
+https://github.com/lora-aprs/LoRa_APRS_iGate[LoRa APRS iGate] firmware for
+ESP32 based devices.
+
+The APRS packet contents can be configured. The following options are available:
+
+- Uncompressed packet format:
+  - contains location in a human-readable format
+  - Optionally altitude can be included
+  - `!DAO!` is supported to increase coordinate precision (see the http://www.aprs.org/aprs12/datum.txt[APRS 1.2 specification])
+- Compressed packet format (see http://www.aprs.org/doc/APRS101.PDF[APRS 1.0 specification]):
+  - Encodes location and altitude in a compact 13-byte representation (not human-readable)
+  - Increases chances for error-free reception
+  - Precision is better than uncompressed format without `!DAO!`
+- APRS symbol can be freely configured via BLE or chosen from a list on the device
+- Optionally, a packet counter can be transmitted (useful to evaluate packet loss)
+- Optionally, the battery voltage can be transmitted
+- Weather reports can be transmitted (BME280 devices only)
+
+The LoRa transmit power can be configured in various steps from -9 dBm to +22 dBm.
+
+== Bluetooth Low Energy
+
+Bluetooth Low Energy (BLE) is used to configure the textual settings of the device. These include:
+
+- Operator’s call sign (and SSID)
+- APRS comment
+- APRS symbol
+
+These must be configured before the tracker can be used. A
+link:../tools/ble_client/techo_client.py[Python Script] is provided to do so
+from a PC running Linux.
+
+Furthermore, the BLE interface can notify the BLE client whenever an APRS
+packet is received. The raw data is forwarded. This could be used to decode
+more complex information from the packet on a PC or smartphone app or even
+build an iGate with the T-Echo as receiver.
+
+== Other Features
+
+- Flicker-free refresh for the e-Paper display.
+- Full e-Paper refresh once per hour to prevent burn-in.
+- GNSS warmup mode to keep the GNSS in sync without transmitting packets.
