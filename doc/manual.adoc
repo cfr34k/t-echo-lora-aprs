@@ -1,0 +1,186 @@
+= User manual
+
+This document describes how to operate the T-Echo.
+
+== The T-Echo’s Buttons
+
+The main user interface are the three buttons on the T-Echo:
+
+- Reset button (left side, top button)
+- Generic push button (left side, bottom button)
+- Touch button (top side)
+
+=== The Reset Button
+
+The reset button is hard-wired to the reset pin of the nRF52840 SoC.
+
+Pressing this button once immediately restarts the firmware. All temporary
+state is lost (such as received messages) and everything (RX, TX, GNSS) is
+turned off.
+
+Pressing the reset button twice in a very short time invokes the T-Echo’s
+Bootloader where you can upload new firmware versions via USB. While in the
+bootloader, the red LED usually fades in and out rapidly, but that depends on
+the bootloader of your device. The device might simply appear to be hanging
+while in bootloader mode, so if you are confused why your device does not react
+to button presses, the bootloader might be active accidentally. Simply press
+reset once to boot into the firmware again.
+
+=== The Generic Push Button
+
+This button is used for actions that need to be reliably executed with haptic
+feedback (which the touch button cannot provide).
+
+Functions are:
+
+- Outside of the menu:
+  - Short press: switch to the next screen.
+  - Long press (1 second): open the menu.
+- Inside the menu:
+  - Short press: activate the selected menu entry.
+
+=== The Touch Button
+
+The functions of the touch button are:
+
+- In any mode, a short tap updates the display.
+- Inside the menu, a short tap selects the next menu entry.
+- On the RX Overview screen, a short tap selects the next received station.
+
+=== Button combination
+
+A short press on the Generic Push Button while the Touch button is held enables
+or disables RX and TX in the following sequence:
+
+- Both RX and TX off (state after reset)
+- Only RX on
+- Both RX and TX on
+- Only RX off
+- Both RX and TX off again
+
+This allows to quickly enable the desired mode without navigating the menu first.
+
+== The Menu
+
+The on-screen menu allows to configure certain aspects of the firmware without
+the need for an additional Bluetooth-capable device. To enter the menu, press
+and hold the Generic Push Button for at least one second.
+
+There are some additional markers on some menu items that indicate what happens
+when the item is activated: items starting with `<<<` return to the previous
+menu level or leave the menu, items that end with `>` open submenus.
+
+This sections describes the menu structure in detail.
+
+=== Main Menu
+
+The main menu is the menu first shown after the menu is entered.
+
+.The main menu screen
+[main-menu-screenshot]
+image::screenshots/overlay/menu_top.webp[Main menu]
+
+- `<<< Exit` +
+  Exit the menu and return to the normal status screens.
+- `Receiver` +
+  Enables or disables the receiver. The current status (`on` or `off`) is shown
+  to the right of the screen.
+- `Tracker` +
+  Enables or disables the tracker. The current status (`on` or `off`) is shown
+  to the right of the screen.
+- `GNSS Utilities >` +
+  Go to the <<_gnss_utilities,GNSS utilities submenu>> that provides some tools that might help with GNSS problems.
+- `TX Power >` +
+  Open the <<_tx_power,transmit power selection submenu>>.
+- `APRS Config >` +
+  Open the <<_aprs_config,APRS configuration submenu>>.
+- `Info >` +
+  Open the <<_info,device/firmware information menu>>.
+
+=== GNSS Utilities
+
+The GNSS utilities menu provides some functions that might be useful if your
+GNSS cannot find a position any more.
+
+- `<<< Back` +
+  Return to the <<_main_menu,Main menu>>.
+- `Keep GNSS powered` +
+  Here the GNSS module can be kept powered even if the tracker is off. This
+  allows the module more time to find the satellites and avoids interference
+  from the transmitter that might cause the GNSS module to loose the position
+  fix again.
+- `Cold restart` +
+  Sends a cold restart command to the GNSS module. The module then erases all
+  information it currently has about the satellite constellations and the
+  current position and starts a completely new acquisition. It can take up to
+  15 minutes until a position is found again. It is therefore recommended to
+  enable `Keep GNSS powered` before executing this command and keep it on until
+  a position is available again.
+
+=== TX Power
+
+The transmit power selection submenu allows to choose between various
+transmission power levels. The following levels are available: +22 dBm, +20
+dBm, +17 dBm, +14 dBm, +10 dBm, 0 dBm, -9 dBm.
+
+=== APRS Config
+
+The APRS configuration submenu allows to configure how the transmitted packets
+look. The following items are available on this menu level:
+
+- `<<< Back` +
+  Return to the <<_main_menu,Main menu>>.
+- `Compressed format` +
+  Enable the compressed ASCII position format, as specified in the
+  http://www.aprs.org/doc/APRS101.PDF[APRS 1.0 specification]. This format
+  encodes position, altitude and APRS symbol in only 13 ASCII characters. The
+  location precision is better than the uncompressed format without `!DAO!`.
+  Enabling this makes the settings for `Altitude` and `DAO` irrelevant, as
+  altitude is included in the compressed format anyway and `!DAO!` is not
+  necessary.
+- `Altitude` +
+  Include the altitude in uncompressed packets. Altitude is always included in
+  compressed packets and if compression is enabled, this setting is ignored.
+- `DAO` +
+  Add the `!DAO!` extension to uncompressed packets. This extension adds 5
+  additional characters to the message that improve the location precision. The
+  format is defined in the http://www.aprs.org/aprs12/datum.txt[APRS 1.2
+  specification]. Compressed packets have sufficient location precision anyway
+  and this setting is therefore ignored if compression is enabled.
+- `Advanced >>>` +
+  Open the <<aprs_advanced,advanced APRS configuration>> submenu.
+- `Symbol >>>` +
+  Open the <<aprs_symbol,APRS symbol selection>> submenu.
+
+[#aprs_advanced]
+==== Advanced APRS Configuration
+
+This menu allows to include extended information in the transmitted packets.
+
+- `Frame counter` +
+  Includes a counter in the transmitted packets that is incremented on every
+  transmission. This allows to evaluate packet loss by looking at the counter
+  values in received packets. The counter restarts at 1 when the tracker is
+  disabled or the T-Echo is reset.
+- `Battery voltage` +
+  Transmit the current battery voltage in every packet.
+- `Weather report` [Devices with BME280 only] +
+  Periodically include the latest environmental sensor measurements in the
+  packet. See <<_weather_reports>> for details.
+
+[#aprs_symbol]
+==== APRS Symbol Selection
+
+This submenu allows to select the APRS symbol (that is displayed on websites
+like https://aprs.fi[aprs.fi] for example) from a pre-defined set of frequently
+used symbol. Note that you can also set an arbitrary symbol code via
+<<_bluetooth_low_energy,Bluetooth Low Energy>>.
+
+Symbols currently available are: Jogger, Bicycle, Motorcycle, Car and Truck.
+
+[#info]
+=== Device Information Submenu
+
+This submenu provides information about the firmware and the most relevant device settings.
+
+Activating any entry in this submenu returns to the <<_main_menu, main menu>>.

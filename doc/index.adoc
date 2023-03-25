@@ -11,5 +11,5 @@ with a direct line of sight.
 This documentation is split in various documents:
 
 - link:features.adoc[Feature description]
-- link:operation.adoc[Device operation]
-- link:technical.adoc[Technical details]
+- link:manual.adoc[User manual]
+//- link:technical.adoc[Technical details]

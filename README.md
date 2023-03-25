@@ -53,27 +53,27 @@ the [FAQ section](#frequently-asked-questions) below before opening an issue.
 
 ## Screenshots
 
-Here are some screenshots of a pre-v0.3 development version from the [display
+Here are some screenshots of version 0.8+ from the [display
 simulator](./test/display/) I use to develop the display layout. The data shown
 is obviously fake, but the screen layout on the device is identical.
 
 The startup screen:
 
-![Startup screen showing logo and version](screenshots/overlay/startup.webp)
+![Startup screen showing logo and version](doc/screenshots/overlay/startup.webp)
 
 GNSS and tracker status:
 
-![GNSS status](screenshots/overlay/gnss_status.webp)
-![Tracker status](screenshots/overlay/tracker_status.webp)
+![GNSS status](doc/screenshots/overlay/gnss_status.webp)
+![Tracker status](doc/screenshots/overlay/tracker_status.webp)
 
 Screen shown when a packet is successfully received and decoded. It shows the course and distance to the other station:
 
-![Received packet screen](screenshots/overlay/rx_detail.webp)
+![Received packet screen](doc/screenshots/overlay/rx_detail.webp)
 
 Impressions from the menu system:
 
-![Main menu](screenshots/overlay/menu_top.webp)
-![Symbol selection menu](screenshots/overlay/menu_aprs_symbol.webp)
+![Main menu](doc/screenshots/overlay/menu_top.webp)
+![Symbol selection menu](doc/screenshots/overlay/menu_aprs_symbol.webp)
 
 ## Disclaimer
 

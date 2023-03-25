@@ -2,3 +2,5 @@ compile_flags.txt
 _build/
 
 *~
+
+doc/*.html
