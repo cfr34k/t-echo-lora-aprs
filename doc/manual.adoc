@@ -1,6 +1,7 @@
 = User manual
+:toc:
 
-This document describes how to operate the T-Echo.
+This document describes how to operate the T-Echo while it runs the LoRa-APRS firmware.
 
 == The T-Echo’s Buttons
 
@@ -95,7 +96,7 @@ image::screenshots/overlay/menu_top.webp[Main menu]
 - `APRS Config >` +
   Open the <<_aprs_config,APRS configuration submenu>>.
 - `Info >` +
-  Open the <<_info,device/firmware information menu>>.
+  Open the <<info,device/firmware information menu>>.
 
 === GNSS Utilities
 
@@ -179,8 +180,90 @@ used symbol. Note that you can also set an arbitrary symbol code via
 Symbols currently available are: Jogger, Bicycle, Motorcycle, Car and Truck.
 
 [#info]
-=== Device Information Submenu
+=== Device Information
 
-This submenu provides information about the firmware and the most relevant device settings.
+The `Info` submenu provides information about the firmware and the most relevant device settings.
 
 Activating any entry in this submenu returns to the <<_main_menu, main menu>>.
+
+== The Different Screens Explained
+
+=== Common Status Bar
+
+In most status screens and the menu a common status bar is shown at the top of
+the screen which indicates the most important function states.
+
+<<status_bar_screenshot>> shows the time and weather screen (see
+<<_time_and_weather_screen>> for details) which has the status bar on the top.
+The elements are from left to right:
+
+- *GNSS Status*: This block indicates the status of the GNSS and shows the
+  number of satellites. If the block is filled white with a dashed border, the
+  GNSS is disabled. If the border is solid, the GNSS is powered, but has no
+  position fix (yet). When the fill becomes black, a position fix has been
+  achieved. The number of satellites is shown as `A/B/C` where `A` is the
+  number of satellites used to calculate the position, `B` is the number of
+  satellites being tracked (i.e. a signal is received) and `C` is how many
+  satellites are currently in view (above the horizon).
+- *TX Status*: This block indicates the status of the tracker. If the tracker
+  is disabled, the `TX` block has a white background and a dashed border. If
+  the tracker is enabled, the background is still white but the border becomes
+  solid. While a packet is transmitted the colors are inverted, i.e. the
+  background becomes black.
+- *RX Status*: This block indicates the status of the receiver. If the receiver
+  is disabled, the block has a white background and a dashed border. When
+  actively receiving, the background is black and the text is white. If the
+  receiver has been interrupted because a packet is transmitted, the background
+  becomes white, but the border is solid black.
+- *Battery Status*: This part shows the current battery level as a progress
+  bar. A full battery is filled solid black, an empty battery is solid white.
+  When USB is connected, the battery is always shown as full once the voltage
+  has been measured even if it is still charging.
+
+=== Startup Screen
+
+.The startup screen
+[startup-screenshot]
+image::screenshots/overlay/startup.webp[Startup screen with splash image and version number]
+
+The startup screen shows the logo and version number (including Git commit
+identifier if it is not a tagged release).
+
+If the Generic Push Button is pressed and held while the startup screen is
+initially shown on the display (i.e. while the screen flickers black and
+white), the Bluetooth bonding keys are erased once the refresh completes and
+the menu is shown. This may be necessary if you cannot connect to the T-Echo
+via Bluetooth Low Energy.
+
+=== GNSS Status
+
+.The GNSS status screen
+[gnss-status-screenshot]
+image::screenshots/overlay/gnss_status.webp[GNSS status screen]
+
+The GNSS status screen shows the current state of the GNSS module.
+
+If a position is currently available, the first two lines after the title show
+the https://de.wikipedia.org/wiki/World_Geodetic_System_1984[WGS84] coordinates
+in decimal format and the altitude in meters. If a position is not available,
+the coordinates are replaced by `No fix :-(`.
+
+Below, the status of the individual satellite systems is shown. Each line
+contains the following information:
+
+* System name:
+** `GPS`: The well-known american Global Positioning System.
+** `GLO`: The russian GLONASS system.
+* Current fix mode (`3D` or `2D`)
+* Way to determine the fix mode (should be `auto`)
+* Number of satellites used in this system
+
+After the system status, the
+https://en.wikipedia.org/wiki/Dilution_of_precision_(navigation)[dilution of
+precision (DOP)] is shown in **H**orizontal, **V**ertical and **P**osition (3D)
+mode. The DOP indicates how precicely the position can be calculated from the
+currently visible satellites. Lower values are better, and a value of 1 or
+lower is ideal.
+
+The last line at the bottom shows how many of the known satellites are
+currently being tracked per navigation system. `GP` is GPS, `GL` is GLONASS.
