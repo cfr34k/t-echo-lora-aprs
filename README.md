@@ -59,21 +59,21 @@ is obviously fake, but the screen layout on the device is identical.
 
 The startup screen:
 
-![Startup screen showing logo and version](screenshots/startup.png)
+![Startup screen showing logo and version](screenshots/overlay/startup.webp)
 
 GNSS and tracker status:
 
-![GNSS status](screenshots/gnss_status.png)
-![Tracker status](screenshots/gnss_status.png)
+![GNSS status](screenshots/overlay/gnss_status.webp)
+![Tracker status](screenshots/overlay/tracker_status.webp)
 
 Screen shown when a packet is successfully received and decoded. It shows the course and distance to the other station:
 
-![Received packet screen](screenshots/received_packet.png)
+![Received packet screen](screenshots/overlay/rx_detail.webp)
 
 Impressions from the menu system:
 
-![Main menu](screenshots/menu_main.png)
-![Symbol selection menu](screenshots/menu_symbol_select.png)
+![Main menu](screenshots/overlay/menu_top.webp)
+![Symbol selection menu](screenshots/overlay/menu_aprs_symbol.webp)
 
 ## Disclaimer
 
