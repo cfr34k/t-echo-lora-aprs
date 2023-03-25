@@ -267,3 +267,27 @@ lower is ideal.
 
 The last line at the bottom shows how many of the known satellites are
 currently being tracked per navigation system. `GP` is GPS, `GL` is GLONASS.
+
+=== Tracker Status
+
+.The Tracker status screen
+[tracker-status-screenshot]
+image::screenshots/overlay/tracker_status.webp[Tracker status screen]
+
+This screen gives an overview of the tracker’s status. The first line indicates
+whether the tracker is currently running or stopped. Running means that APRS
+transmission will be made.
+
+Below, the current
+https://de.wikipedia.org/wiki/World_Geodetic_System_1984[WGS84] coordinates are
+shown. Also the number of packets that have been transmitted since the tracker
+was enabled is displayed here.
+
+If the position fix is sufficiently good, the GNSS module calculates a movement
+speed and direction. As this information is essential for the smart beacon, it
+is also displayed on this screen if it is available.
+
+The current course is display graphically as a circle with a line pointing from
+the center into the direction of movement compared to north (indicated by the
+`N` at the top). Below the course display, the current speed is shown in
+kilometers per hour.
