@@ -291,3 +291,78 @@ The current course is display graphically as a circle with a line pointing from
 the center into the direction of movement compared to north (indicated by the
 `N` at the top). Below the course display, the current speed is shown in
 kilometers per hour.
+
+=== RX Overview Screen
+
+.The RX overview screen
+[rx-overview-screenshot]
+image::screenshots/overlay/rx_overview.webp[RX overview screen showing two
+decoded stations and a decoder error]
+
+This screen shows the last three received stations and when the last corrupted
+packet was received.
+
+For each station, the following information is displayed:
+
+- The station’s call sign and SSID
+- How long ago the packet was received in seconds (`s`), minutes (`m`), hours (`h`) or days (`d`)
+- The distance to the other station measured from your _current_ location (_not_ your location at the time of reception!)
+- Course towards the station represented with an arrow (north is always up)
+
+When a new packet is successfully decoded and the station already exists in the
+list, the corresponding entry is updated. As long as there is free space in the
+list, new stations are appended. When all three slots are filled and a new
+station is received, the oldest station in the list is replaced by the new
+station.
+
+One of the received stations or the “Last error” entry can be selected by tapping the Touch Button. Details about the selected station are shown on the <<_rx_detail_screen,RX Details Screen>>.
+
+=== RX Detail Screen
+
+.The RX detail screen
+[rx-detail-screenshot]
+image::screenshots/overlay/rx_detail.webp[RX detail screen showing detailed information about the last packet from DO9xx-9]
+
+The RX detail screen shows detailed information about the station selected on
+the <<_rx_overview_screen,RX Overview Screen>>.
+
+On the left, the following is displayed from top to bottom:
+
+- The remote station’s call sign and SSID
+- The remote station’s
+  https://de.wikipedia.org/wiki/World_Geodetic_System_1984[WGS84] coordinates
+  and altitude
+- The APRS comment
+- The signal quality in the format `R: A / B / C` where `A` is the RSSI, `B` is
+  the SNR and `C` is the “Packet RSSI”.footnote:[I’m not sure what the
+  difference between RSSI and Packet RSSI actually is. If you know, please tell
+  me or update this documentation! - DL5TKL]
+
+On the top right, the course and distance towards the other station is
+visualized. If your own GNSS receiver currently provides your movement
+direction, it is also shown in the direction diagram with a dashed line. This
+allows to navigate towards the other station by aligning the two direction
+pointers.
+
+=== Time and Weather Screen
+
+.The time and weather screen
+[time-weather-screenshot]
+image::screenshots/overlay/time_weather.webp[Time and weather screen as shown on a T-Echo with BME280]
+
+This screen shows the current time, date and optionally environmental data.
+
+The time and date are always displayed in UTC. There is no support for
+timezones in this firmware.
+
+The time is synchronized via GNSS, so the GNSS module has to have a location
+fix at least once before a plausible time and date is shown. If a fix was not
+achieved since the last reset, the time starts running on 1970-01-01 at 0:00.
+
+If your T-Echo contains a BME280 environmental sensor, the measured values are
+also shown on this screen.
+
+NOTE: As the BME280 is inside the case and right behind the LoRa module,
+thermal isolation is rather bad and the temperature and humidity values are way
+off while the tracker is running or the T-Echo is charged. Therefore, the
+T-Echo is not really usable as a LoRa weather station.
