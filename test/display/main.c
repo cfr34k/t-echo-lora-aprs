@@ -256,7 +256,7 @@ int main(int argc, char **argv) {
 	aprs_frame_t frame;
 	aprs_rx_raw_data_t raw = {"", 0, -23.0, 10.0, -142.0};
 
-	char *data = "<\xff\001DO9HM-9>APLC12,qAR,DB0REN:!/573'QID4>I1QLoRa-System; more text added for testing";
+	char *data = "<\xff\001DO9xx-9>APLC12,qAR,DB0REN:!/57A'QIA4>I1QLoRa-System; more text added for testing";
 	size_t len = strlen(data);
 
 	memcpy(raw.data, data, len);
@@ -268,7 +268,7 @@ int main(int argc, char **argv) {
 
 	raw.signalRssi = -123.0f;
 
-	data = "<\xff\001DB1DH-7>APLT00,WIDE1-1,qAU,DB0FOR-10:!4941.77NL01049.66E>276/030/A=000872 !wp$!";
+	data = "<\xff\001DB1xx-7>APLT00,WIDE1-1,qAU,DB0FOR-10:!4941.00NL01049.00E>276/030/A=000872 !wp$!";
 	len = strlen(data);
 
 	memcpy(raw.data, data, len);
@@ -278,7 +278,7 @@ int main(int argc, char **argv) {
 		aprs_rx_history_insert(&frame, &raw, time(NULL)-10000, 255);
 	}
 
-	data = "<\xff\001DH0BRO-14>APLC12,qAO,DO2TE-10:!\\6!czQGSQYI2QLoRaCube-System";
+	data = "<\xff\001DH0xxx-14>APLC12,qAO,DO2TE-10:!\\6!czQGAQYA2QLoRaCube-System";
 	len = strlen(data);
 
 	memcpy(raw.data, data, len);
