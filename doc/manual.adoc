@@ -1,5 +1,8 @@
 = User manual
+Thomas Kolb
+v1.0: For firmware version 0.8
 :toc:
+:xrefstyle: short
 
 This document describes how to operate the T-Echo while it runs the LoRa-APRS firmware.
 
@@ -193,7 +196,7 @@ Activating any entry in this submenu returns to the <<_main_menu, main menu>>.
 In most status screens and the menu a common status bar is shown at the top of
 the screen which indicates the most important function states.
 
-<<status_bar_screenshot>> shows the time and weather screen (see
+<<status-bar-screenshot>> shows the time and weather screen (see
 <<_time_and_weather_screen>> for details) which has the status bar on the top.
 The elements are from left to right:
 
@@ -219,6 +222,10 @@ The elements are from left to right:
   bar. A full battery is filled solid black, an empty battery is solid white.
   When USB is connected, the battery is always shown as full once the voltage
   has been measured even if it is still charging.
+
+.Screenshot of the Time and Weather screen with the common status bar at the top.
+[#status-bar-screenshot]
+image::screenshots/overlay/time_weather.webp[The common status bar at the top of the time and weather screen]
 
 === Startup Screen
 
@@ -296,8 +303,7 @@ kilometers per hour.
 
 .The RX overview screen
 [rx-overview-screenshot]
-image::screenshots/overlay/rx_overview.webp[RX overview screen showing two
-decoded stations and a decoder error]
+image::screenshots/overlay/rx_overview.webp[RX overview screen showing two decoded stations and a decoder error]
 
 This screen shows the last three received stations and when the last corrupted
 packet was received.
