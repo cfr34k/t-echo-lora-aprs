@@ -1,10 +1,30 @@
-# Not released yet
+# Version 0.8.1
+
+This is primarily a bugfix release.
+
+## New and changed features
+
+- Decreased the BME280 readout and display refresh interval to 15 seconds.
+  - Readout/Refresh only happen if power is already on for these modules, for
+    example while the tracker is running.
+  - Auto-refresh happens only once per hour in standby.
 
 ## Fixed bugs
 
 - Fixed a crash/hang on startup (during settings storage initialization) that
   could happen when this firmware is first installed.
+- Give GNSS module more time after a reset. That ensures that it can be
+  configured properly over UART and fixes the bug that GNSS details were not
+  shown on some devices.
 
+## Documentation
+
+There is some work-in-progress documentation now, describing the [features of
+the firmware](doc/features.adoc) in more detail than the [README.md](README.md)
+could. Also, there is a [user guide](doc/manual.adoc) describing how to operate
+the T-Echo with this firmware.
+
+The documentation is written in [AsciiDoc](https://asciidoc.org).
 
 # Version 0.8
 
