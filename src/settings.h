@@ -42,13 +42,14 @@
  */
 typedef enum
 {
-	SETTINGS_ID_INVALID     = 0x0000, // do not use
+	SETTINGS_ID_INVALID          = 0x0000, // do not use
 
-	SETTINGS_ID_SOURCE_CALL = 0x0001,
-	SETTINGS_ID_SYMBOL_CODE = 0x0002,
-	SETTINGS_ID_COMMENT     = 0x0003,
-	SETTINGS_ID_LORA_POWER  = 0x0004,
-	SETTINGS_ID_APRS_FLAGS  = 0x0005,
+	SETTINGS_ID_SOURCE_CALL      = 0x0001,
+	SETTINGS_ID_SYMBOL_CODE      = 0x0002,
+	SETTINGS_ID_COMMENT          = 0x0003,
+	SETTINGS_ID_LORA_POWER       = 0x0004,
+	SETTINGS_ID_APRS_FLAGS       = 0x0005,
+	SETTINGS_ID_LAST_BLE_SYMBOL  = 0x0006,
 } settings_id_t;
 
 /**@brief Events sent via the callback function.

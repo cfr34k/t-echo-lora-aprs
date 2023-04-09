@@ -11,6 +11,8 @@
 #include "menusystem.h"
 #include "aprs.h"
 #include "bme280.h"
+#include "settings.h"
+#include "config.h"
 
 
 #define ENTRY_IDX_EXIT               0
@@ -32,6 +34,7 @@ enum symbol_select_entry_ids_t {
 	SYMBOL_SELECT_ENTRY_IDX_MOTORCYCLE  = 3,
 	SYMBOL_SELECT_ENTRY_IDX_CAR         = 4,
 	SYMBOL_SELECT_ENTRY_IDX_TRUCK       = 5,
+	SYMBOL_SELECT_ENTRY_IDX_CUSTOM      = 6,
 
 	SYMBOL_SELECT_ENTRY_COUNT
 };
@@ -184,6 +187,20 @@ static void menusystem_update_values(void)
 	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL]);
 	aprs_get_icon(&(entry->value[0]), &(entry->value[1]));
 	entry->value[2] = '\0';
+
+	// APRS symbol select menu
+	entry = &(m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_CUSTOM]);
+
+	size_t len = sizeof(entry->value)-1;
+	ret_code_t err_code = settings_query(SETTINGS_ID_LAST_BLE_SYMBOL, (uint8_t*)entry->value, &len);
+	if(err_code == NRF_SUCCESS) {
+		entry->value[len] = '\0';
+	} else {
+		// settings cannot be read, use default symbol code
+		entry->value[0] = APRS_SYMBOL_TABLE;
+		entry->value[1] = APRS_SYMBOL_ICON;
+		entry->value[2] = '\0';
+	}
 
 	// advanced APRS config menu
 	entry = &(m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID]);
@@ -397,6 +414,7 @@ static void menu_handler_symbol_select(menu_t *menu, menuentry_t *entry)
 		case SYMBOL_SELECT_ENTRY_IDX_MOTORCYCLE:
 		case SYMBOL_SELECT_ENTRY_IDX_CAR:
 		case SYMBOL_SELECT_ENTRY_IDX_TRUCK:
+		case SYMBOL_SELECT_ENTRY_IDX_CUSTOM:
 			evt_data.aprs_symbol.table = entry->value[0];
 			evt_data.aprs_symbol.symbol = entry->value[1];
 			m_callback(MENUSYSTEM_EVT_APRS_SYMBOL_CHANGED, &evt_data);
@@ -592,6 +610,10 @@ void menusystem_init(menusystem_callback_t callback)
 	m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_TRUCK].handler = menu_handler_symbol_select;
 	m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_TRUCK].text = "Truck";
 	strcpy(m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_TRUCK].value, "/k");
+
+	m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_CUSTOM].handler = menu_handler_symbol_select;
+	m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_CUSTOM].text = "Custom";
+	m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_CUSTOM].value[0] = '\0';
 
 	// prepare the info menu
 	m_info_menu.n_entries = INFO_ENTRY_COUNT;

@@ -423,8 +423,11 @@ static void cb_aprs_service(aprs_service_evt_t evt)
 
 				APP_ERROR_CHECK(aprs_service_get_symbol(&m_aprs_service, &table, &symbol));
 
+				// save the new symbol code as last custom symbol code. The
+				// SETTINGS_ID_SYMBOL_CODE setting is updated from
+				// cb_settings() once this write completes.
 				uint8_t buf[2] = {table, symbol};
-				settings_write(SETTINGS_ID_SYMBOL_CODE, buf, sizeof(buf));
+				settings_write(SETTINGS_ID_LAST_BLE_SYMBOL, buf, sizeof(buf));
 
 				aprs_set_icon(table, symbol);
 			}
@@ -1063,6 +1066,12 @@ static void cb_settings(settings_evt_t evt, settings_id_t id)
 			break;
 
 		case SETTINGS_EVT_UPDATE_COMPLETE:
+			// whenever the last BLE symbol code was stored, also update the
+			// current APRS symbol
+			if(id == SETTINGS_ID_LAST_BLE_SYMBOL) {
+				aprs_get_icon((char*)&buffer[0], (char*)&buffer[1]);
+				settings_write(SETTINGS_ID_SYMBOL_CODE, buffer, 2);
+			}
 			break;
 	}
 }
