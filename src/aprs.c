@@ -33,6 +33,7 @@
 #include <math.h>
 
 #include "aprs.h"
+#include "time_base.h"
 
 const char m_icon_map[APRS_NUM_ICONS] = {
 	'.', // AI_X
@@ -92,6 +93,15 @@ static char m_error_message[256];
 static uint32_t m_config_flags;
 
 static aprs_rx_history_t m_rx_history;
+
+/* Wait at least this long before transmitting the comment again. */
+#define MIN_COMMENT_INTERVAL_TIME_MS  600000
+
+/* Force comment transmittion after this time. */
+#define MAX_COMMENT_INTERVAL_TIME_MS 3600000
+
+/* Between the time limits above, transmit the comment after this number of packets. */
+#define MIN_COMMENT_INTERVAL_PACKETS      10
 
 
 static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
@@ -345,11 +355,16 @@ static char *encode_dao(bool first_entry, char *str, size_t max_len, char *dao)
 
 static bool update_info_field(const aprs_args_t *args)
 {
+	static uint64_t time_comment_added = 0L;
+	static uint16_t packets_since_last_comment = 0;
+
 	bool first_entry = true;
 
 	char *info_end = (char*)m_info + sizeof(m_info);
 	char *infoptr = (char*)m_info;
 	char *retptr;
+
+	uint64_t now = time_base_get();
 
 	bool is_weather_report = (m_config_flags & APRS_FLAG_ADD_WEATHER) && args->transmit_env_data;
 
@@ -399,16 +414,40 @@ static bool update_info_field(const aprs_args_t *args)
 		}
 	}
 
-	/* add comment */
-	size_t chars_to_copy_from_comment = strlen(m_comment);
-	if((chars_to_copy_from_comment + 1) > (info_end - infoptr)) {
-		chars_to_copy_from_comment = info_end - infoptr - 1;
+	/* check conditions for adding comment:
+	 * - do not transmit before a minimum amount of time has passed since the last comment.
+	 * - a minimum number of packets has been transmitted since the last comment.
+	 * - always add the comment if a maximum amount of time has passed.
+	 */
+	packets_since_last_comment++;
+
+	uint64_t time_since_last_comment = now - time_comment_added;
+	bool add_comment =
+		((time_since_last_comment >= MIN_COMMENT_INTERVAL_TIME_MS)
+		 && (packets_since_last_comment > MIN_COMMENT_INTERVAL_PACKETS))
+		|| (time_since_last_comment >= MAX_COMMENT_INTERVAL_TIME_MS);
+
+	if(add_comment) {
+		/* reset time and packet counters */
+		packets_since_last_comment = 0;
+		time_comment_added = now;
+
+		/* add comment */
+		if (!first_entry && infoptr < info_end-1) {
+			*infoptr++ = ' ';
+		}
+
+		size_t chars_to_copy_from_comment = strlen(m_comment);
+		if((chars_to_copy_from_comment + 1) > (info_end - infoptr)) {
+			chars_to_copy_from_comment = info_end - infoptr - 1;
+		}
+
+		strncpy(infoptr, m_comment, chars_to_copy_from_comment);
+
+		infoptr += chars_to_copy_from_comment;
+		*infoptr = '\0';
+		first_entry = false;
 	}
-
-	strncpy(infoptr, m_comment, chars_to_copy_from_comment);
-
-	infoptr += chars_to_copy_from_comment;
-	*infoptr = '\0';
 
 	/* add frame counter */
 	if (m_config_flags & APRS_FLAG_ADD_FRAME_COUNTER) {
