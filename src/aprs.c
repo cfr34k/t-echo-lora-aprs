@@ -559,7 +559,10 @@ size_t aprs_build_frame(uint8_t *frame, const aprs_args_t *args)
 
 	*(frameptr++) = ':';
 
-	update_info_field(args);
+	if(!update_info_field(args)) {
+		// error during info field update
+		return 0;
+	}
 
 	while(*infoptr != '\0') {
 		*frameptr = *infoptr;

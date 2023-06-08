@@ -129,12 +129,16 @@ ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 		args->frame_id = ++m_tx_counter;
 		frame_len = aprs_build_frame(message, args);
 
-		NRF_LOG_INFO("Generated frame:");
-		NRF_LOG_HEXDUMP_INFO(message, frame_len);
+		if(frame_len) {
+			NRF_LOG_INFO("Generated frame:");
+			NRF_LOG_HEXDUMP_INFO(message, frame_len);
 
-		lora_send_packet(message, frame_len);
+			lora_send_packet(message, frame_len);
 
-		m_callback(TRACKER_EVT_TRANSMISSION_STARTED);
+			m_callback(TRACKER_EVT_TRANSMISSION_STARTED);
+		} else {
+			NRF_LOG_ERROR("APRS frame generation failed!");
+		}
 	}
 
 	return NRF_SUCCESS;
