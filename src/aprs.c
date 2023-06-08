@@ -309,7 +309,7 @@ static char* encode_weather(char *str, size_t max_len, const aprs_args_t *args)
 	int32_t humidity = (int32_t)(args->humidity_rH + 0.5f) % 100; // h00 = 100%
 	int32_t pressure_dPa = (int32_t)(args->pressure_hPa * 10.0f + 0.5f); // resolution = 0.1 hPa = 10 Pa
 
-	int ret = snprintf(str, max_len, "t%03ldh%02ldb%05ld", temp_fahrenheit, humidity, pressure_dPa);
+	int ret = snprintf(str, max_len, "c...s...g...t%03ldh%02ldb%05ld", temp_fahrenheit, humidity, pressure_dPa);
 
 	if(ret < 0) {
 		*str = 0;
