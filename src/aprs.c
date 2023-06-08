@@ -106,7 +106,7 @@ static void append_address(uint8_t **frameptr, char *addr, uint8_t is_last)
 	}
 }
 
-static char* encode_position_readable(char *str, size_t max_len, char table, char symbol)
+static char* encode_position_readable(char *str, size_t max_len, char table, char symbol, char *dao)
 {
 	float lat = m_lat;
 	float lon = m_lon;
@@ -116,8 +116,6 @@ static char* encode_position_readable(char *str, size_t max_len, char table, cha
 	int lat_min_full_precision, lon_min_full_precision;
 	int lat_min, lon_min;
 	int lat_min_fract, lon_min_fract;
-
-	char dao[6];
 
 	// convert sign -> north/south, east/west
 	if(lat < 0) {
@@ -167,17 +165,19 @@ static char* encode_position_readable(char *str, size_t max_len, char table, cha
 		dao[0] = '\0';
 	}
 
-	int ret = snprintf(str, max_len, "%02i%02i.%02i%c%c%03i%02i.%02i%c%c%s",
+	int ret = snprintf(str, max_len, "%02i%02i.%02i%c%c%03i%02i.%02i%c%c",
 			lat_deg, lat_min, lat_min_fract, lat_ns, table,
-			lon_deg, lon_min, lon_min_fract, lon_ew, symbol,
-			dao);
+			lon_deg, lon_min, lon_min_fract, lon_ew, symbol);
 
 	if(ret < 0) {
+		*str = 0;
 		return NULL; // error
 	} else if(ret < max_len) {
 		return str + ret; // everything encoded ok
 	} else {
-		return str + max_len - 1; // string was truncated
+		// string was truncated. Really bad for positions, because it leads to bad packets
+		*str = 0;
+		return NULL; // error
 	}
 }
 
@@ -245,13 +245,30 @@ static char* encode_position_compressed(char *str, size_t max_len, char table, c
 	return str + 13;
 }
 
-static char* encode_altitude_readable(char *str, size_t max_len)
+static char* encode_altitude_readable(bool first_entry, char *str, size_t max_len)
 {
 	float alt_ft = m_alt_m / 0.3048f;
 
-	int ret = snprintf(str, max_len, "/A=%06i", (int)alt_ft);
+	int ret = snprintf(str, max_len, "%s/A=%06i", (first_entry ? "" : " "), (int)alt_ft);
 
 	if(ret < 0) {
+		*str = 0;
+		return NULL; // error
+	} else if(ret < max_len) {
+		return str + ret; // everything encoded ok
+	} else {
+		// string was truncated. cut altitude leads to misinterprations
+		*str = 0;
+		return NULL; // error
+	}
+}
+
+static char* encode_frame_id(bool first_entry, char *str, size_t max_len, uint32_t frame_id)
+{
+	int ret = snprintf(str, max_len, "%s#%lu", (first_entry ? "" : " "), frame_id);
+
+	if(ret < 0) {
+		*str = 0;
 		return NULL; // error
 	} else if(ret < max_len) {
 		return str + ret; // everything encoded ok
@@ -260,35 +277,15 @@ static char* encode_altitude_readable(char *str, size_t max_len)
 	}
 }
 
-static char* encode_frame_id(char *str, size_t max_len, uint32_t frame_id)
+static char* encode_vbat(bool first_entry, char *str, size_t max_len, uint16_t vbat_millivolt)
 {
-	if(!(m_config_flags & APRS_FLAG_ADD_FRAME_COUNTER)) {
-		return str;
-	}
-
-	int ret = snprintf(str, max_len, " #%lu", frame_id);
-
-	if(ret < 0) {
-		return NULL; // error
-	} else if(ret < max_len) {
-		return str + ret; // everything encoded ok
-	} else {
-		return str + max_len - 1; // string was truncated
-	}
-}
-
-static char* encode_vbat(char *str, size_t max_len, uint16_t vbat_millivolt)
-{
-	if(!(m_config_flags & APRS_FLAG_ADD_VBAT)) {
-		return str;
-	}
-
 	uint16_t vbat_int = vbat_millivolt / 1000;
 	uint16_t vbat_fract = (vbat_millivolt / 10) % 100;
 
-	int ret = snprintf(str, max_len, " %d.%02dV", vbat_int, vbat_fract);
+	int ret = snprintf(str, max_len, "%s%d.%02dV", (first_entry ? "" : " "), vbat_int, vbat_fract);
 
 	if(ret < 0) {
+		*str = 0;
 		return NULL; // error
 	} else if(ret < max_len) {
 		return str + ret; // everything encoded ok
@@ -315,16 +312,41 @@ static char* encode_weather(char *str, size_t max_len, const aprs_args_t *args)
 	int ret = snprintf(str, max_len, "t%03ldh%02ldb%05ld", temp_fahrenheit, humidity, pressure_dPa);
 
 	if(ret < 0) {
+		*str = 0;
 		return NULL; // error
 	} else if(ret < max_len) {
 		return str + ret; // everything encoded ok
 	} else {
-		return str + max_len - 1; // string was truncated
+		// string was truncated. Bad weather may be not parseable and leads to packet errors or misinterpretations
+		*str = 0;
+		return NULL; // error
 	}
 }
 
-static void update_info_field(const aprs_args_t *args)
+static char *encode_dao(bool first_entry, char *str, size_t max_len, char *dao)
 {
+	if (!*dao || max_len < 6) {
+		return NULL;
+	}
+
+	int ret = snprintf(str, max_len, "%s%s", (first_entry ? "" : " "), dao);
+
+	if(ret < 0) {
+		*str = 0;
+		return NULL; // error
+	} else if(ret < max_len) {
+		return str + ret; // everything encoded ok
+	} else {
+		// string was truncated. truncated DAO is useless
+		*str = 0;
+		return NULL; // error
+	}
+}
+
+static bool update_info_field(const aprs_args_t *args)
+{
+	bool first_entry = true;
+
 	char *info_end = (char*)m_info + sizeof(m_info);
 	char *infoptr = (char*)m_info;
 	char *retptr;
@@ -332,6 +354,9 @@ static void update_info_field(const aprs_args_t *args)
 	bool is_weather_report = (m_config_flags & APRS_FLAG_ADD_WEATHER) && args->transmit_env_data;
 
 	char table = m_table, symbol = m_icon;
+
+	char dao[6];
+	*dao = 0;
 
 	if(is_weather_report) {
 		table = '/';
@@ -347,18 +372,30 @@ static void update_info_field(const aprs_args_t *args)
 	if(m_config_flags & APRS_FLAG_COMPRESS_LOCATION) {
 		retptr = encode_position_compressed(infoptr, info_end - infoptr, table, symbol);
 	} else {
-		retptr = encode_position_readable(infoptr, info_end - infoptr, table, symbol);
+		retptr = encode_position_readable(infoptr, info_end - infoptr, table, symbol, dao);
 	}
 
-	if(retptr) {
-		infoptr = retptr;
+	if (!retptr) {
+		return false;
 	}
+	infoptr = retptr;
 
 	/* add weather report */
 	if(is_weather_report) {
 		retptr = encode_weather(infoptr, info_end - infoptr, args);
 		if(retptr) {
 			infoptr = retptr;
+			first_entry = false;
+		}
+	}
+
+	/* add altitude for uncompressed packets (already included in compressed format) */
+	if(!(m_config_flags & APRS_FLAG_COMPRESS_LOCATION)
+			&& (m_config_flags & APRS_FLAG_ADD_ALTITUDE)) {
+		retptr = encode_altitude_readable(first_entry, infoptr, info_end - infoptr);
+		if(retptr) {
+			infoptr = retptr;
+			first_entry = false;
 		}
 	}
 
@@ -373,26 +410,34 @@ static void update_info_field(const aprs_args_t *args)
 	infoptr += chars_to_copy_from_comment;
 	*infoptr = '\0';
 
-	/* add altitude for uncompressed packets (already included in compressed format) */
-	if(!(m_config_flags & APRS_FLAG_COMPRESS_LOCATION)
-			&& (m_config_flags & APRS_FLAG_ADD_ALTITUDE)) {
-		retptr = encode_altitude_readable(infoptr, info_end - infoptr);
+	/* add frame counter */
+	if (m_config_flags & APRS_FLAG_ADD_FRAME_COUNTER) {
+		retptr = encode_frame_id(first_entry, infoptr, info_end - infoptr, args->frame_id);
 		if(retptr) {
 			infoptr = retptr;
+			first_entry = false;
 		}
 	}
 
-	/* add frame counter */
-	retptr = encode_frame_id(infoptr, info_end - infoptr, args->frame_id);
-	if(retptr) {
-		infoptr = retptr;
+	/* add Vbat */
+	if (m_config_flags & APRS_FLAG_ADD_VBAT) {
+		retptr = encode_vbat(first_entry, infoptr, info_end - infoptr, args->vbat_millivolt);
+		if(retptr) {
+			infoptr = retptr;
+			first_entry = false;
+		}
 	}
 
-	/* add Vbat */
-	retptr = encode_vbat(infoptr, info_end - infoptr, args->vbat_millivolt);
-	if(retptr) {
-		infoptr = retptr;
+	/* add DAO for uncompressed packets (already at high precision in compressed format) */
+	if (!(m_config_flags & APRS_FLAG_COMPRESS_LOCATION) && *dao) {
+		retptr = encode_dao(first_entry, infoptr, info_end - infoptr, dao);
+		if(retptr) {
+			infoptr = retptr;
+			first_entry = false;
+		}
 	}
+
+	return true; // success
 }
 
 // PUBLIC FUNCTIONS
