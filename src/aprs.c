@@ -153,7 +153,7 @@ static char* encode_position_readable(char *str, size_t max_len, char table, cha
 	// calculate the DAO string if requested
 	if(m_config_flags & APRS_FLAG_ADD_DAO) {
 		dao[0] = dao[4] = '!'; // start and end markers
-		dao[1] = 'w';          // WGS84 identifier
+		dao[1] = 'W';          // WGS84 identifier
 		dao[5] = '\0';         // String terminator
 
 		// extract extended precision part
@@ -161,8 +161,8 @@ static char* encode_position_readable(char *str, size_t max_len, char table, cha
 		int lon_min_fract_extended = lon_min_full_precision % 100;
 
 		// encode extended precision part as Base-91
-		dao[2] = '!' + lat_min_fract_extended * 91 / 100; // note: integer division!
-		dao[3] = '!' + lon_min_fract_extended * 91 / 100; // note: integer division!
+		dao[2] = '0' + lat_min_fract_extended/10; // note: integer division!
+		dao[3] = '0' + lon_min_fract_extended/10; // note: integer division!
 	} else {
 		dao[0] = '\0';
 	}
