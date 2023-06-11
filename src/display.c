@@ -65,6 +65,99 @@ extern uint8_t m_display_rx_index;
 
 extern char m_passkey[6];
 
+typedef struct {
+	float x;
+	float y;
+} fpoint_t;
+
+// rotation with precalculated coefficients
+static void rotate_coef(fpoint_t *point, float coef_cos, float coef_sin)
+{
+	float rpoint_x = point->x * coef_cos - point->y * coef_sin;
+	float rpoint_y = point->x * coef_sin + point->y * coef_cos;
+
+	point->x = rpoint_x;
+	point->y = rpoint_y;
+}
+
+#if 0
+static void rotate(fpoint_t *point, float angle_rad)
+{
+	float rot_cos = cosf(angle_rad);
+	float rot_sin = sinf(angle_rad);
+
+	rotate_coef(point, rot_cos, rot_sin);
+}
+#endif
+
+static void scale(fpoint_t *point, float factor)
+{
+	point->x *= factor;
+	point->y *= factor;
+}
+
+/* Draws a compass rose with circular outline and a nice arrow.
+ *
+ * Ascii representation of arrow:
+ *      .
+ *     /|\
+ *    / | \
+ *   /_-^-_\
+ *  /-     -\
+ *
+ * */
+static void draw_compass_arrow(float course, uint8_t cx, uint8_t cy, uint8_t r, uint8_t color)
+{
+	// arrow is defined by 4 points, normalized to radius here.
+
+	fpoint_t p1 = { 0.000f, -0.500f}; // bottom (rear center)
+	fpoint_t p2 = { 0.000f,  0.800f}; // top (front center)
+	fpoint_t p3 = { 0.273f, -0.751f}; // bottom right
+	fpoint_t p4 = {-0.273f, -0.751f}; // bottom left
+
+	// rotation coefficients are the same for all points, so we precalculate them.
+	float angle_rad = (course + 180.0f) * 3.142f / 180.0f;
+	float rot_cos = cosf(angle_rad);
+	float rot_sin = sinf(angle_rad);
+
+	// rotate and scale all points
+	rotate_coef(&p1, rot_cos, rot_sin);
+	scale(&p1, r);
+
+	rotate_coef(&p2, rot_cos, rot_sin);
+	scale(&p2, r);
+
+	rotate_coef(&p3, rot_cos, rot_sin);
+	scale(&p3, r);
+
+	rotate_coef(&p4, rot_cos, rot_sin);
+	scale(&p4, r);
+
+	// draw a line between each combination of points
+	epaper_fb_move_to(cx + (int8_t)p1.x, cy + (int8_t)p1.y); // start at bottom center
+	epaper_fb_line_to(cx + (int8_t)p3.x, cy + (int8_t)p3.y, color); // line to bottom left
+	epaper_fb_line_to(cx + (int8_t)p2.x, cy + (int8_t)p2.y, color); // line to top
+	epaper_fb_line_to(cx + (int8_t)p4.x, cy + (int8_t)p4.y, color); // line to bottom right
+	epaper_fb_line_to(cx + (int8_t)p1.x, cy + (int8_t)p1.y, color); // line back to bottom center
+	epaper_fb_line_to(cx + (int8_t)p2.x, cy + (int8_t)p2.y, color); // inner line to top
+}
+
+
+static void draw_compass(float course, uint8_t cx, uint8_t cy, uint8_t r, uint8_t color)
+{
+	// draw outline and anchor circles
+	epaper_fb_move_to(cx, cy);
+	epaper_fb_circle(r, EPAPER_COLOR_BLACK);
+	epaper_fb_circle(2, EPAPER_COLOR_BLACK);
+
+	// draw the arrow
+	draw_compass_arrow(course, cx, cy, r, color);
+
+	// draw North marker
+	epaper_fb_move_to(cx - 5, cy - r + epaper_fb_get_line_height()/3);
+	epaper_fb_draw_string("N", color);
+}
+
 static int format_timedelta(char *buf, size_t buf_len, uint32_t timedelta)
 {
 	if(timedelta < 60) {
@@ -506,21 +599,8 @@ void redraw_display(bool full_update)
 					uint8_t center_x = EPAPER_WIDTH - r - 5;
 					uint8_t center_y = line_height*2 + r - 5;
 
-					epaper_fb_move_to(center_x, center_y);
-					epaper_fb_circle(r, EPAPER_COLOR_BLACK);
-					epaper_fb_circle(2, EPAPER_COLOR_BLACK);
-
-					uint8_t arrow_start_x = center_x;
-					uint8_t arrow_start_y = center_y;
-
-					uint8_t arrow_end_x = center_x + r * sinf(m_nmea_data.heading * (3.14f / 180.0f));
-					uint8_t arrow_end_y = center_y - r * cosf(m_nmea_data.heading * (3.14f / 180.0f));
-
-					epaper_fb_move_to(arrow_start_x, arrow_start_y);
-					epaper_fb_line_to(arrow_end_x, arrow_end_y, EPAPER_COLOR_BLACK);
-
-					epaper_fb_move_to(center_x - 5, center_y - r + line_height/3);
-					epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
+					draw_compass(m_nmea_data.heading,
+							center_x, center_y, r, EPAPER_COLOR_BLACK);
 				} else {
 					epaper_fb_draw_string("No speed / heading info.", EPAPER_COLOR_BLACK);
 				}
@@ -729,31 +809,14 @@ void redraw_display(bool full_update)
 						uint8_t center_x = EPAPER_WIDTH - r - 5;
 						uint8_t center_y = line_height*2 + r - 5;
 
-						uint8_t arrow_start_x = center_x;
-						uint8_t arrow_start_y = center_y;
-
-						uint8_t arrow_end_x = center_x + r * sinf(direction * (3.14f / 180.0f));
-						uint8_t arrow_end_y = center_y - r * cosf(direction * (3.14f / 180.0f));
-
-						epaper_fb_move_to(center_x, center_y);
-						epaper_fb_circle(r, EPAPER_COLOR_BLACK);
-						epaper_fb_circle(2, EPAPER_COLOR_BLACK);
-
-						epaper_fb_move_to(arrow_start_x, arrow_start_y);
-						epaper_fb_line_to(arrow_end_x, arrow_end_y, EPAPER_COLOR_BLACK);
+						draw_compass(direction,
+								center_x, center_y, r, EPAPER_COLOR_BLACK);
 
 						// draw arrow of own heading for comparison (dashed)
 						if(m_nmea_data.speed_heading_valid) {
-							uint8_t arrow_end_x = center_x + r * sinf(m_nmea_data.heading * (3.14f / 180.0f));
-							uint8_t arrow_end_y = center_y - r * cosf(m_nmea_data.heading * (3.14f / 180.0f));
-
-							epaper_fb_move_to(arrow_start_x, arrow_start_y);
-							epaper_fb_line_to(arrow_end_x, arrow_end_y,
-									EPAPER_COLOR_BLACK | EPAPER_LINE_DRAWING_MODE_DOTTED);
+							draw_compass_arrow(m_nmea_data.heading,
+									center_x, center_y, r, EPAPER_COLOR_BLACK | EPAPER_LINE_DRAWING_MODE_DOTTED);
 						}
-
-						epaper_fb_move_to(center_x - 5, center_y - r + line_height/3);
-						epaper_fb_draw_string("N", EPAPER_COLOR_BLACK);
 					}
 
 					yoffset += 5 * line_height / 4;

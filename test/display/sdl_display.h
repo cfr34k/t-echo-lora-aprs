@@ -11,13 +11,22 @@
 #define EPAPER_WIDTH  200
 #define EPAPER_HEIGHT 200
 
-// drawing lines with this flag set will cause the line to be dashed:
-// 5 pixels are drawn, 3 pixels left blank
-#define EPAPER_COLOR_FLAG_DASHED 0x02
+#define EPAPER_COLOR_MASK       0x01
 
-// drawing lines with this flag set will cause the line to be lightly dotted:
+#define EPAPER_LINE_DRAWING_MODE_SHIFT 1
+#define EPAPER_LINE_DRAWING_MODE_MASK  (0x3 << EPAPER_LINE_DRAWING_MODE_SHIFT)
+
+// drawing lines with this mode set will cause the line to be dashed:
+// 5 pixels are drawn, 3 pixels left blank
+#define EPAPER_LINE_DRAWING_MODE_DASHED    (0x1 << EPAPER_LINE_DRAWING_MODE_SHIFT)
+
+// drawing lines with this mode set will cause the line to be lightly dotted:
 // 1 pixel is drawn, 2 pixels left blank
-#define EPAPER_COLOR_FLAG_DOTTED_LIGHT 0x04
+#define EPAPER_LINE_DRAWING_MODE_DOTTED_LIGHT    (0x2 << EPAPER_LINE_DRAWING_MODE_SHIFT)
+
+// drawing lines with this mode set will cause the line to be dotted:
+// 1 pixel is drawn, 1 pixel left blank
+#define EPAPER_LINE_DRAWING_MODE_DOTTED    (0x3 << EPAPER_LINE_DRAWING_MODE_SHIFT)
 
 #define EPAPER_COLOR_MASK       0x01
 #define EPAPER_COLOR_FLAGS_MASK 0xFE
