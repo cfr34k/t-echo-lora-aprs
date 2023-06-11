@@ -37,6 +37,12 @@
 
 typedef enum
 {
+	APRS_PACKET_TYPE_POSITION,
+	APRS_PACKET_TYPE_WX
+} aprs_packet_type_t;
+
+typedef enum
+{
 	AI_X = 0,
 	AI_JOGGER,
 	AI_BIKE,
@@ -128,7 +134,7 @@ void aprs_set_icon(char table, char icon);
 void aprs_set_icon_default(aprs_icon_t icon);
 void aprs_set_comment(const char *comment);
 bool aprs_can_build_frame(void);
-size_t aprs_build_frame(uint8_t *frame, const aprs_args_t *args);
+size_t aprs_build_frame(uint8_t *frame, const aprs_args_t *args, aprs_packet_type_t packet_type);
 
 uint32_t aprs_get_config_flags(void);
 void aprs_set_config_flags(uint32_t new_flags);

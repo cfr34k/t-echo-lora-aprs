@@ -32,8 +32,10 @@
 
 #include <math.h>
 
-#include "aprs.h"
 #include "time_base.h"
+#include "wall_clock.h"
+
+#include "aprs.h"
 
 const char m_icon_map[APRS_NUM_ICONS] = {
 	'.', // AI_X
@@ -366,17 +368,8 @@ static bool update_info_field(const aprs_args_t *args)
 
 	uint64_t now = time_base_get();
 
-	bool is_weather_report = (m_config_flags & APRS_FLAG_ADD_WEATHER) && args->transmit_env_data;
-
-	char table = m_table, symbol = m_icon;
-
 	char dao[6];
 	*dao = 0;
-
-	if(is_weather_report) {
-		table = '/';
-		symbol = '_';
-	}
 
 	/* packet type: position, no APRS messaging */
 	*infoptr = '!';
@@ -385,24 +378,15 @@ static bool update_info_field(const aprs_args_t *args)
 	/* encode position */
 
 	if(m_config_flags & APRS_FLAG_COMPRESS_LOCATION) {
-		retptr = encode_position_compressed(infoptr, info_end - infoptr, table, symbol);
+		retptr = encode_position_compressed(infoptr, info_end - infoptr, m_table, m_icon);
 	} else {
-		retptr = encode_position_readable(infoptr, info_end - infoptr, table, symbol, dao);
+		retptr = encode_position_readable(infoptr, info_end - infoptr, m_table, m_icon, dao);
 	}
 
 	if (!retptr) {
 		return false;
 	}
 	infoptr = retptr;
-
-	/* add weather report */
-	if(is_weather_report) {
-		retptr = encode_weather(infoptr, info_end - infoptr, args);
-		if(retptr) {
-			infoptr = retptr;
-			first_entry = false;
-		}
-	}
 
 	/* add altitude for uncompressed packets (already included in compressed format) */
 	if(!(m_config_flags & APRS_FLAG_COMPRESS_LOCATION)
@@ -578,11 +562,16 @@ bool aprs_can_build_frame(void)
 	return (m_src[0] != '\0') && (m_dest[0] != '\0');
 }
 
-size_t aprs_build_frame(uint8_t *frame, const aprs_args_t *args)
+size_t aprs_build_frame(uint8_t *frame, const aprs_args_t *args, aprs_packet_type_t packet_type)
 {
 	uint8_t *frameptr = frame;
-	uint8_t *infoptr = m_info;
-	//uint16_t fcs;
+	uint8_t *infoptr;
+
+	if (packet_type == APRS_PACKET_TYPE_WX) {
+		if (!((m_config_flags & APRS_FLAG_ADD_WEATHER) && args->transmit_env_data)) {
+			return 0;
+		}
+	}
 
 	*(frameptr++) = '<';
 	*(frameptr++) = 0xFF;
@@ -629,11 +618,49 @@ size_t aprs_build_frame(uint8_t *frame, const aprs_args_t *args)
 
 	*(frameptr++) = ':';
 
-	if(!update_info_field(args)) {
-		// error during info field update
-		return 0;
+	switch(packet_type) {
+		case APRS_PACKET_TYPE_POSITION:
+			// build a position report packet optionally including DAO, packet counter, comment etc.
+			if(!update_info_field(args)) {
+				// error during info field update
+				return 0;
+			}
+			break;
+
+		case APRS_PACKET_TYPE_WX:
+			// build a positionless weather report packet. No position, comment or
+			// other extensions are included.
+			{
+				uint8_t *info_end = m_info + sizeof(m_info);
+
+				struct tm utc;
+				size_t len;
+
+				wall_clock_get_utc(&utc);
+
+				// generate a positionless WX report
+				infoptr = m_info;
+
+				// add packet type and timestamp
+				if ((len = strftime((char*)infoptr, sizeof(m_info), "_%m%d%H%M", &utc)) == 0) {
+					return 0;
+				}
+
+				infoptr += len;
+
+				// add weather data
+				if(!encode_weather((char*)infoptr, info_end - infoptr, args)) {
+					return 0;
+				}
+				break;
+			}
+
+		default:
+			// unsupported packet type
+			return 0;
 	}
 
+	infoptr = m_info;
 	while(*infoptr != '\0') {
 		*frameptr = *infoptr;
 

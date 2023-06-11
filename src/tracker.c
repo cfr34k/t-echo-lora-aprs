@@ -39,6 +39,8 @@
 #define MIN_TX_INTERVAL_MS      15000
 #define MAX_TX_INTERVAL_MS     900000
 
+#define WX_INTERVAL_MS         300000
+
 #define MAX_DISTANCE_M         2000
 
 static float m_last_tx_heading = 0.0f;
@@ -47,6 +49,7 @@ static float m_last_tx_lat = 0.0f;
 static float m_last_tx_lon = 0.0f;
 
 static uint64_t m_last_tx_time = 0;
+static uint64_t m_last_wx_time = 0;
 
 static uint32_t m_tx_counter = 0;
 
@@ -64,10 +67,8 @@ ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 {
 	bool do_tx = false;
 
-	if(!data->pos_valid) {
-		// do not transmit invalid positions
-		return NRF_ERROR_INVALID_DATA;
-	}
+	uint8_t message[APRS_MAX_FRAME_LEN];
+	size_t  frame_len;
 
 	uint64_t now = time_base_get();
 
@@ -76,6 +77,32 @@ ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 		return NRF_ERROR_BUSY;
 	}
 
+	// weather packet handling
+	if(args->transmit_env_data && ((now - m_last_wx_time) >= WX_INTERVAL_MS)) {
+		NRF_LOG_INFO("tracker: transmitting WX data");
+		frame_len = aprs_build_frame(message, args, APRS_PACKET_TYPE_WX);
+
+		if(frame_len) {
+			NRF_LOG_INFO("Generated WX frame:");
+			NRF_LOG_HEXDUMP_INFO(message, frame_len);
+
+			lora_send_packet(message, frame_len);
+
+			m_last_tx_time = now;
+			m_last_wx_time = now;
+
+			m_callback(TRACKER_EVT_TRANSMISSION_STARTED);
+		} else {
+			NRF_LOG_ERROR("APRS frame generation failed!");
+		}
+	}
+
+	// remaining handling below is for position packets
+
+	if(!data->pos_valid) {
+		// do not transmit invalid positions
+		return NRF_ERROR_INVALID_DATA;
+	}
 
 	if((now - m_last_tx_time) > MAX_TX_INTERVAL_MS) {
 		// transmit if the previous one was too long ago
@@ -121,13 +148,10 @@ ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 		m_last_tx_time = now;
 
 		// generate a new APRS packet
-		uint8_t message[APRS_MAX_FRAME_LEN];
-		size_t  frame_len;
-
 		aprs_update_pos_time(data->lat, data->lon, data->altitude, now / 1000);
 
 		args->frame_id = ++m_tx_counter;
-		frame_len = aprs_build_frame(message, args);
+		frame_len = aprs_build_frame(message, args, APRS_PACKET_TYPE_POSITION);
 
 		if(frame_len) {
 			NRF_LOG_INFO("Generated frame:");
