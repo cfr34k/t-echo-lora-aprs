@@ -37,8 +37,8 @@
 #define MAX_HEADING_DELTA_DEG    30.0f
 
 #define MIN_TX_INTERVAL_MS      15000
-#define MAX_TX_INTERVAL_MS     900000
 
+#define MAX_POS_INTERVAL_MS   1800000
 #define WX_INTERVAL_MS         300000
 
 #define MAX_DISTANCE_M         2000
@@ -49,6 +49,7 @@ static float m_last_tx_lat = 0.0f;
 static float m_last_tx_lon = 0.0f;
 
 static uint64_t m_last_tx_time = 0;
+static uint64_t m_last_pos_time = 0;
 static uint64_t m_last_wx_time = 0;
 
 static uint32_t m_tx_counter = 0;
@@ -104,9 +105,9 @@ ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 		return NRF_ERROR_INVALID_DATA;
 	}
 
-	if((now - m_last_tx_time) > MAX_TX_INTERVAL_MS) {
+	if((now - m_last_pos_time) > MAX_POS_INTERVAL_MS) {
 		// transmit if the previous one was too long ago
-		NRF_LOG_INFO("tracker: forced tx after %d ms idle", now - m_last_tx_time);
+		NRF_LOG_INFO("tracker: forced tx after %d ms idle", now - m_last_pos_time);
 		do_tx = true;
 	}
 
@@ -146,6 +147,7 @@ ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 		m_last_tx_lat = data->lat;
 		m_last_tx_lon = data->lon;
 		m_last_tx_time = now;
+		m_last_pos_time = now;
 
 		// generate a new APRS packet
 		aprs_update_pos_time(data->lat, data->lon, data->altitude, now / 1000);
