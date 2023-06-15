@@ -1086,6 +1086,9 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 
 bool aprs_parse_frame(const uint8_t *frame, size_t len, aprs_frame_t *result)
 {
+	// clear all existing data in the frame
+	memset(result, 0, sizeof(aprs_frame_t));
+
 	if(len > 3 && frame[0] == '<' && frame[1] == 0xFF && frame[2] == 0x01) {
 		return aprs_parse_text_frame(frame + 3, len - 3, result);
 	} else {
@@ -1108,6 +1111,7 @@ uint8_t aprs_rx_history_insert(
 		uint8_t protected_index)
 {
 	aprs_rx_history_entry_t *insert_pos = NULL;
+	bool updating_existing_entry = false;
 
 	// first try: check if the source call sign already exists
 	if(insert_pos == NULL) {
@@ -1116,6 +1120,7 @@ uint8_t aprs_rx_history_insert(
 			const char *oldsrc = m_rx_history.history[i].decoded.source;
 
 			if(strcmp(newsrc, oldsrc) == 0) {
+				updating_existing_entry = true;
 				insert_pos = &m_rx_history.history[i];
 				break;
 			}
@@ -1154,9 +1159,33 @@ uint8_t aprs_rx_history_insert(
 		return 0;
 	}
 
+	bool is_positionless = (frame->lat == 0.0f) && (frame->lon == 0.0f);
+
+	// if the current frame is positionless, we save the unavailable
+	// information from previous frames and restore it later
+	float lat, lon, alt;
+	char table, symbol;
+	if(updating_existing_entry && is_positionless) {
+		lat    = insert_pos->decoded.lat;
+		lon    = insert_pos->decoded.lon;
+		alt    = insert_pos->decoded.alt;
+		table  = insert_pos->decoded.table;
+		symbol = insert_pos->decoded.symbol;
+	}
+
+	// update the stored data
 	insert_pos->decoded = *frame;
 	insert_pos->rx_timestamp = rx_timestamp;
 	insert_pos->raw = *raw;
+
+	// restore the data unavailable in the positionless frame
+	if(updating_existing_entry && is_positionless) {
+		insert_pos->decoded.lat    = lat;
+		insert_pos->decoded.lon    = lon;
+		insert_pos->decoded.alt    = alt;
+		insert_pos->decoded.table  = table;
+		insert_pos->decoded.symbol = symbol;
+	}
 
 	return (insert_pos - m_rx_history.history);
 }
