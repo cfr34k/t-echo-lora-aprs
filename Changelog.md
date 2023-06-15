@@ -1,3 +1,57 @@
+# Version 0.9
+
+This release vastly improves the behaviour of this firmware on-air.
+
+## Improvements to the APRS Implementation
+
+Special thanks in this area go to Thomas DL9SAU who provided provided ideas,
+suggestions and code to improve the APRS protocol implementation in this
+firmware.
+
+The following changes have been made:
+
+- Handle further common frame types (such as positionless weather reports) as
+  valid frames and show their info field in the RX comment area.
+- Keep the last known position of a station if a positionless frame was
+  received from that station.
+- Airtime reduction:
+  - Use “destination call digipeating”. Instead of the usual "WIDE1-1" in the
+    path, SSID "-1" is set in the destination call field. This still allows
+    digipeating while saving 6 bytes in every APRS transmission.
+  - No digipeating is used for weather reports.
+  - Do no longer transmit the APRS comment in every frame. The comment is
+    transmitted at least once per hour or in every 10th position packet,
+    whatever happens first. However, the minimum time between two comment
+    transmissions is 10 minutes.
+  - Position updates are now forced every 30 minutes (previously 15 minutes) to
+    reduce the airtime impact of non-moving stations.
+- Use human readable version of the `!DAO!` field (format `!W42!` instead of
+  `!wnn!`). As this firmware internally calculates in 32-bit floating point,
+  position resolution is limited to 2.38m anyway. The new DAO variant’s
+  resolution is 1.8 m (or better), so no precision is lost by this change.
+- Weather data is now compliant to the APRS specification and always includes
+  the required `c`, `s` and `g` fields.
+- Send weather data in positionless weather reports. This completely separates
+  weather data from position data and the previous toggling of the symbol
+  between the selected one and the WX symbol is no longer necessary.
+  Positionless weather report are inserted between the regular position updates
+  every 5 minutes, if enabled.
+- Improved robustness during frame generation. If a field does not fit into the
+  frame memory, it is dropped completely instead of truncating it. This
+  prevents parser errors at the receiver.
+
+## Other Improvements
+
+- The compass displays now show a nice arrow instead of a simple line. This
+  should make the direction easier to see.
+
+## Fixed Bugs
+
+- Fixed APRS RX history handling: while the RX list was not full, newly
+  received packets were always appended to the list even if the station was
+  heard before. This caused a single station to fill up the entire list.
+
+
 # Version 0.8.1
 
 This is primarily a bugfix release.
