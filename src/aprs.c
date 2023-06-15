@@ -1004,6 +1004,44 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 			ret = parse_location_and_symbol(textframe, result);
 			break;
 
+		/* The following types cannot be parsed, but the information field is
+		 * still displayed on the screen. */
+
+		case ';': // APRS object
+		case ')': // APRS item
+		case '>': // APRS status message
+		case '<': // APRS station capabilities
+		case '_': // APRS WX report without timestamp
+		case ':': // APRS text message
+		case '?': // APRS query
+		case 'T': // Telemetry frame
+		case '}': // Third party traffic
+			ret = 0;
+			break;
+
+		case '#':
+		case '$':
+		case '*':
+			// WX stuff
+			ret = 0;
+			break;
+
+		case '%':
+		case '\'':
+		case ',':
+		case '`':
+		case '[':
+		case '{':
+		case '&':
+		case '+':
+		case '.':
+			// other stuff
+			ret = 0;
+			break;
+
+		/* Any frame type not listed above is probably corrupted by
+		 * noise/interference and therefore dropped. */
+
 		default:
 			// cannot parse this type
 			snprintf(m_error_message, sizeof(m_error_message), "Unknown message type: '%c'", type);
@@ -1015,6 +1053,9 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 	}
 
 	textframe += ret; // “remove” the processed text from the buffer
+	if (*textframe == ' ') {
+		textframe++;
+	}
 
 	// check if altitude is in remaining data
 	char *ptr = strstr(textframe, "/A=");
