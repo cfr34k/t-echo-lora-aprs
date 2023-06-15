@@ -1123,9 +1123,11 @@ uint8_t aprs_rx_history_insert(
 	}
 
 	// second try: append at the end
-	if(m_rx_history.num_entries < APRS_RX_HISTORY_SIZE) {
-		insert_pos = &m_rx_history.history[m_rx_history.num_entries];
-		m_rx_history.num_entries++;
+	if(insert_pos == NULL) {
+		if(m_rx_history.num_entries < APRS_RX_HISTORY_SIZE) {
+			insert_pos = &m_rx_history.history[m_rx_history.num_entries];
+			m_rx_history.num_entries++;
+		}
 	}
 
 	// third try: replace the oldest entry, but never the protected one (which
@@ -1146,7 +1148,11 @@ uint8_t aprs_rx_history_insert(
 		}
 	}
 
-	assert(insert_pos != NULL);
+	if(insert_pos == NULL) {
+		// could not find a suitable location (this should never happen with
+		// the above algorithm, but to play it safe, this case is catched here)
+		return 0;
+	}
 
 	insert_pos->decoded = *frame;
 	insert_pos->rx_timestamp = rx_timestamp;
