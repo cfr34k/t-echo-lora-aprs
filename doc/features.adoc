@@ -51,7 +51,7 @@ A transmission is triggered if any of these conditions is met:
   speed is at least 1.0 meters per second (3.6 km/h).
 - Your current location is (at least) 2.0 km from the location of the last
   transmission.
-- 15 minutes have passed without transmission.
+- 30 minutes have passed without transmission.
 
 Packets are never transmitted faster than every 15 seconds.
 
@@ -72,7 +72,9 @@ The APRS packet contents can be configured. The following options are available:
 - APRS symbol can be freely configured via BLE or chosen from a list on the device
 - Optionally, a packet counter can be transmitted (useful to evaluate packet loss)
 - Optionally, the battery voltage can be transmitted
-- Weather reports can be transmitted (BME280 devices only)
+- Weather reports can be transmitted (devices with BME280 only)
+  - Weather reports are positionless, i.e. they are transmitted in separate packets
+  - Weather report interval is fixed to 5 minutes
 
 The LoRa transmit power can be configured in various steps from -9 dBm to +22 dBm.
 
