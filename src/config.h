@@ -35,10 +35,14 @@
 // Source call sign: transmitter is disabled if empty
 #define APRS_SOURCE ""
 
-// APRS Destination: identifies this firmware. Please do not change unless you really need it.
-#define APRS_DESTINATION "APZTK1"
+// APRS Destination: identifies this firmware. If you want to change it for
+// experiments, please use the "APZ???" range that is assigned for that
+// specific purpose. If you plan to release your own firmware based on my work,
+// please request an official TOCALL allocation for it here:
+// https://github.com/aprsorg/aprs-deviceid
+#define APRS_DESTINATION "APLETK"
 
-// APRS Comment to be inserted in your packets (keep is short!)
+// APRS Comment to be inserted in your packets (keep it short!)
 #define APRS_COMMENT "T-Echo"
 
 // APRS symbol table and icon identifier. "/." is a generic X icon.fi.
