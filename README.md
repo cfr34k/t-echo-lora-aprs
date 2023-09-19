@@ -293,9 +293,9 @@ comment](https://github.com/cfr34k/t-echo-lora-aprs/issues/7#issuecomment-138768
 ), but I cannot guarantee anything.
 
 If you still cannot get the T-Echo to boot again, you can try re-flashing the
-bootloader(see [documentation by
-LilyGo](https://github.com/Xinyuan-LilyGO/T-Echo/blob/b3cd375f9056c6063ee4acac5048fab0455e0566/bootloader/README.MD))
-as described by LilyGo. You need to connect an SWD programmer to do that.
+bootloader (see [documentation by
+LilyGo](https://github.com/Xinyuan-LilyGO/T-Echo/blob/b3cd375f9056c6063ee4acac5048fab0455e0566/bootloader/README.MD)).
+You need to connect an SWD programmer to do that.
 
 ### I cannot connect via Bluetooth anymore. / The T-Echo refuses BLE connections.
 
