@@ -289,8 +289,13 @@ and should always restore it to a working state.
 
 If you don’t have the backup file, well, that’s a problem. You can try using
 the one I created from one of my devices (see [this
-comment](https://github.com/cfr34k/t-echo-lora-aprs/issues/7#issuecomment-1387688548),
-but I cannot guarantee anything.
+comment](https://github.com/cfr34k/t-echo-lora-aprs/issues/7#issuecomment-1387688548)
+), but I cannot guarantee anything.
+
+If you still cannot get the T-Echo to boot again, you can try re-flashing the
+bootloader(see [documentation by
+LilyGo](https://github.com/Xinyuan-LilyGO/T-Echo/blob/b3cd375f9056c6063ee4acac5048fab0455e0566/bootloader/README.MD))
+as described by LilyGo. You need to connect an SWD programmer to do that.
 
 ### I cannot connect via Bluetooth anymore. / The T-Echo refuses BLE connections.
 
