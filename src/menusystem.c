@@ -73,7 +73,7 @@ enum gnss_utils_config_entry_ids_t {
 	GNSS_UTILS_ENTRY_COUNT
 };
 
-#define POWER_SELECT_ENTRY_COUNT   (LORA_PWR_NUM_ENTRIES + 1)
+#define POWER_SELECT_ENTRY_COUNT   (LORA_PWR_NUM_ENTRIES)
 
 typedef struct menuentry_s menuentry_t;
 typedef struct menu_s menu_t;
@@ -283,7 +283,7 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 			break;
 
 		case MAIN_ENTRY_IDX_POWER:
-			enter_submenu(&m_power_select_menu, 0);
+			enter_submenu(&m_power_select_menu, lora_get_power());
 			break;
 
 		case MAIN_ENTRY_IDX_APRS:
@@ -442,7 +442,7 @@ static void menu_handler_power_select(menu_t *menu, menuentry_t *entry)
 			break;
 
 		default:
-			evt_data.lora_power.power = entry_idx - 1;
+			evt_data.lora_power.power = entry_idx;
 			m_callback(MENUSYSTEM_EVT_LORA_POWER_CHANGED, &evt_data);
 			leave_submenu();
 			menusystem_update_values();
@@ -523,12 +523,8 @@ void menusystem_init(menusystem_callback_t callback)
 	m_power_select_menu.n_entries = POWER_SELECT_ENTRY_COUNT;
 	m_power_select_menu.entries = m_power_select_entries;
 
-	m_power_select_menu.entries[ENTRY_IDX_EXIT].handler = menu_handler_power_select;
-	m_power_select_menu.entries[ENTRY_IDX_EXIT].text = "<<< Cancel";
-	m_power_select_menu.entries[ENTRY_IDX_EXIT].value[0] = '\0';
-
 	for(lora_pwr_t pwr = 0; pwr < LORA_PWR_NUM_ENTRIES; pwr++) {
-		size_t menu_idx = pwr + 1;
+		size_t menu_idx = pwr;
 
 		m_power_select_menu.entries[menu_idx].handler = menu_handler_power_select;
 		m_power_select_menu.entries[menu_idx].text = lora_power_to_str(pwr);

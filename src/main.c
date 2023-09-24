@@ -1139,7 +1139,7 @@ static void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *dat
 			break;
 
 		case MENUSYSTEM_EVT_LORA_POWER_CHANGED:
-			{
+			if(data->lora_power.power != lora_get_power()) {
 				APP_ERROR_CHECK(lora_set_power(data->lora_power.power));
 
 				uint8_t buf = data->lora_power.power;
