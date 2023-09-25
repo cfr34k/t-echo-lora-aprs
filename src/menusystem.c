@@ -436,18 +436,10 @@ static void menu_handler_power_select(menu_t *menu, menuentry_t *entry)
 
 	menusystem_evt_data_t evt_data;
 
-	switch(entry_idx) {
-		case ENTRY_IDX_EXIT:
-			leave_submenu();
-			break;
-
-		default:
-			evt_data.lora_power.power = entry_idx;
-			m_callback(MENUSYSTEM_EVT_LORA_POWER_CHANGED, &evt_data);
-			leave_submenu();
-			menusystem_update_values();
-			break;
-	}
+	evt_data.lora_power.power = entry_idx;
+	m_callback(MENUSYSTEM_EVT_LORA_POWER_CHANGED, &evt_data);
+	leave_submenu();
+	menusystem_update_values();
 }
 
 
