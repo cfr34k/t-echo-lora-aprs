@@ -113,6 +113,7 @@ typedef struct {
 	aprs_rx_raw_data_t raw;
 	aprs_frame_t       decoded;
 	uint64_t           rx_timestamp;
+	bool               rx_time_valid;
 } aprs_rx_history_entry_t;
 
 typedef struct {
@@ -160,8 +161,11 @@ uint8_t aprs_rx_history_insert(
 		const aprs_frame_t *frame,
 		const aprs_rx_raw_data_t *raw,
 		uint64_t rx_timestamp,
+        bool rx_time_valid,
 		uint8_t protected_index);
 
 const aprs_rx_history_t* aprs_get_rx_history(void);
+
+void aprs_rx_history_fix_timestamp(uint64_t unix_time);
 
 #endif // APRS_H

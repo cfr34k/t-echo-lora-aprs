@@ -762,6 +762,7 @@ static void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 
 	bool     decode_ok;
 	uint64_t rx_timestamp;
+	bool     rx_time_valid;
 
 	aprs_frame_t decoded_frame;
 	aprs_rx_raw_data_t raw;
@@ -773,6 +774,8 @@ static void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 		case LORA_EVT_PACKET_RECEIVED:
 			// try to parse the packet.
 			rx_timestamp = wall_clock_get_unix();
+			rx_time_valid = wall_clock_is_valid();
+
 			decode_ok = aprs_parse_frame(
 			                       data->rx_packet_data.data,
 			                       data->rx_packet_data.data_len,
@@ -790,6 +793,7 @@ static void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 						&decoded_frame,
 						&raw,
 						rx_timestamp,
+						rx_time_valid,
 						m_display_rx_index);
 
 				if(switch_to_rxd) {

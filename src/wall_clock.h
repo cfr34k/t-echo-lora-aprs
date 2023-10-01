@@ -67,6 +67,8 @@ uint64_t wall_clock_get_unix(void);
  */
 void wall_clock_get_utc(struct tm *time);
 
+bool wall_clock_is_valid(void);
+
 /**@brief Set the current time from an NMEA datetime structure.
  * @details
  * The internal time will be set immediately and continue running from there.

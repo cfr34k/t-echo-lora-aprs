@@ -947,7 +947,7 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 	}
 
 	textframe += ret + 1; // “remove” the processed text from the buffer
-	
+
 	// find end of path character
 	const char *end_of_path = strchr(textframe, ':');
 	if(!end_of_path) {
@@ -983,7 +983,7 @@ static bool aprs_parse_text_frame(const uint8_t *frame, size_t len, aprs_frame_t
 	}
 
 	textframe += ret + 1; // “remove” the processed text from the buffer
-	
+
 	char type = *textframe;
 	textframe++;
 
@@ -1108,6 +1108,7 @@ uint8_t aprs_rx_history_insert(
 		const aprs_frame_t *frame,
 		const aprs_rx_raw_data_t *raw,
 		uint64_t rx_timestamp,
+		bool rx_time_valid,
 		uint8_t protected_index)
 {
 	aprs_rx_history_entry_t *insert_pos = NULL;
@@ -1176,6 +1177,7 @@ uint8_t aprs_rx_history_insert(
 	// update the stored data
 	insert_pos->decoded = *frame;
 	insert_pos->rx_timestamp = rx_timestamp;
+	insert_pos->rx_time_valid = rx_time_valid;
 	insert_pos->raw = *raw;
 
 	// restore the data unavailable in the positionless frame
@@ -1194,4 +1196,16 @@ uint8_t aprs_rx_history_insert(
 const aprs_rx_history_t* aprs_get_rx_history(void)
 {
 	return &m_rx_history;
+}
+
+void aprs_rx_history_fix_timestamp(uint64_t unix_time)
+{
+	for(uint8_t i = 0; i < m_rx_history.num_entries; i++) {
+
+		if (!m_rx_history.history[i].rx_time_valid)
+		{
+			m_rx_history.history[i].rx_time_valid = true;
+			m_rx_history.history[i].rx_timestamp = unix_time - m_rx_history.history[i].rx_timestamp;
+		}
+	}
 }

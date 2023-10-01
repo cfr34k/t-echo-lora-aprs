@@ -26,14 +26,18 @@
 
 #include "wall_clock.h"
 
+#include "aprs.h"
+
 static uint64_t m_unix_time_ref;
 static uint64_t m_time_base_ref;
+static bool m_time_is_valid;
 
 
 void wall_clock_init(void)
 {
 	m_unix_time_ref = 0;
 	m_time_base_ref = time_base_get();
+	m_time_is_valid = false;
 }
 
 
@@ -53,6 +57,10 @@ void wall_clock_get_utc(struct tm *time)
 	*time = *gmtime(&unix_time);
 }
 
+bool wall_clock_is_valid(void)
+{
+	return m_time_is_valid;
+}
 
 void wall_clock_set_from_gnss(const nmea_datetime_t *datetime)
 {
@@ -71,5 +79,11 @@ void wall_clock_set_from_gnss(const nmea_datetime_t *datetime)
 	if(unix_time >= 0) {
 		m_unix_time_ref = unix_time;
 		m_time_base_ref = time_base_get();
+	}
+
+	if (unix_time > 315532800) {
+		m_time_is_valid = true;
+
+		aprs_rx_history_fix_timestamp(unix_time);
 	}
 }
