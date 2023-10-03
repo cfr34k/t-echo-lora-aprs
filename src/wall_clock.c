@@ -26,14 +26,26 @@
 
 #include "wall_clock.h"
 
+#include "aprs.h"
+
 static uint64_t m_unix_time_ref;
 static uint64_t m_time_base_ref;
+static bool m_time_is_valid;
 
+/**
+ * The m_unix_min_epoch defines a unix epoch, that is used to identify
+ * if the current unix_epoch is valid as a timestamp for rx packets.
+ *
+ * It can be literally anything with a large enough offset to zero.
+ * 315532800 corresponds to 1980-01-01T00:00:00Z.
+*/
+static uint64_t m_unix_min_epoch = 315532800;
 
 void wall_clock_init(void)
 {
 	m_unix_time_ref = 0;
 	m_time_base_ref = time_base_get();
+	m_time_is_valid = false;
 }
 
 
@@ -53,6 +65,10 @@ void wall_clock_get_utc(struct tm *time)
 	*time = *gmtime(&unix_time);
 }
 
+bool wall_clock_is_valid(void)
+{
+	return m_time_is_valid;
+}
 
 void wall_clock_set_from_gnss(const nmea_datetime_t *datetime)
 {
@@ -71,5 +87,15 @@ void wall_clock_set_from_gnss(const nmea_datetime_t *datetime)
 	if(unix_time >= 0) {
 		m_unix_time_ref = unix_time;
 		m_time_base_ref = time_base_get();
+	}
+
+	/**
+	 * m_time_is_valid is set to true, when the current unix_time
+	 * is greater then the min allowed unix epoche for sanity checks.
+	*/
+	if (unix_time > m_unix_min_epoch) {
+		m_time_is_valid = true;
+
+		aprs_rx_history_fix_timestamp(unix_time);
 	}
 }
