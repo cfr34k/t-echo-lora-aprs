@@ -1198,6 +1198,14 @@ const aprs_rx_history_t* aprs_get_rx_history(void)
 	return &m_rx_history;
 }
 
+/**
+ * @brief Updates rx packet history entries timestamp
+ * @details The following funtion updates all history rx'ed packet
+ * containing an invalid rx timestamp, identified by rx_time_valid variable.
+ *
+ * @param unix_time The current Unix epoch timestamp to update the
+*					history entries.
+*/
 void aprs_rx_history_fix_timestamp(uint64_t unix_time)
 {
 	for(uint8_t i = 0; i < m_rx_history.num_entries; i++) {
