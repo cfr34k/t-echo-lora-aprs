@@ -161,7 +161,7 @@ uint8_t aprs_rx_history_insert(
 		const aprs_frame_t *frame,
 		const aprs_rx_raw_data_t *raw,
 		uint64_t rx_timestamp,
-        bool rx_time_valid,
+		bool rx_time_valid,
 		uint8_t protected_index);
 
 const aprs_rx_history_t* aprs_get_rx_history(void);
