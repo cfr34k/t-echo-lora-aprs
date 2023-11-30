@@ -39,7 +39,7 @@ static bool m_time_is_valid;
  * It can be literally anything with a large enough offset to zero.
  * 315532800 corresponds to 1980-01-01T00:00:00Z.
 */
-static uint64_t m_unix_min_epoch = 315532800;
+#define UNIX_MIN_VALID_EPOCH 315532800ULL
 
 void wall_clock_init(void)
 {
@@ -93,7 +93,7 @@ void wall_clock_set_from_gnss(const nmea_datetime_t *datetime)
 	 * m_time_is_valid is set to true, when the current unix_time
 	 * is greater then the min allowed unix epoche for sanity checks.
 	*/
-	if (unix_time > m_unix_min_epoch) {
+	if (unix_time > UNIX_MIN_VALID_EPOCH) {
 		m_time_is_valid = true;
 
 		aprs_rx_history_fix_timestamp(unix_time);
