@@ -138,6 +138,12 @@
 #define VOLTAGE_MONITOR_INTERVAL_IDLE        3600   // seconds
 #define VOLTAGE_MONITOR_INTERVAL_ACTIVE        60   // seconds
 
+#define SHUTDOWN_FLAG_INITIATED (1 << 0)
+#define SHUTDOWN_FLAG_DISPLAY_LOCKED (1 << 1)
+#define SHUTDOWN_FLAG_DISPLAY_CLEARED (1 << 2)
+#define SHUTDOWN_FLAG_LORA_OFF (1 << 3)
+
+#define SHUTDOWN_FLAG_ALL_SET 0x0F
 
 NRF_BLE_GATT_DEF(m_gatt);                                                       /**< GATT module instance. */
 NRF_BLE_QWR_DEF(m_qwr);                                                         /**< Context for the Queued Write module.*/
@@ -179,6 +185,8 @@ bool m_tracker_active = false;
 bool m_gnss_keep_active = false;
 
 char m_passkey[6];
+
+static uint8_t m_shutdown_flags = 0x0;
 
 
 BLE_BAS_DEF(m_ble_bas); // battery service
@@ -844,7 +852,9 @@ static void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 			break;
 
 		case LORA_EVT_CONFIGURED_IDLE:
-			if(m_lora_rx_active) {
+			if(m_shutdown_flags & SHUTDOWN_FLAG_INITIATED) {
+				lora_power_off();
+			} else if(m_lora_rx_active) {
 				lora_start_rx();
 			} else {
 				lora_power_off();
@@ -870,6 +880,7 @@ static void cb_lora(lora_evt_t evt, const lora_evt_data_t *data)
 			m_lora_rx_busy = false;
 			m_lora_tx_busy = false;
 			m_epaper_update_requested = true;
+			m_shutdown_flags |= SHUTDOWN_FLAG_LORA_OFF;
 			break;
 
 		default:
@@ -1155,7 +1166,27 @@ static void cb_menusystem(menusystem_evt_t evt, const menusystem_evt_data_t *dat
 			settings_write(SETTINGS_ID_APRS_FLAGS, (uint8_t*)&data->aprs_flags.flags, sizeof(data->aprs_flags.flags));
 			break;
 
-		default:
+		case MENUSYSTEM_EVT_SHUTDOWN:
+			// initiate the shutdown
+			m_shutdown_flags = SHUTDOWN_FLAG_INITIATED;
+
+			// clear the display
+			m_display_state = DISP_STATE_CLEAR;
+			m_epaper_update_requested = true;
+			m_epaper_force_full_refresh = true;
+
+			// put LoRa into low power mode
+			m_lora_rx_active = false;
+			m_tracker_active = false;
+			if(lora_is_off()) {
+				m_shutdown_flags |= SHUTDOWN_FLAG_LORA_OFF;
+			} else {
+				lora_power_off();
+			}
+			break;
+
+		case MENUSYSTEM_EVT_REDRAW_REQUIRED:
+			// redraw is requested for all menu events, see below
 			break;
 	}
 
@@ -1478,8 +1509,21 @@ int main(void)
 				advertising_start(erase_bonds);
 			}
 
-			redraw_display(m_epaper_force_full_refresh);
-			m_epaper_force_full_refresh = false;
+			if((m_shutdown_flags & SHUTDOWN_FLAG_INITIATED) == 0
+					|| (m_shutdown_flags & SHUTDOWN_FLAG_DISPLAY_LOCKED) == 0) {
+				// lock display redraws after shutdown was initiated
+				m_shutdown_flags |= SHUTDOWN_FLAG_DISPLAY_LOCKED;
+
+				redraw_display(m_epaper_force_full_refresh);
+				m_epaper_force_full_refresh = false;
+			}
+		} else if(((m_shutdown_flags & SHUTDOWN_FLAG_DISPLAY_LOCKED) != 0) && !epaper_is_busy()) {
+			m_shutdown_flags |= SHUTDOWN_FLAG_DISPLAY_CLEARED;
+		}
+
+		// handle shutdown
+		if(m_shutdown_flags == SHUTDOWN_FLAG_ALL_SET) {
+			sleep_mode_enter();
 		}
 
 		epaper_loop();

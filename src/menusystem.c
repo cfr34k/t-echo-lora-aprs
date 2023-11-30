@@ -24,6 +24,7 @@ enum main_entry_ids_t {
 	MAIN_ENTRY_IDX_POWER        = 4,
 	MAIN_ENTRY_IDX_APRS         = 5,
 	MAIN_ENTRY_IDX_INFO         = 6,
+	MAIN_ENTRY_IDX_SHUTDOWN     = 7,
 
 	MAIN_ENTRY_COUNT
 };
@@ -294,6 +295,11 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 			enter_submenu(&m_info_menu, 0);
 			break;
 
+		case MAIN_ENTRY_IDX_SHUTDOWN:
+			m_active_menu = NULL;
+			m_callback(MENUSYSTEM_EVT_SHUTDOWN, NULL);
+			break;
+
 		default:
 			m_selected_entry = 0;
 			m_callback(MENUSYSTEM_EVT_REDRAW_REQUIRED, NULL);
@@ -510,6 +516,10 @@ void menusystem_init(menusystem_callback_t callback)
 	m_main_menu.entries[MAIN_ENTRY_IDX_INFO].handler = menu_handler_main;
 	m_main_menu.entries[MAIN_ENTRY_IDX_INFO].text = "Info >";
 	m_main_menu.entries[MAIN_ENTRY_IDX_INFO].value[0] = '\0';
+
+	m_main_menu.entries[MAIN_ENTRY_IDX_SHUTDOWN].handler = menu_handler_main;
+	m_main_menu.entries[MAIN_ENTRY_IDX_SHUTDOWN].text = "Shutdown";
+	m_main_menu.entries[MAIN_ENTRY_IDX_SHUTDOWN].value[0] = '\0';
 
 	// prepare the power select menu
 	m_power_select_menu.n_entries = POWER_SELECT_ENTRY_COUNT;

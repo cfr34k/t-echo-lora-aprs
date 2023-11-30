@@ -37,6 +37,7 @@ typedef enum
 	DISP_STATE_LORA_RX_OVERVIEW,
 	DISP_STATE_LORA_PACKET_DETAIL,
 	DISP_STATE_CLOCK_BME280,
+	DISP_STATE_CLEAR, // for shutdown mode
 
 	DISP_STATE_END
 } display_state_t;

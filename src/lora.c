@@ -1110,7 +1110,9 @@ void lora_power_off(void)
 {
 	// do not directly switch off, but enter sleep mode to ensure the module is
 	// drawing low current even if it stays powered.
-	transit_to_state(LORA_STATE_SET_SLEEP);
+	if(m_state != LORA_STATE_OFF) {
+		transit_to_state(LORA_STATE_SET_SLEEP);
+	}
 }
 
 
@@ -1169,6 +1171,12 @@ ret_code_t lora_start_rx(void)
 bool lora_is_busy(void)
 {
 	return (m_state != LORA_STATE_OFF) && (m_state != LORA_STATE_CONFIGURED_IDLE);
+}
+
+
+bool lora_is_off(void)
+{
+	return m_state == LORA_STATE_OFF;
 }
 
 

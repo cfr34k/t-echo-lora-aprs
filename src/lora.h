@@ -81,6 +81,7 @@ void lora_power_off(void);
 ret_code_t lora_send_packet(const uint8_t *data, uint8_t length);
 ret_code_t lora_start_rx(void);
 bool lora_is_busy(void);
+bool lora_is_off(void);
 void lora_loop(void);
 
 ret_code_t lora_set_power(lora_pwr_t power);

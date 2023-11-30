@@ -218,7 +218,8 @@ void redraw_display(bool full_update)
 	epaper_fb_clear(EPAPER_COLOR_WHITE);
 
 	// status line
-	if(m_display_state != DISP_STATE_STARTUP) {
+	if(m_display_state != DISP_STATE_STARTUP
+			&& m_display_state != DISP_STATE_CLEAR) {
 		uint8_t fill_color, line_color;
 		uint8_t gwidth, gleft, gright, gbottom, gtop;
 
@@ -934,6 +935,10 @@ void redraw_display(bool full_update)
 						yoffset += line_height;
 					}
 				}
+				break;
+
+			case DISP_STATE_CLEAR:
+				// draw nothing at all
 				break;
 
 			case DISP_STATE_END:
