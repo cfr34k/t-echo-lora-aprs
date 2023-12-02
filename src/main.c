@@ -567,6 +567,16 @@ static void sleep_mode_enter(void)
 {
 	ret_code_t err_code;
 
+	// switch off all LEDs
+	led_off(LED_EPAPER_BACKLIGHT);
+	led_off(LED_RED);
+	led_off(LED_GREEN);
+	led_off(LED_BLUE);
+
+	// disable all buttons (including wakeup). Only Reset will wake the device.
+	err_code = bsp_buttons_disable();
+	APP_ERROR_CHECK(err_code);
+
 	// switch off all external peripherals
 	periph_pwr_stop_activity(PERIPH_PWR_FLAG_ALL);
 
