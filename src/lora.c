@@ -294,7 +294,8 @@ APP_TIMER_DEF(m_sequence_timer);
 #define TX_DONE_CHECK_TICKS   APP_TIMER_TICKS(TX_DONE_POLL_INTERVAL_MS)  // time between polls of the DIO1 signal
 #define RX_DONE_CHECK_TICKS   APP_TIMER_TICKS(RX_DONE_POLL_INTERVAL_MS)  // time between polls of the DIO1 signal
 
-static bool m_shutdown_needed = false;
+static bool m_poweroff_requested = false; // power-off has been requested and should be handled by the FSM
+static bool m_shutdown_needed = false; // used by the FSM to signal the main loop that peripherals should be shut down
 
 static lora_state_t  m_state, m_next_state;
 
@@ -611,6 +612,8 @@ static ret_code_t handle_state_entry(void)
 			if(m_payload_length != 0) {
 				// a packet should be sent, so we continue immediately.
 				transit_to_state(LORA_STATE_SET_TX_PACKET_PARAMS);
+			} if(m_poweroff_requested) {
+				transit_to_state(LORA_STATE_SET_SLEEP);
 			} else {
 				m_callback(LORA_EVT_CONFIGURED_IDLE, NULL);
 			}
@@ -1108,10 +1111,26 @@ ret_code_t lora_power_on(void)
 
 void lora_power_off(void)
 {
-	// do not directly switch off, but enter sleep mode to ensure the module is
-	// drawing low current even if it stays powered.
-	if(m_state != LORA_STATE_OFF) {
-		transit_to_state(LORA_STATE_SET_SLEEP);
+	if(!m_poweroff_requested) {
+		switch(m_state) {
+			case LORA_STATE_OFF:
+				// do nothing
+				return;
+
+			case LORA_STATE_CONFIGURED_IDLE:
+				transit_to_state(LORA_STATE_SET_SLEEP);
+				break;
+
+			case LORA_STATE_WAIT_PACKET_RECEIVED:
+				transit_to_state(LORA_STATE_ABORT_RX1);
+				break;
+
+			default:
+				// nothing special, just set the poweroff flag below
+				break;
+		}
+
+		m_poweroff_requested = true;
 	}
 }
 
@@ -1190,6 +1209,7 @@ void lora_loop(void)
 		periph_pwr_stop_activity(PERIPH_PWR_FLAG_LORA);
 
 		m_shutdown_needed = false;
+		m_poweroff_requested = false;
 
 		m_callback(LORA_EVT_OFF, NULL);
 	}
