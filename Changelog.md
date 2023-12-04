@@ -1,3 +1,26 @@
+# In Development
+
+## New and changed features
+
+- Changed APRS TOCALL to _APLETK_, which is [officially
+  registered](https://github.com/aprsorg/aprs-deviceid/blob/3ff2b5c907d8b85a83f9387195f282d14a6f8fb2/tocalls.yaml#L683)
+  for this firmware.
+- Allow to shut down the firmware via the menu. This stops all activity (including Bluetooth LE!), clears the display, switches off the peripherals as far as possible and puts the SoC into the lowest power mode. It is only possible to wake the SoC with a reset in this state. Note that even though it is the lowest possible power mode, current is still drawn from the battery. However, it still has some applications:
+  - If you use your T-Echo periodically but not very often (once every few weeks), you can put it into shutdown mode to reduce the standby consumption.
+  - When you plan not to use the T-Echo for a long time, you can activate this mode to clear the display before removing the battery. This avoids potential display burn-in effects.
+  - Also, this mode can be considered the “Airplane mode”, as even BLE is disabled.
+
+## Fixed Bugs
+
+- The -9 dBm entry was cut off at the bottom of the screen. This was fixed by
+  removing the “Cancel” entry in the menu. The current setting is now
+  preselected in the menu, so you can „cancel“ the menu by simply confirming
+  the preselected entry.
+- If packets were received before a GNSS timestamp is available, those packets
+  were displayed with an age of >19000 days once the time became valid. Now the
+  timestamps are updated such that the packet age is always correct. Thanks to
+  Chris DL5CV for providing this patch!
+
 # Version 0.9
 
 This release vastly improves the behaviour of this firmware on-air.
