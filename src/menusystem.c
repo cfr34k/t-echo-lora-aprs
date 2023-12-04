@@ -21,10 +21,9 @@ enum main_entry_ids_t {
 	MAIN_ENTRY_IDX_RX           = 1,
 	MAIN_ENTRY_IDX_TRACKER      = 2,
 	MAIN_ENTRY_IDX_GNSS_UTILS   = 3,
-	MAIN_ENTRY_IDX_POWER        = 4,
-	MAIN_ENTRY_IDX_APRS         = 5,
-	MAIN_ENTRY_IDX_INFO         = 6,
-	MAIN_ENTRY_IDX_SHUTDOWN     = 7,
+	MAIN_ENTRY_IDX_APRS         = 4,
+	MAIN_ENTRY_IDX_INFO         = 5,
+	MAIN_ENTRY_IDX_SHUTDOWN     = 6,
 
 	MAIN_ENTRY_COUNT
 };
@@ -55,6 +54,7 @@ enum aprs_config_entry_ids_t {
 	APRS_CONFIG_ENTRY_IDX_DAO               = 3,
 	APRS_CONFIG_ENTRY_IDX_ADVANCED          = 4,
 	APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL       = 5,
+	APRS_CONFIG_ENTRY_IDX_POWER             = 6,
 
 	APRS_CONFIG_ENTRY_COUNT
 };
@@ -237,7 +237,7 @@ static void menusystem_update_values(void)
 	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL]);
 	strcpy(entry->value, m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].value); // already filled, see above
 
-	entry = &(m_main_menu.entries[MAIN_ENTRY_IDX_POWER]);
+	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_POWER]);
 	strncpy(entry->value, lora_power_to_str(lora_get_power()), sizeof(entry->value));
 
 	// GNSS utility menu
@@ -281,10 +281,6 @@ static void menu_handler_main(menu_t *menu, menuentry_t *entry)
 
 		case MAIN_ENTRY_IDX_GNSS_UTILS:
 			enter_submenu(&m_gnss_utils_menu, 0);
-			break;
-
-		case MAIN_ENTRY_IDX_POWER:
-			enter_submenu(&m_power_select_menu, lora_get_power());
 			break;
 
 		case MAIN_ENTRY_IDX_APRS:
@@ -340,6 +336,10 @@ static void menu_handler_aprs_config(menu_t *menu, menuentry_t *entry)
 
 		case APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL:
 			enter_submenu(&m_symbol_select_menu, 0);
+			break;
+
+		case APRS_CONFIG_ENTRY_IDX_POWER:
+			enter_submenu(&m_power_select_menu, lora_get_power());
 			break;
 
 		default:
@@ -505,10 +505,6 @@ void menusystem_init(menusystem_callback_t callback)
 	m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_UTILS].text = "GNSS Utilities >";
 	m_main_menu.entries[MAIN_ENTRY_IDX_GNSS_UTILS].value[0] = '\0';
 
-	m_main_menu.entries[MAIN_ENTRY_IDX_POWER].handler = menu_handler_main;
-	m_main_menu.entries[MAIN_ENTRY_IDX_POWER].text = "TX Power >";
-	m_main_menu.entries[MAIN_ENTRY_IDX_POWER].value[0] = '\0';
-
 	m_main_menu.entries[MAIN_ENTRY_IDX_APRS].handler = menu_handler_main;
 	m_main_menu.entries[MAIN_ENTRY_IDX_APRS].text = "APRS Config >";
 	m_main_menu.entries[MAIN_ENTRY_IDX_APRS].value[0] = '\0';
@@ -560,6 +556,10 @@ void menusystem_init(menusystem_callback_t callback)
 	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].handler = menu_handler_aprs_config;
 	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].text = "Symbol >>>";
 	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].value[0] = '\0';
+
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_POWER].handler = menu_handler_aprs_config;
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_POWER].text = "TX Power >";
+	m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_POWER].value[0] = '\0';
 
 	// prepare the APRS config menu
 	m_aprs_config_adv_menu.n_entries = APRS_CONFIG_ADV_ENTRY_COUNT;

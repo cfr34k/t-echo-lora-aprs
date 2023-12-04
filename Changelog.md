@@ -9,6 +9,7 @@
   - If you use your T-Echo periodically but not very often (once every few weeks), you can put it into shutdown mode to reduce the standby consumption.
   - When you plan not to use the T-Echo for a long time, you can activate this mode to clear the display before removing the battery. This avoids potential display burn-in effects.
   - Also, this mode can be considered the “Airplane mode”, as even BLE is disabled.
+- To fit the new shutdown menu entry, the TX power setting was moved to the APRS menu.
 
 ## Fixed Bugs
 
