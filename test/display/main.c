@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
 	raw.data_len = len;
 
 	if(aprs_parse_frame((uint8_t*)data, strlen(data), &frame)) {
-		aprs_rx_history_insert(&frame, &raw, time(NULL)-10, 255);
+		aprs_rx_history_insert(&frame, &raw, time(NULL)-10, true, 255);
 	}
 
 	raw.signalRssi = -123.0f;
@@ -275,7 +275,7 @@ int main(int argc, char **argv) {
 	raw.data_len = len;
 
 	if(aprs_parse_frame((uint8_t*)data, strlen(data), &frame)) {
-		aprs_rx_history_insert(&frame, &raw, time(NULL)-10000, 255);
+		aprs_rx_history_insert(&frame, &raw, time(NULL)-10000, true, 255);
 	}
 
 	data = "<\xff\001DH0xxx-14>APLC12,qAO,DO2TE-10:!\\6!czQGAQYA2QLoRaCube-System";
