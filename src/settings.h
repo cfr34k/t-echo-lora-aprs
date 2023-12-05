@@ -50,6 +50,8 @@ typedef enum
 	SETTINGS_ID_LORA_POWER       = 0x0004,
 	SETTINGS_ID_APRS_FLAGS       = 0x0005,
 	SETTINGS_ID_LAST_BLE_SYMBOL  = 0x0006,
+
+	SETTINGS_NUM_IDS
 } settings_id_t;
 
 /**@brief Events sent via the callback function.

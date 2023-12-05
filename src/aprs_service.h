@@ -41,9 +41,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "ble.h"
-#include "ble_srv_common.h"
-#include "nrf_sdh_ble.h"
-#include "nrf_saadc.h"
+
+#include "settings.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,6 +66,10 @@ NRF_SDH_BLE_OBSERVER(_name ## _obs,                                             
 #define APRS_SERVICE_UUID_COMMENT            0x0102      // Comment
 #define APRS_SERVICE_UUID_SYMBOL             0x0103      // Symbol code
 #define APRS_SERVICE_UUID_RX_MESSAGE         0x0104      // The last received message
+#define APRS_SERVICE_UUID_SETTINGS_WRITE     0x0110      // Write or select a setting
+#define APRS_SERVICE_UUID_SETTINGS_READ      0x0111      // Read setting value
+
+#define APRS_SERVICE_MAX_SETTING_DATA_LEN  255
 
 // Forward declaration of the aprs_service_t type.
 typedef struct aprs_service_s aprs_service_t;
@@ -75,13 +78,28 @@ typedef enum {
 	APRS_SERVICE_EVT_MYCALL_CHANGED,
 	APRS_SERVICE_EVT_COMMENT_CHANGED,
 	APRS_SERVICE_EVT_SYMBOL_CHANGED,
+	APRS_SERVICE_EVT_SETTING_WRITE,
+	APRS_SERVICE_EVT_SETTING_SELECT,
+} aprs_service_evt_type_t;
+
+typedef struct {
+	aprs_service_evt_type_t type;
+
+	union {
+		/**@brief Used for Setting Write and Select events. */
+		struct {
+			settings_id_t setting_id;
+			uint16_t data_len;
+			uint8_t data[APRS_SERVICE_MAX_SETTING_DATA_LEN];
+		} setting;
+	} params;
 } aprs_service_evt_t;
 
 /**@brief Callback function type.
  *
  * @param evt       The event type.
  */
-typedef void (*aprs_service_callback_t)(aprs_service_evt_t evt);
+typedef void (*aprs_service_callback_t)(const aprs_service_evt_t *evt);
 
 /** @brief Service init structure. This structure contains all options and data needed for
  *         initialization of the service.*/
@@ -98,6 +116,8 @@ struct aprs_service_s
 	ble_gatts_char_handles_t    comment_char_handles;         /**< Handles related to the Comment Characteristic. */
 	ble_gatts_char_handles_t    symbol_char_handles;          /**< Handles related to the Symbol Characteristic. */
 	ble_gatts_char_handles_t    rx_message_char_handles;      /**< Handles related to the RX Message Characteristic. */
+	ble_gatts_char_handles_t    settings_write_char_handles;  /**< Handles related to the Write/Select Settings Characteristic. */
+	ble_gatts_char_handles_t    settings_read_char_handles;   /**< Handles related to the Read Settings Characteristic. */
 	uint8_t                     uuid_type;                    /**< UUID type for the APRS Service. */
 	aprs_service_callback_t     callback;                     /**< Pointer to the callback function. */
 };
@@ -201,6 +221,19 @@ ret_code_t aprs_service_get_symbol(aprs_service_t * p_srv, char *p_table, char *
  * @returns                The result code from the BLE stack.
  */
 ret_code_t aprs_service_notify_rx_message(aprs_service_t * p_srv, uint16_t conn_handle, uint8_t *p_message, uint8_t message_len);
+
+
+/**@brief Set the read-setting characteristic and send a notification.
+ *
+ * @param[in]  p_srv       Service structure (as returned by aprs_service_init()).
+ * @param[in]  conn_handle Connection handle to send the notification for.
+ * @param[in]  setting_id  ID of the setting that was requested/changed.
+ * @param[in]  success     Whether the update/query operation was successful.
+ * @param[in]  p_data      Pointer to the current setting value.
+ * @param[in]  data_len    Length of the current setting value.
+ * @returns                The result code from the BLE stack.
+ */
+ret_code_t aprs_service_notify_setting(aprs_service_t * p_srv, uint16_t conn_handle, settings_id_t setting_id, bool success, const uint8_t *p_data, uint16_t data_len);
 
 
 #ifdef __cplusplus

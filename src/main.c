@@ -399,9 +399,29 @@ static void nrf_qwr_error_handler(uint32_t nrf_error)
 }
 
 
-static void cb_aprs_service(aprs_service_evt_t evt)
+static void notify_current_setting_value(settings_id_t id, bool op_success)
 {
-	switch(evt)
+	uint8_t value[256];
+	size_t value_len = sizeof(value);
+
+	ret_code_t err_code = settings_query(id, value, &value_len);
+
+	if(err_code == NRF_SUCCESS) {
+		aprs_service_notify_setting(
+				&m_aprs_service, m_conn_handle,
+				id, op_success, value, (uint16_t)value_len);
+	} else {
+		// setting could not be retrieved
+		aprs_service_notify_setting(
+				&m_aprs_service, m_conn_handle,
+				id, false, NULL, 0);
+	}
+}
+
+
+static void cb_aprs_service(const aprs_service_evt_t *evt)
+{
+	switch(evt->type)
 	{
 		case APRS_SERVICE_EVT_MYCALL_CHANGED:
 			{
@@ -438,6 +458,32 @@ static void cb_aprs_service(aprs_service_evt_t evt)
 				settings_write(SETTINGS_ID_LAST_BLE_SYMBOL, buf, sizeof(buf));
 
 				aprs_set_icon(table, symbol);
+			}
+			break;
+
+		case APRS_SERVICE_EVT_SETTING_SELECT:
+			notify_current_setting_value(evt->params.setting.setting_id, true);
+			break;
+
+		case APRS_SERVICE_EVT_SETTING_WRITE:
+			{
+				// try to write the new setting value
+				ret_code_t err_code = settings_write(
+						evt->params.setting.setting_id,
+						evt->params.setting.data,
+						evt->params.setting.data_len);
+
+				if(err_code == NRF_SUCCESS) {
+					aprs_service_notify_setting(
+							&m_aprs_service, m_conn_handle,
+							evt->params.setting.setting_id,
+							true,
+							evt->params.setting.data,
+							evt->params.setting.data_len);
+				} else {
+					// setting could not be written. Notify the currently stored value.
+					notify_current_setting_value(evt->params.setting.setting_id, false);
+				}
 			}
 			break;
 	}

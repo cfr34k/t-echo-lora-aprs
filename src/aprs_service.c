@@ -47,17 +47,54 @@ static void on_write(aprs_service_t * p_srv, ble_evt_t const * p_ble_evt)
 {
 	ble_gatts_evt_write_t const * p_evt_write = &p_ble_evt->evt.gatts_evt.params.write;
 
+	aprs_service_evt_t evt;
+
 	if (p_evt_write->handle == p_srv->mycall_char_handles.value_handle)
 	{
-		p_srv->callback(APRS_SERVICE_EVT_MYCALL_CHANGED);
+		evt.type = APRS_SERVICE_EVT_MYCALL_CHANGED;
+		p_srv->callback(&evt);
 	}
 	else if (p_evt_write->handle == p_srv->comment_char_handles.value_handle)
 	{
-		p_srv->callback(APRS_SERVICE_EVT_COMMENT_CHANGED);
+		evt.type = APRS_SERVICE_EVT_COMMENT_CHANGED;
+		p_srv->callback(&evt);
 	}
 	else if (p_evt_write->handle == p_srv->symbol_char_handles.value_handle)
 	{
-		p_srv->callback(APRS_SERVICE_EVT_SYMBOL_CHANGED);
+		evt.type = APRS_SERVICE_EVT_SYMBOL_CHANGED;
+		p_srv->callback(&evt);
+	}
+	else if (p_evt_write->handle == p_srv->settings_write_char_handles.value_handle)
+	{
+		switch(p_evt_write->len)
+		{
+			case 0:
+				// do nothing
+				break;
+
+			case 1:
+				// this is a select request
+				evt.type = APRS_SERVICE_EVT_SETTING_SELECT;
+				evt.params.setting.setting_id = p_evt_write->data[0] & 0x7F;
+				p_srv->callback(&evt);
+				break;
+
+			default:
+				// this is a write request
+				evt.type = APRS_SERVICE_EVT_SETTING_WRITE;
+				evt.params.setting.setting_id = p_evt_write->data[0] & 0x7F;
+
+				if((p_evt_write->len - 1) > APRS_SERVICE_MAX_SETTING_DATA_LEN) {
+					evt.params.setting.data_len = APRS_SERVICE_MAX_SETTING_DATA_LEN;
+				} else {
+					evt.params.setting.data_len = p_evt_write->len - 1;
+				}
+
+				memcpy(evt.params.setting.data, p_evt_write->data, evt.params.setting.data_len);
+
+				p_srv->callback(&evt);
+				break;
+		}
 	}
 }
 
@@ -203,6 +240,44 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 	err_code = characteristic_add(p_srv->service_handle, &add_char_params, &p_srv->rx_message_char_handles);
 	VERIFY_SUCCESS(err_code);
 
+	/* Add settings-write characteristic. */
+	memset(&add_char_params, 0, sizeof(add_char_params));
+	add_char_params.uuid              = APRS_SERVICE_UUID_SETTINGS_WRITE;
+	add_char_params.uuid_type         = p_srv->uuid_type;
+	add_char_params.init_len          = 0;
+	add_char_params.max_len           = 257;
+	add_char_params.is_var_len        = 0;
+	add_char_params.p_init_value      = NULL;
+	add_char_params.char_props.read   = 1;
+	add_char_params.char_props.write  = 1;
+
+	add_char_params.write_access      = SEC_MITM;
+
+	fill_user_desc(&add_user_desc, "Settings write/select");
+	add_char_params.p_user_descr = &add_user_desc;
+
+	err_code = characteristic_add(p_srv->service_handle, &add_char_params, &p_srv->settings_write_char_handles);
+	VERIFY_SUCCESS(err_code);
+
+	/* Add settings-read characteristic. */
+	memset(&add_char_params, 0, sizeof(add_char_params));
+	add_char_params.uuid              = APRS_SERVICE_UUID_SETTINGS_READ;
+	add_char_params.uuid_type         = p_srv->uuid_type;
+	add_char_params.init_len          = 0;
+	add_char_params.max_len           = 257;
+	add_char_params.is_var_len        = 0;
+	add_char_params.p_init_value      = NULL;
+	add_char_params.char_props.read   = 1;
+	add_char_params.char_props.write  = 1;
+
+	add_char_params.read_access      = SEC_MITM;
+
+	fill_user_desc(&add_user_desc, "Settings read");
+	add_char_params.p_user_descr = &add_user_desc;
+
+	err_code = characteristic_add(p_srv->service_handle, &add_char_params, &p_srv->settings_read_char_handles);
+	VERIFY_SUCCESS(err_code);
+
 	return err_code;
 }
 
@@ -295,6 +370,57 @@ ret_code_t aprs_service_notify_rx_message(aprs_service_t * p_srv, uint16_t conn_
 		params.type   = BLE_GATT_HVX_NOTIFICATION;
 		params.handle = p_srv->rx_message_char_handles.value_handle;
 		params.p_data = p_message;
+		params.p_len  = &len;
+
+		return sd_ble_gatts_hvx(conn_handle, &params);
+	}
+}
+
+
+ret_code_t aprs_service_notify_setting(aprs_service_t * p_srv, uint16_t conn_handle,
+		settings_id_t setting_id, bool success, const uint8_t *p_data, uint16_t data_len)
+{
+	// prepare the value
+	uint8_t message[256];
+
+	if(success) {
+		message[0] = 0x00;
+	} else {
+		message[0] = 0x80;
+	}
+
+	message[0] |= setting_id & 0x7F;
+
+	if(data_len > 255) {
+		data_len = 255;
+	}
+
+	uint16_t message_len;
+
+	if(p_data == NULL || data_len == 0) {
+		message_len = 1;
+	} else {
+		memcpy(message + 1, p_data, data_len);
+		message_len = data_len + 1;
+	}
+
+
+	if(ble_conn_state_status(conn_handle) != BLE_CONN_STATUS_CONNECTED) {
+		// not connected, so we can't send a notification. Simply set the value.
+		ble_gatts_value_t value = {message_len, 0, message};
+
+		return sd_ble_gatts_value_set(
+				BLE_CONN_HANDLE_INVALID,
+				p_srv->settings_read_char_handles.value_handle,
+				&value);
+	} else {
+		uint16_t len = message_len;
+		ble_gatts_hvx_params_t params;
+
+		memset(&params, 0, sizeof(params));
+		params.type   = BLE_GATT_HVX_NOTIFICATION;
+		params.handle = p_srv->settings_read_char_handles.value_handle;
+		params.p_data = message;
 		params.p_len  = &len;
 
 		return sd_ble_gatts_hvx(conn_handle, &params);

@@ -38,7 +38,39 @@
 static settings_callback m_callback;
 static settings_id_t     m_pending_id = SETTINGS_ID_INVALID;
 
-static uint8_t m_write_cache[64];
+static uint8_t m_write_cache[256];
+
+ret_code_t check_data_for_setting(settings_id_t id, const uint8_t *data, size_t data_len)
+{
+	static const uint16_t LENGTH_MIN[SETTINGS_NUM_IDS] = {
+		0, // SETTINGS_ID_INVALID        
+		3, // SETTINGS_ID_SOURCE_CALL    
+		2, // SETTINGS_ID_SYMBOL_CODE    
+		0, // SETTINGS_ID_COMMENT        
+		1, // SETTINGS_ID_LORA_POWER     
+		4, // SETTINGS_ID_APRS_FLAGS     
+		2, // SETTINGS_ID_LAST_BLE_SYMBOL
+	};
+
+	static const uint16_t LENGTH_MAX[SETTINGS_NUM_IDS] = {
+		0, // SETTINGS_ID_INVALID        
+		12, // SETTINGS_ID_SOURCE_CALL    
+		2, // SETTINGS_ID_SYMBOL_CODE    
+		64, // SETTINGS_ID_COMMENT        
+		1, // SETTINGS_ID_LORA_POWER     
+		4, // SETTINGS_ID_APRS_FLAGS     
+		2, // SETTINGS_ID_LAST_BLE_SYMBOL
+	};
+
+	uint16_t len_min = LENGTH_MIN[id];
+	uint16_t len_max = LENGTH_MAX[id];
+
+	if(data_len < len_min || data_len > len_max) {
+		return NRF_ERROR_INVALID_LENGTH;
+	}
+
+	return NRF_SUCCESS;
+}
 
 static void cb_fds(fds_evt_t const * p_evt)
 {
@@ -106,7 +138,7 @@ ret_code_t settings_query(settings_id_t id, uint8_t *data, size_t *data_len)
 
 	ret_code_t err_code;
 
-	if(id == SETTINGS_ID_INVALID) {
+	if(id == SETTINGS_ID_INVALID || id >= SETTINGS_NUM_IDS) {
 		return NRF_ERROR_INVALID_PARAM;
 	}
 
@@ -145,7 +177,7 @@ ret_code_t settings_write(settings_id_t id, const uint8_t *data, size_t data_len
 
 	ret_code_t err_code;
 
-	if(id == SETTINGS_ID_INVALID) {
+	if(id == SETTINGS_ID_INVALID || id >= SETTINGS_NUM_IDS) {
 		return NRF_ERROR_INVALID_PARAM;
 	}
 
@@ -155,6 +187,12 @@ ret_code_t settings_write(settings_id_t id, const uint8_t *data, size_t data_len
 
 	if(data_len > sizeof(m_write_cache)) {
 		return NRF_ERROR_NO_MEM;
+	}
+
+	err_code = check_data_for_setting(id, data, data_len);
+	if(err_code != NRF_SUCCESS) {
+		NRF_LOG_ERROR("settings: data (or length) invalid for setting %d (%zd bytes)", id, data_len);
+		return err_code;
 	}
 
 	memset(&token, 0x00, sizeof(fds_find_token_t));
