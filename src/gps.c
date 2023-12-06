@@ -116,7 +116,7 @@ static void cb_uarte(nrfx_uarte_event_t const * p_event, void *p_context)
 			break;
 
 		case NRFX_UARTE_EVT_TX_DONE:
-			NRF_LOG_WARNING("TX completed, but should never have started.");
+			// nothing to do here
 			break;
 	}
 }
