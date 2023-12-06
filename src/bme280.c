@@ -157,7 +157,7 @@ static ret_code_t start_transfer_for_current_state(void)
 			return NRF_ERROR_INVALID_STATE;
 	}
 
-	NRF_LOG_INFO("Starting transfer for state %s: tx: %d, rx: %d", BME280_STATE_NAMES[m_state], bytes2send, bytes2receive);
+	NRF_LOG_DEBUG("Starting transfer for state %s: tx: %d, rx: %d", BME280_STATE_NAMES[m_state], bytes2send, bytes2receive);
 
 	nrfx_twim_xfer_desc_t xfer;
 
@@ -290,7 +290,7 @@ static ret_code_t handle_completed_transfer(const nrfx_twim_xfer_desc_t *transfe
 
 static void cb_twim(nrfx_twim_evt_t const * p_event, void * p_context)
 {
-	NRF_LOG_INFO("cb_twim() called in state %s: event %d", BME280_STATE_NAMES[m_state], p_event->type);
+	NRF_LOG_DEBUG("cb_twim() called in state %s: event %d", BME280_STATE_NAMES[m_state], p_event->type);
 
 	switch(p_event->type) {
 		case NRFX_TWIM_EVT_ADDRESS_NACK:

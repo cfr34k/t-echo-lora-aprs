@@ -27,7 +27,10 @@
 #include "ble_gatts.h"
 #include "ble_types.h"
 #include "nrf_error.h"
-#include "nrf_log.h"
+
+#define NRF_LOG_MODULE_NAME aprs_service
+#include <nrf_log.h>
+NRF_LOG_MODULE_REGISTER();
 
 #include "aprs_service.h"
 
