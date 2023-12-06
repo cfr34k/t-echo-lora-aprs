@@ -25,6 +25,7 @@
 #include <sdk_macros.h>
 #include <app_timer.h>
 
+#include "app_button.h"
 #include "pinout.h"
 
 #include "buttons.h"
@@ -97,4 +98,10 @@ ret_code_t buttons_init(buttons_callback_t callback)
 	VERIFY_SUCCESS(app_timer_create(&m_longpress_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_longpress_timer));
 
 	return app_button_enable();
+}
+
+
+ret_code_t buttons_disable(void)
+{
+	return app_button_disable();
 }

@@ -620,7 +620,7 @@ static void sleep_mode_enter(void)
 	led_off(LED_BLUE);
 
 	// disable all buttons (including wakeup). Only Reset will wake the device.
-	err_code = bsp_buttons_disable();
+	err_code = buttons_disable();
 	APP_ERROR_CHECK(err_code);
 
 	// switch off all external peripherals

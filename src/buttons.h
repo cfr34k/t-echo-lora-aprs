@@ -38,4 +38,11 @@ bool buttons_button_is_pressed(uint8_t btn);
 
 ret_code_t buttons_init(buttons_callback_t callback);
 
+/**@brief Disable button activity detection.
+ * @details
+ * Disables the interrupts on the button pins. This also prevents the system
+ * from waking up on a button press when it goes to deep sleep.
+ */
+ret_code_t buttons_disable(void);
+
 #endif // BUTTONS_H
