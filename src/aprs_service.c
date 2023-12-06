@@ -27,8 +27,6 @@
 #include "ble_gatts.h"
 #include "ble_types.h"
 #include "nrf_error.h"
-#include "nrf_saadc.h"
-#include "sdk_common.h"
 #include "nrf_log.h"
 
 #include "aprs_service.h"
@@ -246,9 +244,9 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 	add_char_params.uuid_type         = p_srv->uuid_type;
 	add_char_params.init_len          = 0;
 	add_char_params.max_len           = 257;
-	add_char_params.is_var_len        = 0;
+	add_char_params.is_var_len        = 1;
 	add_char_params.p_init_value      = NULL;
-	add_char_params.char_props.read   = 1;
+	add_char_params.char_props.read   = 0;
 	add_char_params.char_props.write  = 1;
 
 	add_char_params.write_access      = SEC_MITM;
@@ -265,12 +263,13 @@ uint32_t aprs_service_init(aprs_service_t * p_srv, const aprs_service_init_t * p
 	add_char_params.uuid_type         = p_srv->uuid_type;
 	add_char_params.init_len          = 0;
 	add_char_params.max_len           = 257;
-	add_char_params.is_var_len        = 0;
+	add_char_params.is_var_len        = 1;
 	add_char_params.p_init_value      = NULL;
 	add_char_params.char_props.read   = 1;
-	add_char_params.char_props.write  = 1;
+	add_char_params.char_props.notify = 1;
 
-	add_char_params.read_access      = SEC_MITM;
+	add_char_params.read_access       = SEC_MITM;
+	add_char_params.cccd_write_access = SEC_MITM;
 
 	fill_user_desc(&add_user_desc, "Settings read");
 	add_char_params.p_user_descr = &add_user_desc;
@@ -403,7 +402,6 @@ ret_code_t aprs_service_notify_setting(aprs_service_t * p_srv, uint16_t conn_han
 		memcpy(message + 1, p_data, data_len);
 		message_len = data_len + 1;
 	}
-
 
 	if(ble_conn_state_status(conn_handle) != BLE_CONN_STATUS_CONNECTED) {
 		// not connected, so we can't send a notification. Simply set the value.
