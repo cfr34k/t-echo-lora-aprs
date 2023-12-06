@@ -1046,17 +1046,17 @@ void lora_config_gpios(bool power_supplied)
 
 	nrf_gpio_cfg_input(PIN_LORA_DIO1, NRF_GPIO_PIN_NOPULL);
 
+	nrf_gpio_cfg_default(PIN_LORA_RST); // has a pullup in the module
+
 	if(power_supplied) {
-		// while power is on, it is better to keep the pullups on Chip Select and
-		// the Reset pin to prevent noise causing spurious commands to be executed.
+		// while power is on, it is better to keep the pullup on Chip Select
+		// pin to prevent noise causing spurious commands to be executed.
 		nrf_gpio_cfg_input(PIN_LORA_CS, NRF_GPIO_PIN_PULLUP);
-		nrf_gpio_cfg_input(PIN_LORA_RST, NRF_GPIO_PIN_PULLUP);
 	} else {
 		// reset all SPI I/Os to the default state (input). Otherwise a lot of
 		// current (~10 mA) flows through the protection diodes of the module once
 		// the supply voltage is switched off.
 		nrf_gpio_cfg_default(PIN_LORA_CS);
-		nrf_gpio_cfg_default(PIN_LORA_RST);
 	}
 }
 
