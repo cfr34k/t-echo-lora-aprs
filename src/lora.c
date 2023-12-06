@@ -34,8 +34,11 @@
 #include <math.h>
 
 #include <nrfx_spim.h>
-#include <nrf_log.h>
 #include <app_timer.h>
+
+#define NRF_LOG_MODULE_NAME lora
+#include <nrf_log.h>
+NRF_LOG_MODULE_REGISTER();
 
 #include "nrf_error.h"
 #include "pinout.h"
@@ -403,7 +406,7 @@ static ret_code_t send_command(const uint8_t *command, uint16_t length, sx1262_s
 		xfer_desc = (nrfx_spim_xfer_desc_t)NRFX_SPIM_XFER_TX(command, length);
 	}
 
-	NRF_LOG_DEBUG("lora: sending command (cmd: 0x%02x, length: %d).", command[0], xfer_desc.tx_length);
+	NRF_LOG_DEBUG("sending command (cmd: 0x%02x, length: %d).", command[0], xfer_desc.tx_length);
 
 	nrf_gpio_pin_clear(PIN_LORA_CS);
 
@@ -417,7 +420,7 @@ static ret_code_t read_data_from_module(const uint8_t *command, uint16_t tx_leng
 	xfer_desc = (nrfx_spim_xfer_desc_t)
 		NRFX_SPIM_XFER_TRX(command, tx_length, rx_data, rx_length);
 
-	NRF_LOG_DEBUG("lora: requesting data (cmd: 0x%02x, tx_len: %d, rx_len: %d).", command[0], xfer_desc.tx_length, xfer_desc.rx_length);
+	NRF_LOG_DEBUG("requesting data (cmd: 0x%02x, tx_len: %d, rx_len: %d).", command[0], xfer_desc.tx_length, xfer_desc.rx_length);
 
 	nrf_gpio_pin_clear(PIN_LORA_CS);
 
@@ -437,17 +440,17 @@ static void transit_to_state(lora_state_t new_state)
  */
 static ret_code_t handle_state_exit(void)
 {
-	//NRF_LOG_INFO("lora: leaving state %s: status=0x%02x", LORA_STATE_NAMES[m_state], m_status.status);
+	//NRF_LOG_INFO("leaving state %s: status=0x%02x", LORA_STATE_NAMES[m_state], m_status.status);
 
 	switch(m_state)
 	{
 		case LORA_STATE_GET_DEVICE_ERRORS:
-			NRF_LOG_INFO("lora: status: 0x%02x, device errors: 0x%04x",
+			NRF_LOG_INFO("status: 0x%02x, device errors: 0x%04x",
 					m_buffer_rx[1], (m_buffer_rx[2] << 8L) | m_buffer_rx[3]);
 			break;
 
 		case LORA_STATE_READ_BUFFER_STATE:
-			NRF_LOG_INFO("lora: status: 0x%02x, payload length: %d, offset: %d",
+			NRF_LOG_INFO("status: 0x%02x, payload length: %d, offset: %d",
 					m_buffer_rx[1], m_buffer_rx[2], m_buffer_rx[3]);
 
 			m_rx_packet_len    = m_buffer_rx[2];
@@ -470,7 +473,7 @@ static ret_code_t handle_state_exit(void)
 
 			m_callback(LORA_EVT_PACKET_RECEIVED, &m_evt_data);
 
-			NRF_LOG_INFO("lora: received packet:");
+			NRF_LOG_INFO("received packet:");
 			NRF_LOG_HEXDUMP_INFO(m_buffer_rx+3, m_rx_packet_len);
 			break;
 
@@ -497,7 +500,7 @@ static ret_code_t handle_state_entry(void)
 {
 	uint8_t command[LORA_MAX_COMMAND_LEN];
 
-	//NRF_LOG_INFO("lora: entering state %s", LORA_STATE_NAMES[m_state]);
+	//NRF_LOG_INFO("entering state %s", LORA_STATE_NAMES[m_state]);
 
 	switch(m_state)
 	{
@@ -702,7 +705,7 @@ static ret_code_t handle_state_entry(void)
 
 				m_tx_timeout = 1.50f * toa * 1000.0f / TX_DONE_POLL_INTERVAL_MS;
 
-				NRF_LOG_INFO("lora: expected time on air: %d ms", (int)(toa));
+				NRF_LOG_INFO("expected time on air: %d ms", (int)(toa));
 			}
 
 			command[0] = SX1262_OPCODE_SET_TX;
@@ -965,7 +968,7 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 			break;
 
 		default:
-			NRF_LOG_ERROR("lora: cb_spim() called in unexpected state: %s", LORA_STATE_NAMES[m_state]);
+			NRF_LOG_ERROR("cb_spim() called in unexpected state: %s", LORA_STATE_NAMES[m_state]);
 			break;
 	}
 }
@@ -975,7 +978,7 @@ static void cb_sequence_timer(void *p_context)
 	switch(m_state)
 	{
 		case LORA_STATE_RESET:
-			NRF_LOG_DEBUG("lora: reset complete.");
+			NRF_LOG_DEBUG("reset complete.");
 
 			nrf_gpio_cfg_input(PIN_LORA_RST, NRF_GPIO_PIN_PULLUP);
 
@@ -990,7 +993,7 @@ static void cb_sequence_timer(void *p_context)
 				APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
 			} else {
 				// not busy anymore => send the next command
-				NRF_LOG_DEBUG("lora: busy flag released after %d polls.", m_busy_check_counter);
+				NRF_LOG_DEBUG("busy flag released after %d polls.", m_busy_check_counter);
 				m_busy_check_counter = 0;
 				transit_to_state(m_next_state);
 			}
@@ -1003,10 +1006,10 @@ static void cb_sequence_timer(void *p_context)
 				APP_ERROR_CHECK(app_timer_start(m_sequence_timer, TX_DONE_CHECK_TICKS, NULL));
 			} else {
 				if(m_busy_check_counter == m_tx_timeout) {
-					NRF_LOG_ERROR("lora: tx_done timed out after %d polls.", m_busy_check_counter);
+					NRF_LOG_ERROR("tx_done timed out after %d polls.", m_busy_check_counter);
 				} else {
 					// done!
-					NRF_LOG_DEBUG("lora: tx_done signalled after %d polls.", m_busy_check_counter);
+					NRF_LOG_DEBUG("tx_done signalled after %d polls.", m_busy_check_counter);
 				}
 
 				m_busy_check_counter = 0;
@@ -1020,7 +1023,7 @@ static void cb_sequence_timer(void *p_context)
 				m_busy_check_counter++;
 				APP_ERROR_CHECK(app_timer_start(m_sequence_timer, TX_DONE_CHECK_TICKS, NULL));
 			} else {
-				NRF_LOG_DEBUG("lora: rx_done signalled after %d polls.", m_busy_check_counter);
+				NRF_LOG_DEBUG("rx_done signalled after %d polls.", m_busy_check_counter);
 
 				m_busy_check_counter = 0;
 				transit_to_state(LORA_STATE_CLEAR_RX_IRQ);
@@ -1028,7 +1031,7 @@ static void cb_sequence_timer(void *p_context)
 			break;
 
 		default:
-			NRF_LOG_ERROR("lora: cb_sequence_timer() called in unexpected state: %s", LORA_STATE_NAMES[m_state]);
+			NRF_LOG_ERROR("cb_sequence_timer() called in unexpected state: %s", LORA_STATE_NAMES[m_state]);
 			break;
 	}
 }
@@ -1073,7 +1076,7 @@ ret_code_t lora_init(lora_callback_t callback)
 	m_buffer_write_command[0] = SX1262_OPCODE_WRITE_BUFFER;
 	m_buffer_write_command[1] = 0x00; // start offset
 
-	NRF_LOG_INFO("lora: init.");
+	NRF_LOG_INFO("init.");
 
 	m_state = LORA_STATE_OFF;
 
@@ -1099,7 +1102,7 @@ ret_code_t lora_power_on(void)
 	nrf_gpio_cfg_output(PIN_LORA_CS);
 
 	// module has been powered on; reset it for proper startup
-	NRF_LOG_DEBUG("lora: Resetting module.");
+	NRF_LOG_DEBUG("Resetting module.");
 	transit_to_state(LORA_STATE_RESET);
 
 	// the rest will happen asynchronously. See cb_sequence_timer() and cb_spim().

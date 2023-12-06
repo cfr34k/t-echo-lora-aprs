@@ -24,7 +24,10 @@
 
 #include <app_timer.h>
 #include <sdk_macros.h>
+
+#define NRF_LOG_MODULE_NAME time_base
 #include <nrf_log.h>
+NRF_LOG_MODULE_REGISTER();
 
 #include "time_base.h"
 

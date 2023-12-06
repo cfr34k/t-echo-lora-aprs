@@ -26,8 +26,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <nrf_log.h>
 #include <sdk_macros.h>
+
+#define NRF_LOG_MODULE_NAME nmea
+#include <nrf_log.h>
+NRF_LOG_MODULE_REGISTER();
 
 #include "nmea.h"
 
@@ -51,14 +54,14 @@ static float nmea_coord_to_float(const char *token)
 {
 	char *dot = strchr(token, '.');
 	if(!dot) {
-		NRF_LOG_ERROR("nmea: could not find float in coordinate: '%s'", token);
+		NRF_LOG_ERROR("could not find float in coordinate: '%s'", token);
 		return INVALID_COORD;
 	}
 
 	size_t dotpos = dot - token;
 
 	if((dotpos != 4) && (dotpos != 5)) {
-		NRF_LOG_ERROR("nmea: wrong dot position %d in coordinate: '%s'", dotpos, token);
+		NRF_LOG_ERROR("wrong dot position %d in coordinate: '%s'", dotpos, token);
 		return INVALID_COORD;
 	}
 
@@ -70,7 +73,7 @@ static float nmea_coord_to_float(const char *token)
 	minutes = strtof(token + degrees_len, &endptr);
 
 	if(!endptr) {
-		NRF_LOG_ERROR("nmea: could not convert minute value to float: '%s'", token + degrees_len);
+		NRF_LOG_ERROR("could not convert minute value to float: '%s'", token + degrees_len);
 		return INVALID_COORD;
 	}
 
@@ -81,7 +84,7 @@ static float nmea_coord_to_float(const char *token)
 	long degrees = strtol(degstr, &endptr, 10);
 
 	if(!endptr) {
-		NRF_LOG_ERROR("nmea: could not convert degrees string to integer: '%s'", degstr);
+		NRF_LOG_ERROR("could not convert degrees string to integer: '%s'", degstr);
 		return INVALID_COORD;
 	}
 
@@ -97,7 +100,7 @@ static float nmea_sign_from_char(char *polarity)
 	} else if((c == 'S') || (c == 'W')) {
 		return -1.0f;
 	} else {
-		NRF_LOG_ERROR("nmea: polarity char is not one of NSEW: '%s'", polarity);
+		NRF_LOG_ERROR("polarity char is not one of NSEW: '%s'", polarity);
 		return INVALID_COORD;
 	}
 }
@@ -185,7 +188,7 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 	}
 
 	if(sentence[0] != '$') {
-		NRF_LOG_ERROR("nmea: sentence does not start with '$'");
+		NRF_LOG_ERROR("sentence does not start with '$'");
 		return NRF_ERROR_INVALID_DATA;
 	}
 
@@ -208,7 +211,7 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 	}
 
 	if(endptr == sentence) {
-		NRF_LOG_ERROR("nmea: checksum not found. Sentence incomplete? %s", NRF_LOG_PUSH(sentence));
+		NRF_LOG_ERROR("checksum not found. Sentence incomplete? %s", NRF_LOG_PUSH(sentence));
 		return NRF_ERROR_INVALID_DATA;
 	} else {
 		char *checksum_str = endptr + 1;
@@ -228,7 +231,7 @@ ret_code_t nmea_parse(char *sentence, bool *position_updated, nmea_data_t *data)
 		}
 
 		if(checksum_calc != checksum) {
-			NRF_LOG_ERROR("nmea: checksum invalid! Expected: %02x, calculated: %02x", checksum, checksum_calc);
+			NRF_LOG_ERROR("checksum invalid! Expected: %02x, calculated: %02x", checksum, checksum_calc);
 			return NRF_ERROR_INVALID_DATA;
 		}
 	}

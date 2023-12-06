@@ -25,7 +25,10 @@
 #include <math.h>
 
 #include <app_timer.h>
+
+#define NRF_LOG_MODULE_NAME tracker
 #include <nrf_log.h>
+NRF_LOG_MODULE_REGISTER();
 
 #include "lora.h"
 #include "time_base.h"
@@ -80,7 +83,7 @@ ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 
 	// weather packet handling
 	if(args->transmit_env_data && ((now - m_last_wx_time) >= WX_INTERVAL_MS)) {
-		NRF_LOG_INFO("tracker: transmitting WX data");
+		NRF_LOG_INFO("transmitting WX data");
 		frame_len = aprs_build_frame(message, args, APRS_PACKET_TYPE_WX);
 
 		if(frame_len) {
@@ -107,7 +110,7 @@ ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 
 	if((now - m_last_pos_time) > MAX_POS_INTERVAL_MS) {
 		// transmit if the previous one was too long ago
-		NRF_LOG_INFO("tracker: forced tx after %d ms idle", now - m_last_pos_time);
+		NRF_LOG_INFO("forced tx after %d ms idle", now - m_last_pos_time);
 		do_tx = true;
 	}
 
@@ -125,7 +128,7 @@ ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 		}
 
 		if(delta_heading >= MAX_HEADING_DELTA_DEG) {
-			NRF_LOG_INFO("tracker: heading changed too much: was: %d, is: %d, delta: %d", (int)(m_last_tx_heading + 0.5f), (int)(data->heading + 0.5f), (int)(delta_heading + 0.5f));
+			NRF_LOG_INFO("heading changed too much: was: %d, is: %d, delta: %d", (int)(m_last_tx_heading + 0.5f), (int)(data->heading + 0.5f), (int)(delta_heading + 0.5f));
 			do_tx = true;
 		}
 	}
@@ -135,7 +138,7 @@ ret_code_t tracker_run(const nmea_data_t *data, aprs_args_t *args)
 			m_last_tx_lat, m_last_tx_lon);
 
 	if(distance >= MAX_DISTANCE_M) {
-		NRF_LOG_INFO("tracker: distance since last TX too high: %d m", (int)(distance + 0.5f));
+		NRF_LOG_INFO("distance since last TX too high: %d m", (int)(distance + 0.5f));
 		do_tx = true;
 	}
 

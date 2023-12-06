@@ -26,7 +26,10 @@
 #include <nrf_gpio.h>
 
 #include <sdk_macros.h>
+
+#define NRF_LOG_MODULE_NAME gps
 #include <nrf_log.h>
+NRF_LOG_MODULE_REGISTER();
 
 #include <app_timer.h>
 
@@ -101,7 +104,7 @@ static void cb_uarte(nrfx_uarte_event_t const * p_event, void *p_context)
 			break;
 
 		case NRFX_UARTE_EVT_ERROR:
-			NRF_LOG_ERROR("gps: UART error! Trying to restart.");
+			NRF_LOG_ERROR("UART error! Trying to restart.");
 
 			nrfx_uarte_rx_abort(&m_uarte);
 
@@ -113,7 +116,7 @@ static void cb_uarte(nrfx_uarte_event_t const * p_event, void *p_context)
 			break;
 
 		case NRFX_UARTE_EVT_TX_DONE:
-			NRF_LOG_WARNING("gps: TX completed, but should never have started.");
+			NRF_LOG_WARNING("TX completed, but should never have started.");
 			break;
 	}
 }
@@ -279,7 +282,7 @@ void gps_loop(void)
 
 		buf[len] = '\0';
 
-		//NRF_LOG_INFO("gps: received sentence: %s", NRF_LOG_PUSH((char*)buf));
+		//NRF_LOG_INFO("received sentence: %s", NRF_LOG_PUSH((char*)buf));
 
 		bool pos_updated = false;
 		nmea_parse((char*)buf, &pos_updated, &m_nmea_data);

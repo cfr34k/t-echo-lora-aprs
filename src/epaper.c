@@ -34,7 +34,10 @@
 #include <nrf_gpio.h>
 #include <sdk_macros.h>
 #include <app_timer.h>
+
+#define NRF_LOG_MODULE_NAME epd
 #include <nrf_log.h>
+NRF_LOG_MODULE_REGISTER();
 
 #include "pinout.h"
 #include "periph_pwr.h"
@@ -184,7 +187,7 @@ static ret_code_t send_command(void)
 	static uint8_t bytes2transfer[EPD_MAX_COMMAND_LEN];
 
 	if(m_seq_ptr == m_seq_end) {
-		NRF_LOG_DEBUG("epd: end of sequence.");
+		NRF_LOG_DEBUG("end of sequence.");
 
 		// actual display shutdown will be done from the main loop
 		m_shutdown_needed = true;
@@ -214,7 +217,7 @@ static ret_code_t send_command(void)
 		nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
 				m_frame_command, 1);
 
-		NRF_LOG_DEBUG("epd: sending framebuffer (cmd: 0x%02x, length: %d).", m_frame_command[0], xfer_desc.tx_length);
+		NRF_LOG_DEBUG("sending framebuffer (cmd: 0x%02x, length: %d).", m_frame_command[0], xfer_desc.tx_length);
 
 		return nrfx_spim_xfer(&m_spim, &xfer_desc, 0);
 	} else if(m_seq_ptr->config & SEND_FRAMEBUF_PREV) {
@@ -231,7 +234,7 @@ static ret_code_t send_command(void)
 		nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
 				m_frame_command_prev, 1);
 
-		NRF_LOG_DEBUG("epd: sending previous framebuffer (cmd: 0x%02x, length: %d).", m_frame_command_prev[0], xfer_desc.tx_length);
+		NRF_LOG_DEBUG("sending previous framebuffer (cmd: 0x%02x, length: %d).", m_frame_command_prev[0], xfer_desc.tx_length);
 
 		return nrfx_spim_xfer(&m_spim, &xfer_desc, 0);
 	} else {
@@ -247,7 +250,7 @@ static ret_code_t send_command(void)
 		nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
 				bytes2transfer, 1);
 
-		NRF_LOG_DEBUG("epd: sending command (cmd: 0x%02x, length: %d).", bytes2transfer[0], xfer_desc.tx_length);
+		NRF_LOG_DEBUG("sending command (cmd: 0x%02x, length: %d).", bytes2transfer[0], xfer_desc.tx_length);
 
 		return nrfx_spim_xfer(&m_spim, &xfer_desc, 0); // always one command byte
 	}
@@ -258,7 +261,7 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 {
 	const epd_ctrl_entry_t *cur_command = m_seq_ptr;
 
-	NRF_LOG_DEBUG("epd: SPIM transfer finished.");
+	NRF_LOG_DEBUG("SPIM transfer finished.");
 
 	if(m_spi_state == SPI_CMD && m_spi_data_len != 0) {
 		// send the data
@@ -266,7 +269,7 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 
 		m_spi_state = SPI_DATA;
 
-		NRF_LOG_DEBUG("epd: sending %d data bytes.", m_spi_data_len);
+		NRF_LOG_DEBUG("sending %d data bytes.", m_spi_data_len);
 
 		nrfx_spim_xfer_desc_t xfer_desc = NRFX_SPIM_XFER_TX(
 				m_spi_data, m_spi_data_len);
@@ -279,15 +282,15 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 
 		// check special post-processing flags
 		if(cur_command->config & DELAY_10MS) {
-			NRF_LOG_DEBUG("epd: starting delay.");
+			NRF_LOG_DEBUG("starting delay.");
 			m_timer_state = TIM_SEQ_DELAY;
 			APP_ERROR_CHECK(app_timer_start(m_sequence_timer, RESET_DELAY_TICKS, NULL));
 		} else if(cur_command->config & WAIT_BUSY) {
-			NRF_LOG_DEBUG("epd: starting wait for BUSY.");
+			NRF_LOG_DEBUG("starting wait for BUSY.");
 			m_timer_state = TIM_WAIT_BUSY;
 			APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
 		} else {
-			NRF_LOG_DEBUG("epd: directly starting next transfer.");
+			NRF_LOG_DEBUG("directly starting next transfer.");
 			// directly execute the next command
 
 			// note: direct start seems to be too fast, so we add 10 ms delay before sending the next command
@@ -303,7 +306,7 @@ static void cb_sequence_timer(void *p_context)
 	switch(m_timer_state)
 	{
 		case TIM_STARTUP:
-			NRF_LOG_DEBUG("epd: startup finished.");
+			NRF_LOG_DEBUG("startup finished.");
 
 			// assert the hardware reset
 			nrf_gpio_pin_clear(PIN_EPD_RST);
@@ -315,7 +318,7 @@ static void cb_sequence_timer(void *p_context)
 			break;
 
 		case TIM_RESET:
-			NRF_LOG_DEBUG("epd: reset finished.");
+			NRF_LOG_DEBUG("reset finished.");
 
 			// reset has been asserted before this timer interval
 			nrf_gpio_pin_set(PIN_EPD_RST);
@@ -328,7 +331,7 @@ static void cb_sequence_timer(void *p_context)
 
 		case TIM_SEQ_DELAY:
 			// a delay in the sequence has finished => send the next command
-			NRF_LOG_DEBUG("epd: delay timer finished.");
+			NRF_LOG_DEBUG("delay timer finished.");
 			APP_ERROR_CHECK(send_command());
 			break;
 
@@ -339,7 +342,7 @@ static void cb_sequence_timer(void *p_context)
 				APP_ERROR_CHECK(app_timer_start(m_sequence_timer, BUSY_CHECK_TICKS, NULL));
 			} else {
 				// not busy anymore => send the next command
-				NRF_LOG_DEBUG("epd: busy flag released after %d polls.", m_busy_check_counter);
+				NRF_LOG_DEBUG("busy flag released after %d polls.", m_busy_check_counter);
 				m_busy_check_counter = 0;
 				APP_ERROR_CHECK(send_command());
 			}
@@ -391,7 +394,7 @@ ret_code_t epaper_init(void)
 	m_cursor.x = m_cursor.y = 0;
 	m_font = NULL;
 
-	NRF_LOG_DEBUG("epd: init.");
+	NRF_LOG_DEBUG("init.");
 
 	return app_timer_create(&m_sequence_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_sequence_timer);
 }
@@ -434,7 +437,7 @@ ret_code_t epaper_update(bool full_refresh)
 
 	nrf_gpio_cfg_input(PIN_EPD_RST, NRF_GPIO_PIN_PULLUP);
 
-	NRF_LOG_DEBUG("epd: starting update sequence.");
+	NRF_LOG_DEBUG("starting update sequence.");
 
 	m_timer_state = TIM_STARTUP;
 	VERIFY_SUCCESS(app_timer_start(m_sequence_timer, STARTUP_TICKS, NULL));

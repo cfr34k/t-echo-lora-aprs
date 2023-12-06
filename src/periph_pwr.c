@@ -23,7 +23,10 @@
  */
 
 #include <sdk_macros.h>
+
+#define NRF_LOG_MODULE_NAME periph_pwr
 #include <nrf_log.h>
+NRF_LOG_MODULE_REGISTER();
 
 #include "pinout.h"
 #include "epaper.h"
@@ -139,13 +142,13 @@ ret_code_t periph_pwr_start_activity(periph_pwr_activity_flag_t activity)
 
 	if(modules_to_power_on & MODULE_FLAG_3V3_REG)
 	{
-		NRF_LOG_INFO("periph_pwr: 3.3V regulator on");
+		NRF_LOG_INFO("3.3V regulator on");
 		reg_3v3_on();
 	}
 
 	if(modules_to_power_on & MODULE_FLAG_PWR_ON)
 	{
-		NRF_LOG_INFO("periph_pwr: external peripheral power on");
+		NRF_LOG_INFO("external peripheral power on");
 		periph_pwr_on();
 	}
 
@@ -180,13 +183,13 @@ ret_code_t periph_pwr_stop_activity(periph_pwr_activity_flag_t activity)
 
 	if(modules_to_power_off & MODULE_FLAG_3V3_REG)
 	{
-		NRF_LOG_INFO("periph_pwr: 3.3V regulator off");
+		NRF_LOG_INFO("3.3V regulator off");
 		reg_3v3_off();
 	}
 
 	if(modules_to_power_off & MODULE_FLAG_PWR_ON)
 	{
-		NRF_LOG_INFO("periph_pwr: external peripheral power off");
+		NRF_LOG_INFO("external peripheral power off");
 		periph_pwr_off();
 	}
 

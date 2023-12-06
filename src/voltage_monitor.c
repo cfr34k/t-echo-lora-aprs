@@ -25,8 +25,11 @@
 #include "nrf_error.h"
 #include "nrf_saadc.h"
 #include "nrfx_saadc.h"
-#include "nrf_log.h"
 #include "app_timer.h"
+
+#define NRF_LOG_MODULE_NAME voltage_monitor
+#include <nrf_log.h>
+NRF_LOG_MODULE_REGISTER();
 
 #include "sdk_macros.h"
 
