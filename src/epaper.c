@@ -36,6 +36,7 @@
 #include <app_timer.h>
 
 #define NRF_LOG_MODULE_NAME epd
+#define NRF_LOG_LEVEL NRF_LOG_SEVERITY_INFO
 #include <nrf_log.h>
 NRF_LOG_MODULE_REGISTER();
 

@@ -37,6 +37,7 @@
 #include <app_timer.h>
 
 #define NRF_LOG_MODULE_NAME lora
+#define NRF_LOG_LEVEL       4
 #include <nrf_log.h>
 NRF_LOG_MODULE_REGISTER();
 
@@ -960,11 +961,13 @@ static void cb_spim(nrfx_spim_evt_t const *p_event, void *p_context)
 
 			/* RX aborted. */
 		case LORA_STATE_ABORT_RX1:
-			transit_to_state(LORA_STATE_ABORT_RX2);
+			m_next_state = LORA_STATE_ABORT_RX2;
+			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
 		case LORA_STATE_ABORT_RX2:
-			transit_to_state(LORA_STATE_CONFIGURED_IDLE);
+			m_next_state = LORA_STATE_CONFIGURED_IDLE;
+			transit_to_state(LORA_STATE_WAIT_BUSY);
 			break;
 
 		default:
@@ -1121,15 +1124,18 @@ void lora_power_off(void)
 				return;
 
 			case LORA_STATE_CONFIGURED_IDLE:
+				NRF_LOG_DEBUG("Starting power-off from configured-idle.");
 				transit_to_state(LORA_STATE_SET_SLEEP);
 				break;
 
 			case LORA_STATE_WAIT_PACKET_RECEIVED:
+				NRF_LOG_DEBUG("Starting power-off from receive state.");
 				transit_to_state(LORA_STATE_ABORT_RX1);
 				break;
 
 			default:
 				// nothing special, just set the poweroff flag below
+				NRF_LOG_DEBUG("Starting power-off from other state.");
 				break;
 		}
 
@@ -1205,6 +1211,8 @@ bool lora_is_off(void)
 void lora_loop(void)
 {
 	if(m_shutdown_needed) {
+		NRF_LOG_DEBUG("Shutting down peripherals.");
+
 		nrfx_spim_uninit(&m_spim); // to save power
 
 		lora_config_gpios(true); // safe powered state
