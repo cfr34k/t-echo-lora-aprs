@@ -104,6 +104,8 @@ static float m_temperature;
 static float m_humidity;
 static float m_pressure;
 
+static bool m_shutdown_needed;
+
 APP_TIMER_DEF(m_delay_timer);
 
 static ret_code_t start_transfer_for_current_state(void)
@@ -194,7 +196,7 @@ static ret_code_t handle_completed_transfer(const nrfx_twim_xfer_desc_t *transfe
 			// check whether this really is a BME280
 			if(m_twi_rx_buf[0] != 0x60) {
 				m_state = BME280_STATE_NOT_PRESENT;
-				bme280_powersave();
+				m_shutdown_needed = true;
 				m_callback(BME280_EVT_INIT_NOT_PRESENT);
 			} else {
 				m_state = BME280_STATE_READ_CAL1;
@@ -233,7 +235,7 @@ static ret_code_t handle_completed_transfer(const nrfx_twim_xfer_desc_t *transfe
 			dig_H6 = m_twi_rx_buf[6]; // 0xE7
 
 			m_state = BME280_STATE_INITIALIZED;
-			bme280_powersave();
+			m_shutdown_needed = true;
 			m_callback(BME280_EVT_INIT_DONE);
 			break;
 
@@ -253,7 +255,7 @@ static ret_code_t handle_completed_transfer(const nrfx_twim_xfer_desc_t *transfe
 			break;
 
 		case BME280_STATE_READOUT:
-			bme280_powersave();
+			m_shutdown_needed = true;
 
 			{ // convert the readings
 				int32_t press_raw =
@@ -280,7 +282,7 @@ static ret_code_t handle_completed_transfer(const nrfx_twim_xfer_desc_t *transfe
 			break;
 
 		default:
-			bme280_powersave();
+			m_shutdown_needed = true;
 			return NRF_ERROR_INVALID_STATE;
 	}
 
@@ -295,7 +297,7 @@ static void cb_twim(nrfx_twim_evt_t const * p_event, void * p_context)
 	switch(p_event->type) {
 		case NRFX_TWIM_EVT_ADDRESS_NACK:
 			m_state = BME280_STATE_NOT_PRESENT;
-			bme280_powersave();
+			m_shutdown_needed = true;
 			m_callback(BME280_EVT_INIT_NOT_PRESENT);
 			break;
 
@@ -303,7 +305,7 @@ static void cb_twim(nrfx_twim_evt_t const * p_event, void * p_context)
 		case NRFX_TWIM_EVT_OVERRUN:
 		case NRFX_TWIM_EVT_BUS_ERROR:
 			m_state = BME280_STATE_COMMUNICATION_ERROR;
-			bme280_powersave();
+			m_shutdown_needed = true;
 			m_callback(BME280_EVT_COMMUNICATION_ERROR);
 			break;
 
@@ -342,6 +344,8 @@ ret_code_t bme280_init(bme280_callback_t callback)
 	ret_code_t err_code;
 
 	NRF_LOG_INFO("BME280 initializing.");
+
+	m_shutdown_needed = false;
 
 	err_code = app_timer_create(&m_delay_timer, APP_TIMER_MODE_SINGLE_SHOT, cb_delay_timer);
 	VERIFY_SUCCESS(err_code);
@@ -391,12 +395,21 @@ bool bme280_is_ready(void)
 }
 
 
-void bme280_powersave(void)
+void bme280_loop(void)
 {
-	nrfx_twim_disable(&m_twim);
-	nrfx_twim_uninit(&m_twim);
+	if(m_shutdown_needed) {
+		m_shutdown_needed = false;
 
-	periph_pwr_stop_activity(PERIPH_PWR_FLAG_BME280);
+		NRF_LOG_DEBUG("shutdown");
+
+		nrfx_twim_disable(&m_twim);
+		nrfx_twim_uninit(&m_twim);
+
+		nrf_gpio_cfg_default(PIN_BME280_SCL);
+		nrf_gpio_cfg_default(PIN_BME280_SDA);
+
+		periph_pwr_stop_activity(PERIPH_PWR_FLAG_BME280);
+	}
 }
 
 

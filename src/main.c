@@ -1585,6 +1585,7 @@ int main(void)
 		epaper_loop();
 		gps_loop();
 		lora_loop();
+		bme280_loop();
 
 		idle_state_handle();
 	}

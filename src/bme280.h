@@ -53,10 +53,10 @@ ret_code_t bme280_start_readout(void);
 bool bme280_is_present(void);
 bool bme280_is_ready(void);
 
-void bme280_powersave(void);
-
 float bme280_get_temperature(void);
 float bme280_get_humidity(void);
 float bme280_get_pressure(void);
+
+void bme280_loop(void);
 
 #endif // BME280_H
