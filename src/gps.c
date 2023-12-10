@@ -104,7 +104,7 @@ static void cb_uarte(nrfx_uarte_event_t const * p_event, void *p_context)
 			break;
 
 		case NRFX_UARTE_EVT_ERROR:
-			NRF_LOG_ERROR("UART error! Trying to restart.");
+			NRF_LOG_ERROR("UART error! Restarting RX.");
 
 			nrfx_uarte_rx_abort(&m_uarte);
 
@@ -129,6 +129,8 @@ void cb_gps_reset_timer(void *p_context)
 	switch(m_reset_state)
 	{
 		case GPS_RESET_WAIT1:
+			NRF_LOG_DEBUG("Activating reset pin");
+
 			nrf_gpio_pin_clear(PIN_GPS_RESET_N);
 			nrf_gpio_cfg_output(PIN_GPS_RESET_N);
 
@@ -139,6 +141,8 @@ void cb_gps_reset_timer(void *p_context)
 			break;
 
 		case GPS_RESET_ACTIVE:
+			NRF_LOG_DEBUG("Deactivating reset pin");
+
 			nrf_gpio_cfg_default(PIN_GPS_RESET_N); // let the pullup do it's work again
 
 			m_reset_state = GPS_RESET_SEND_CONFIG;
@@ -149,6 +153,8 @@ void cb_gps_reset_timer(void *p_context)
 
 		case GPS_RESET_SEND_CONFIG:
 			{
+				NRF_LOG_DEBUG("Sending configuration");
+
 				//static uint8_t cmd[] = "\r\n$PMTK103*30\r\n"; // cold boot (MTK version)
 				//static uint8_t cmd[] = "$PMTK314,0,1,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n"; // set sentence interval config (MTK version)
 				static uint8_t cmd[] = "$PCAS03,1,0,1,1,1,0,0,0,0,0,,,0,0,,,,0*32\r\n"; // set sentence interval config (CASIC version)
@@ -163,6 +169,8 @@ void cb_gps_reset_timer(void *p_context)
 			break;
 
 		case GPS_RESET_WAIT3:
+			NRF_LOG_DEBUG("Reset sequence complete");
+
 			m_reset_state = GPS_RESET_COMPLETE;
 			m_callback(GPS_EVT_RESET_COMPLETE, NULL);
 			break;
@@ -188,6 +196,8 @@ ret_code_t gps_init(gps_callback_t callback)
 
 	m_is_powered = false;
 
+	NRF_LOG_DEBUG("initialized.");
+
 	return NRF_SUCCESS;
 }
 
@@ -204,6 +214,8 @@ void gps_config_gpios(bool power_supplied)
 
 ret_code_t gps_reset(void)
 {
+	NRF_LOG_DEBUG("starting reset procedure");
+
 	VERIFY_SUCCESS(gps_power_on());
 
 	m_reset_state = GPS_RESET_WAIT1;
@@ -219,6 +231,8 @@ ret_code_t gps_power_on(void)
 	if(m_is_powered) {
 		return NRF_SUCCESS;
 	}
+
+	NRF_LOG_DEBUG("powering on");
 
 	// prepare buffers
 	m_rx_buffer_used[0] = 0;
@@ -246,6 +260,8 @@ ret_code_t gps_power_on(void)
 			1);
 	VERIFY_SUCCESS(err_code);
 
+	NRF_LOG_DEBUG("power on successful");
+
 	m_is_powered = true;
 
 	return NRF_SUCCESS;
@@ -254,6 +270,8 @@ ret_code_t gps_power_on(void)
 
 ret_code_t gps_power_off(void)
 {
+	NRF_LOG_DEBUG("powering off");
+
 	ret_code_t err_code;
 
 	m_is_powered = false;
@@ -263,6 +281,9 @@ ret_code_t gps_power_off(void)
 
 	err_code = periph_pwr_stop_activity(PERIPH_PWR_FLAG_GPS);
 	VERIFY_SUCCESS(err_code);
+
+	NRF_LOG_DEBUG("power off successful");
+
 	return NRF_SUCCESS;
 }
 
