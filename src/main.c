@@ -1544,6 +1544,11 @@ int main(void)
 	// Initial APRS setup (values not read from flash only)
 	aprs_set_dest(APRS_DESTINATION);
 
+	// reset and configure the LoRa module once to ensure proper standby mode.
+	// Once the configured-idle state is reached, the module is powered off
+	// again.
+	APP_ERROR_CHECK(lora_power_on());
+
 	aprs_clear_path();
 	aprs_add_path("WIDE1-1");
 
