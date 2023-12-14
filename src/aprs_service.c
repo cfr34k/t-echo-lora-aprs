@@ -91,7 +91,7 @@ static void on_write(aprs_service_t * p_srv, ble_evt_t const * p_ble_evt)
 					evt.params.setting.data_len = p_evt_write->len - 1;
 				}
 
-				memcpy(evt.params.setting.data, p_evt_write->data, evt.params.setting.data_len);
+				memcpy(evt.params.setting.data, p_evt_write->data+1, evt.params.setting.data_len);
 
 				p_srv->callback(&evt);
 				break;

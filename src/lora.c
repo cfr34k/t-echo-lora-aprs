@@ -320,6 +320,8 @@ static uint8_t  m_rx_packet_offset;
 
 static uint32_t m_tx_timeout = 600;
 
+static uint32_t m_rf_freq_sx1262 = 0x1b1c6666; // 433.775 MHz as fallback
+
 static lora_evt_data_t m_evt_data;
 
 static lora_callback_t m_callback;
@@ -554,10 +556,10 @@ static ret_code_t handle_state_entry(void)
 			//command[4] = 0x66;
 
 			// => value = 433.775 MHz * 2^25 / (32 MHz) = 0x1b1c6666
-			command[1] = 0x1B;
-			command[2] = 0x1C;
-			command[3] = 0x66;
-			command[4] = 0x66;
+			command[1] = (m_rf_freq_sx1262 >> 24) & 0xFF;
+			command[2] = (m_rf_freq_sx1262 >> 16) & 0xFF;
+			command[3] = (m_rf_freq_sx1262 >>  8) & 0xFF;
+			command[4] = (m_rf_freq_sx1262 >>  0) & 0xFF;
 
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
@@ -1236,6 +1238,27 @@ ret_code_t lora_set_power(lora_pwr_t power)
 	m_power = power;
 
 	return NRF_SUCCESS;
+}
+
+
+ret_code_t lora_set_rf_freq(uint32_t hz)
+{
+	// SX1262 supports 150 to 960 MHz
+	if(hz < 150000000 || hz > 960000000) {
+		return NRF_ERROR_INVALID_PARAM;
+	}
+
+	uint64_t tmp = (uint64_t)hz << 25ULL;
+	m_rf_freq_sx1262 = (uint32_t)(tmp / 32000000);
+
+	return NRF_SUCCESS;
+}
+
+
+uint32_t lora_get_rf_freq(void)
+{
+	uint64_t tmp = (uint64_t)m_rf_freq_sx1262 * 32000000ULL;
+	return (uint32_t)(tmp >> 25);
 }
 
 

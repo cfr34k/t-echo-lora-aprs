@@ -419,7 +419,7 @@ static void notify_current_setting_value(settings_id_t id, bool op_success)
 }
 
 
-static void cb_aprs_service(const aprs_service_evt_t *evt)
+static void cb_aprs_service(aprs_service_evt_t *evt)
 {
 	switch(evt->type)
 	{
@@ -467,11 +467,47 @@ static void cb_aprs_service(const aprs_service_evt_t *evt)
 
 		case APRS_SERVICE_EVT_SETTING_WRITE:
 			{
-				// try to write the new setting value
-				ret_code_t err_code = settings_write(
-						evt->params.setting.setting_id,
-						evt->params.setting.data,
-						evt->params.setting.data_len);
+				ret_code_t err_code;
+
+				// setting value safeguards
+				switch(evt->params.setting.setting_id) {
+					case SETTINGS_ID_RF_FREQUENCY:
+						{
+							// try to apply the frequency for verification
+							uint32_t freq_hz = *(uint32_t*)evt->params.setting.data;
+							err_code = lora_set_rf_freq(freq_hz);
+						}
+						break;
+
+					case SETTINGS_ID_SOURCE_CALL:
+					case SETTINGS_ID_COMMENT:
+						{
+							// for string values, ensure there is a nullbyte at the end
+							uint16_t lastidx = evt->params.setting.data_len;
+							if(lastidx >= sizeof(evt->params.setting.data)) {
+								lastidx = sizeof(evt->params.setting.data) - 1;
+							}
+
+							evt->params.setting.data[lastidx] = '\0';
+							evt->params.setting.data_len = lastidx + 1;
+							err_code = NRF_SUCCESS;
+						}
+						break;
+
+					default:
+						// other settings are not so critical that they have to be checked
+						err_code = NRF_SUCCESS;
+						break;
+				}
+
+
+				if(err_code == NRF_SUCCESS) {
+					// if setting verified successfully, save it
+					err_code = settings_write(
+							evt->params.setting.setting_id,
+							evt->params.setting.data,
+							evt->params.setting.data_len);
+				}
 
 				if(err_code == NRF_SUCCESS) {
 					aprs_service_notify_setting(
@@ -481,7 +517,7 @@ static void cb_aprs_service(const aprs_service_evt_t *evt)
 							evt->params.setting.data,
 							evt->params.setting.data_len);
 				} else {
-					// setting could not be written. Notify the currently stored value.
+					// setting could not be verified or written. Notify the currently stored value.
 					notify_current_setting_value(evt->params.setting.setting_id, false);
 				}
 			}
@@ -1133,6 +1169,17 @@ static void cb_settings(settings_evt_t evt, settings_id_t id)
 			} else {
 				NRF_LOG_WARNING("Error while loading APRS flags: 0x%08x", err_code);
 				// use default flags set in aprs_init().
+			}
+
+			len = sizeof(buffer);
+			err_code = settings_query(SETTINGS_ID_RF_FREQUENCY, buffer, &len);
+			if(err_code == NRF_SUCCESS) {
+				uint32_t rf_freq_hz = *(uint32_t*)buffer;
+				NRF_LOG_INFO("LoRa RF frequency loaded: %d Hz", rf_freq_hz);
+				lora_set_rf_freq(rf_freq_hz);
+			} else {
+				NRF_LOG_WARNING("Error while loading LoRa RF frequency: 0x%08x", err_code);
+				// use default frequency set in aprs_init().
 			}
 			break;
 

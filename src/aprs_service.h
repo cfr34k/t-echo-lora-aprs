@@ -99,7 +99,7 @@ typedef struct {
  *
  * @param evt       The event type.
  */
-typedef void (*aprs_service_callback_t)(const aprs_service_evt_t *evt);
+typedef void (*aprs_service_callback_t)(aprs_service_evt_t *evt);
 
 /** @brief Service init structure. This structure contains all options and data needed for
  *         initialization of the service.*/

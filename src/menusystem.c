@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <string.h>
+#include <stdio.h>
 
 #ifdef SDL_DISPLAY
 	// we are compiling for the emulator
@@ -44,6 +45,7 @@ enum info_entry_ids_t {
 	INFO_ENTRY_IDX_APRS_SOURCE       = 2,
 	INFO_ENTRY_IDX_APRS_DEST         = 3,
 	INFO_ENTRY_IDX_APRS_SYMBOL       = 4,
+	INFO_ENTRY_IDX_RF_FREQ           = 5,
 
 	INFO_ENTRY_COUNT
 };
@@ -189,6 +191,9 @@ static void menusystem_update_values(void)
 	aprs_get_icon(&(entry->value[0]), &(entry->value[1]));
 	entry->value[2] = '\0';
 
+	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_POWER]);
+	strncpy(entry->value, lora_power_to_str(lora_get_power()), sizeof(entry->value));
+
 	// APRS symbol select menu
 	entry = &(m_symbol_select_menu.entries[SYMBOL_SELECT_ENTRY_IDX_CUSTOM]);
 
@@ -237,8 +242,8 @@ static void menusystem_update_values(void)
 	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL]);
 	strcpy(entry->value, m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_APRS_SYMBOL].value); // already filled, see above
 
-	entry = &(m_aprs_config_menu.entries[APRS_CONFIG_ENTRY_IDX_POWER]);
-	strncpy(entry->value, lora_power_to_str(lora_get_power()), sizeof(entry->value));
+	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_RF_FREQ]);
+	snprintf(entry->value, sizeof(entry->value), "%ld Hz", lora_get_rf_freq());
 
 	// GNSS utility menu
 	entry = &(m_gnss_utils_menu.entries[GNSS_UTILS_ENTRY_IDX_KEEP_ACTIVE]);
@@ -636,6 +641,10 @@ void menusystem_init(menusystem_callback_t callback)
 	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL].handler = menu_handler_info;
 	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL].text = "Symbol";
 	m_info_menu.entries[INFO_ENTRY_IDX_APRS_SYMBOL].value[0] = '\0';
+
+	m_info_menu.entries[INFO_ENTRY_IDX_RF_FREQ].handler = menu_handler_info;
+	m_info_menu.entries[INFO_ENTRY_IDX_RF_FREQ].text = "RF Freq.";
+	m_info_menu.entries[INFO_ENTRY_IDX_RF_FREQ].value[0] = '\0';
 
 	// prepare the GNSS utilities menu
 	m_gnss_utils_menu.n_entries = GNSS_UTILS_ENTRY_COUNT;

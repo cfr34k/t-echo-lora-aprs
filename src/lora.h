@@ -86,6 +86,8 @@ void lora_loop(void);
 
 ret_code_t lora_set_power(lora_pwr_t power);
 lora_pwr_t lora_get_power(void);
+ret_code_t lora_set_rf_freq(uint32_t hz);
+uint32_t lora_get_rf_freq(void);
 const char* lora_power_to_str(lora_pwr_t power);
 
 #endif // LORA_H
