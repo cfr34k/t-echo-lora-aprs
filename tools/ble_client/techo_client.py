@@ -1,66 +1,58 @@
 #!/usr/bin/env python3
 
 import asyncio
-import struct
 from bleak import BleakScanner, BleakClient
+
+import settings
+import menu
 
 UUID_CHAR_SOURCE_CALL = '00000101-b493-bb5d-2a6a-4682945c9e00'
 UUID_CHAR_APRS_COMMENT = '00000102-b493-bb5d-2a6a-4682945c9e00'
 UUID_CHAR_APRS_SYMBOL = '00000103-b493-bb5d-2a6a-4682945c9e00'
 UUID_CHAR_RX_MESSAGE = '00000104-b493-bb5d-2a6a-4682945c9e00'
-UUID_CHAR_SETTING_WRITE_SELECT = '00000110-b493-bb5d-2a6a-4682945c9e00'
-UUID_CHAR_SETTING_READ = '00000111-b493-bb5d-2a6a-4682945c9e00'
-
-SETTINGS_IDS = {
-        'SOURCE_CALL':      0x0001,
-        'SYMBOL_CODE':      0x0002,
-        'COMMENT':          0x0003,
-        'LORA_POWER':       0x0004,
-        'APRS_FLAGS':       0x0005,
-        'LAST_BLE_SYMBOL':  0x0006,
-    }
-
-LORA_POWERS_DBM = [22, 20, 17, 14, 10, 0, -9]
-
-async def get_adv_setting_data(client, setting_id):
-    await client.write_gatt_char(UUID_CHAR_SETTING_WRITE_SELECT, struct.pack('B', setting_id))
-    raw_data = await client.read_gatt_char(UUID_CHAR_SETTING_READ)
-
-    if raw_data[0] & 0x80 != 0:
-        print(f"Error: could not read setting #{setting_id}.")
-        return None
-
-    if raw_data[0] & 0x7F != setting_id:
-        print(f"Error: device returned wrong setting ID. Requested #{setting_id}, received #{raw_data[0] & 0x7F}.")
-        return None
-
-    return raw_data[1:]
-
-
-def format_setting(setting_name, data):
-    if setting_name in ['SOURCE_CALL', 'COMMENT', 'SYMBOL_CODE', 'LAST_BLE_SYMBOL']:
-        null_idx = data.index(0)
-        return data[:null_idx].decode('utf-8')
-    elif setting_name == 'LORA_POWER':
-        index = data[0]
-        return f"{LORA_POWERS_DBM[index]} dBm"
-    elif setting_name == 'APRS_FLAGS':
-        decoded, = struct.unpack('<I', data)
-        return f"0x{decoded:08x}"
-    else:
-        return f"{data}"
-
 
 async def advanced_config(client):
     print("\n### Advanced settings menu ###")
-    print("\nCurrent configuration:\n")
 
-    for name, setting_id in SETTINGS_IDS.items():
-        data = await get_adv_setting_data(client, setting_id)
-        formatted = format_setting(name, data)
-        print(f"#{setting_id:03d} {name:15s} -> {formatted}")
-
+    adv_settings = settings.AdvancedSettings(client)
+    await adv_settings.update_cache()
     print()
+
+    adv_settings.show_cache()
+    print()
+
+    # swap keys and values of SETTINGS_IDS
+    options = dict(zip(settings.SETTINGS_IDS.values(), settings.SETTINGS_IDS.keys()))
+
+    # add write option
+    options['w'] = "Save modified settings."
+
+    while True:
+        selected = menu.choose_option("Select setting to edit:", options)
+
+        if not selected:
+            break;
+
+        if selected == "w":
+            if await adv_settings.save_modified_settings():
+                print("\nAll settings saved successfully! Returning to main menu.")
+                break
+            else:
+                print("\nNot all settings could be saved. Check the status and try again.")
+                continue
+
+        setting_id = int(selected)
+        setting_name = options[setting_id]
+
+        print(f"You selected: {setting_id} – {setting_name}")
+
+        setting = adv_settings.get_value(setting_name)
+
+        setting.edit_interactive()
+
+        adv_settings.show_cache()
+        print()
+
 
 
 async def main():
