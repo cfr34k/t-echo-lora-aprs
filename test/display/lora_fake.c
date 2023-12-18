@@ -42,3 +42,8 @@ const char* lora_power_to_str(lora_pwr_t power)
 
 	return LORA_PWR_STRINGS[power];
 }
+
+uint32_t lora_get_rf_freq(void)
+{
+	return 433775000;
+}
