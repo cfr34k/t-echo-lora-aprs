@@ -388,3 +388,348 @@ NOTE: As the BME280 is inside the case and right behind the LoRa module,
 thermal isolation is rather bad and the temperature and humidity values are way
 off while the tracker is running or the T-Echo is charged. Therefore, the
 T-Echo is not really usable as a LoRa weather station.
+
+== Bluetooth Low Energy
+
+The BLE interface is primarily used to configure the firmware. All settings
+(_characteristics_ in the Bluetooth jargon) of the LoRa-APRS firmware are
+gathered in a custom _APRS service_ with UUID
+`00000001-b493-bb5d-2a6a-4682945c9e00`. The following characteristics are
+available:
+
+[cols="3,2,1,1,1,2", options="header"]
+|===
+
+| UUID
+| Description
+| Encoding
+| Value length
+| Access
+| Example
+
+| `00000101-b493-bb5d-2a6a-4682945c9e00`
+| APRS source call sign
+| Text
+| 0-16 characters
+| Read, write
+| `DE0ABC-5`
+
+| `00000102-b493-bb5d-2a6a-4682945c9e00`
+| APRS comment
+| Text
+| 0-64 characters
+| Read, write
+| `T-Echo on tour`
+
+| `00000103-b493-bb5d-2a6a-4682945c9e00`
+| APRS symbol (Table + Icon selector)
+| Text
+| 2 characters
+| Read, write
+| `/.` (red X on the map)
+
+| `00000104-b493-bb5d-2a6a-4682945c9e00`
+| Raw received message
+| Binary
+| 1-247 bytes
+| Read, notify
+| `<\xff\x01DE0ABC-5>APZTK1:…`
+
+| `00000110-b493-bb5d-2a6a-4682945c9e00`
+| Setting select or write
+| Binary/setting-dependent
+| 1-247 bytes
+| Write
+| `\x07\x34\x88\x38\x1a`
+
+| `00000111-b493-bb5d-2a6a-4682945c9e00`
+| Setting read
+| Binary/setting-dependent
+| 1-247 bytes
+| Read, notify
+| `\x07\x34\x88\x38\x1a`
+
+|===
+
+In general, binary multi-byte values are encoded as Little Endian, i.e. the
+least significant byte is the leftmost in the value. For example, the decimal
+number `13579` represented in hex is `0x350b`, and is encoded in little endian
+as `0x0b 0x35`.
+
+=== _Source Call Sign_ characteristic
+
+This characteristic holds the source call sign for APRS transmissions. It must
+be set to the amateur radio call sign of the operator of the device before any
+transmission is possible.
+
+Optionally, an SSID may be appended to differentiate multiple devices of the
+same operator. The SSID is preferably in the range 1 to 15 (for compatibility
+with regular AX.25-based APRS) and is separated from the call with the ASCII
+minus/hyphen character.
+
+=== _APRS Comment_ characteristic
+
+A free text field that is directly inserted into the APRS comment field.
+
+=== _APRS Symbol_ characteristic
+
+An APRS symbol code consisting of exactly two characters.
+
+The first character determines the symbol table to use and is usually either
+`/` for the normal table or `\` for the alternate table.
+
+The second character identifies which symbol from the selected table to use.
+Listing all symbols is beyond the scope of this document; a list can be found
+in the APRS specification.
+
+=== _Raw received message_ characteristic
+
+This characteristic always contains the latest received APRS message. It is directly forwarded from the LoRa module and contains all headers and reception errors, if any.
+
+It is possible to activate notifications on this characteristic, so newly received messages are actively pushed to the BLE client.
+
+=== _Setting select or write_ characteristic
+
+This write-only characteristic is part of the low-level settings interface. It
+allows to select a setting for readout or to write a new value to a setting.
+
+The first byte determines which setting is to be accessed (see
+<<_low_level_settings>> for a list of IDs). The setting ID is encoded in the
+lower 7 bits of the first byte. The MSB is reserved.
+
+If only the first byte is sent, this is a setting select command. In this case,
+the setting is not modified, but its current value is loaded into the
+<<_setting_read_characteristic,_setting read_ characteristic>>. If additional
+bytes are sent, a write attempt is done with these bytes as data. However, the
+firmware may reject the write attempt if the data is invalid. See
+<<_setting_read_characteristic>> for details.
+
+NOTE: Most settings are only applied in certain conditions, for example a reactivation of the LoRa module. If in doubt, restart the firmware to ensure that all settings are applied.
+
+=== _Setting read_ characteristic
+
+This read-only characteristic holds the result of the latest setting select/write operation.
+
+The first byte identifies the setting whose data this characteristic currently
+holds and it also informs whether the last select or write operation was
+successful. The lower seven bits contain the setting ID as sent to the
+<<_setting_select_or_write_characteristic,_setting select or write_
+characteristic>>. The MSB is the error indicator which is 0 if the last
+operation was successful or 1 if an error occurred.
+
+If a operation was successful, the remaining bytes are the value of the
+setting. If it has failed, only the first byte will be sent.
+
+A select operation can fail in two ways: first, the selected ID can be invalid,
+and second, the setting may not be present in the flash (i.e. has never been
+modified and uses the default value).
+
+For a write operation, multiple errors are possible: the setting ID can be
+invalid, the value can have the wrong length or can be unacceptable for the
+setting, or an internal error occurred while writing to the flash.
+
+NOTE: this characteristic contains the raw value read from the flash, which
+padded to the next multiple of four bytes. These padding bytes should just be
+ignored if present. The actual length of the value depends on the setting being
+accessed.
+
+== Low Level Settings
+
+This section describes the low level settings that are stored in the internal
+flash. These are mostly managed internally and mapped to various menu entries
+or the standard BLE characteristics. However, the BLE settings interface allows
+direct access to these values and therefore they are described here in detail.
+
+Each setting has a unique ID. This ID is used to identify the setting in the
+internal flash as well as on the BLE interface.
+
+The following settings are available:
+
+[cols=">1,4", options="header"]
+|===
+
+| ID
+| Name/Description
+
+| 1
+| Source call
+
+| 2
+| Symbol code
+
+| 3
+| APRS comment
+
+| 4
+| LoRa transmit power
+
+| 5
+| APRS configuration flags
+
+| 6
+| Last custom symbol code
+
+| 7
+| LoRa RF frequency
+
+|===
+
+Some general words about the encoding of values:
+
+* Strings are always *zero-terminated*. The terminating zero must be sent when writing a new string value. If it is not sent, the firmware will insert the zero where it sees fit which may truncate the value.
+* Numbers are always encoded in *Little Endian*.
+
+The following subsections describe each setting in detail.
+
+=== _Source call_ setting
+
+This setting provides direct access to the stored source call sign (see also
+<<_source_call_sign_characteristic>>).
+
+New values only become effective after a firmware reset. The preferred way to
+update the source call is to use the dedicated characteristic which becomes
+effective immediately.
+
+=== _Symbol code_ setting
+
+This setting provides direct access to the stored symbol code (see also
+<<_aprs_symbol_characteristic>>).
+
+New values only become effective after a firmware reset. The preferred way to
+update the active symbol is to use the dedicated characteristic or use the
+on-screen menu. Both methods update the symbol immediately.
+
+=== _APRS comment_ setting
+
+This setting provides direct access to the stored APRS comment (see also
+<<_aprs_comment_characteristic>>).
+
+New values only become effective after a firmware reset. The preferred way to
+update the APRS comment is to use the dedicated characteristic which becomes
+effective immediately.
+
+=== _LoRa transmit power_ setting
+
+This setting configures the LoRa transmit power, similar to the corresponding
+<<_tx_power,on-screen menu>>.
+
+The setting’s value is exactly one byte long and contains an index for the
+power list, which has the following entries:
+
+[cols=">1,4", options="header"]
+|===
+
+| Index
+| Power
+
+| 0
+| +22 dBm
+
+| 1
+| +20 dBm
+
+| 2
+| +17 dBm
+
+| 3
+| +14 dBm
+
+| 4
+| +10 dBm
+
+| 5
+| +0 dBm
+
+| 6
+| -9 dBm
+
+|===
+
+=== _APRS configuration flags_ setting
+
+This setting gathers several boolean (1-bit) settings in a common value to save
+flash space. Each bit has a different meaning.
+
+The value is 4 byte or 32 bits long. In the following table, bits are counted from the LSB. A setting is active if the corresponding bit is `1`.
+
+[cols=">1,4", options="header"]
+|===
+
+| Bit
+| Description
+
+| 0
+| Use compressed location format.
+
+| 1
+| Add `!DAO!` to uncompressed packets.
+
+| 2
+| Transmit frame counter in the APRS comment field.
+
+| 3
+| Transmit altitude in uncompressed packets.
+
+| 4
+| Transmit battery voltage in the APRS comment field.
+
+| 5
+| Enable weather reports.
+
+| 6
+| Enable receiver on firmware startup.
+
+| 7
+| Enable tracker on firmware startup.
+
+|===
+
+=== _Last custom symbol code_ setting
+
+This setting provides direct access to the stored custom symbol code which can
+be selected from the on-screen menu besides the pre-defined symbols. Modifying
+this value has no direct effect on the behaviour of the firmware.
+
+New values become visible when the symbol selection menu is next opened.
+
+=== _LoRa RF frequency_ setting
+
+This setting allows to change the operating RF frequency of the LoRa module.
+
+The value is the frequency in Hertz encoded as a 32-bit integer.
+
+A changed value becomes effective when the LoRa module is reconfigured. This
+happens after a firmware reset or after both receiver and tracker were turned
+off.
+
+=== Examples
+
+==== Example 1: Setting the power to +14 dBm
+
+According to the table above, you need to send the power index 3. The setting
+ID of the LoRa power is 4, so you need to write the following two bytes to the
+<<_setting_select_or_write_characteristic,_setting select or write_
+characteristic>>: `0x04 0x03`. If successful, the
+<<_setting_read_characteristic,_setting read_ characteristic>> will contain the
+same two bytes afterwards. If the write access failed, it will instead only
+contain one byte `0x84` which indicates that a write to setting ID 4 failed
+(because the MSB is set).
+
+==== Example 2: Enabling the receiver on startup
+
+The receiver state on startup is controlled by bit 6 of the <<_aprs_configuration_flags_setting,_APRS configuration flags_ setting>>. The ID of that setting is 5. To activate this specific bit we need to execute a read-modify-write sequence on setting 5, as follows:
+
+- Select setting 5 by writing `0x05` to the <<_setting_select_or_write_characteristic,_setting select or write_ characteristic>>.
+- Read the <<_setting_read_characteristic,_setting read_ characteristic>>. We assume you read `0x05 0x83 0x00 0x00 0x00`.
+  * As the MSB of the first byte is not set and the other 7 bits match our requested setting ID 5, the read was successful.
+  * Decode the remaining 4 bytes as a little-endian 32-bit integer. The current value of the APRS flags is then `0x00000083`. Bit 6 is currently unset.
+- Calculate the new bitmask with bit 6 set: `0x00000083 | 0x00000040 = 0x000000C3`.
+- Build the write command by calculating the new bitmask as little endian and prepending the setting ID byte: `0x05 0xC3 0x00 0x00 0x00`.
+- Send the write command to the <<_setting_select_or_write_characteristic,_setting select or write_ characteristic>>.
+- Read the <<_setting_read_characteristic,_setting read_ characteristic>> again to check that the update was successful. You should receive `0x05 0xC3 0x00 0x00 0x00`.
+
+==== Example 3: Changing the RF frequency to 439.9125 MHz
+
+- To change the RF frequency to the above value, first represent it in Hertz: 439912500 Hz. Take this number and encode it as a little endian 32-bit integer: `439912500` decimal = `0x1a388834` hex → `0x34 0x88 0x38 0x1a`.
+- Prepend the setting ID 7 to build your complete write command: `0x07 0x34 0x88 0x38 0x1a`. Write these 5 bytes to the <<_setting_select_or_write_characteristic,_setting select or write_ characteristic>>.
+- Read the <<_setting_read_characteristic,_setting read_ characteristic>>. You should receive the exact same 5 bytes back. If the MSB of the first byte is set, the write access has failed.
