@@ -21,6 +21,8 @@ APRS_FLAGS = {
         'ADD_ALTITUDE':      1 << 3,
         'ADD_VBAT':          1 << 4,
         'ADD_WEATHER':       1 << 5,
+        'STARTUP_RX_ON':     1 << 6,
+        'STARTUP_TX_ON':     1 << 7,
     }
 
 LORA_POWERS_DBM = [22, 20, 17, 14, 10, 0, -9]
