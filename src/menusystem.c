@@ -65,6 +65,7 @@ enum aprs_config_adv_entry_ids_t {
 	APRS_CONFIG_ADV_ENTRY_IDX_PACKET_ID         = 1,
 	APRS_CONFIG_ADV_ENTRY_IDX_VBAT              = 2,
 	APRS_CONFIG_ADV_ENTRY_IDX_WEATHER           = 3,
+	APRS_CONFIG_ADV_ENTRY_IDX_STARTUP           = 4,
 
 	APRS_CONFIG_ADV_ENTRY_COUNT
 };
@@ -232,6 +233,21 @@ static void menusystem_update_values(void)
 		strncpy(entry->value,  "off", sizeof(entry->value));
 	}
 
+	entry = &(m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_STARTUP]);
+
+	bool rx_on = aprs_flags & APRS_FLAG_STARTUP_RX_ON;
+	bool tx_on = aprs_flags & APRS_FLAG_STARTUP_TX_ON;
+
+	if(!rx_on && !tx_on) {
+		strncpy(entry->value,  "RX+TX off", sizeof(entry->value));
+	} else if(rx_on && !tx_on) {
+		strncpy(entry->value,  "RX only", sizeof(entry->value));
+	} else if(!rx_on && tx_on) {
+		strncpy(entry->value,  "TX only", sizeof(entry->value));
+	} else {
+		strncpy(entry->value,  "RX+TX on", sizeof(entry->value));
+	}
+
 	// info menu
 	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_SOURCE]);
 	aprs_get_source(entry->value, sizeof(entry->value));
@@ -388,6 +404,27 @@ static void menu_handler_aprs_config_adv(menu_t *menu, menuentry_t *entry)
 		case APRS_CONFIG_ADV_ENTRY_IDX_WEATHER:
 			if(bme280_is_present()) {
 				aprs_toggle_config_flag(APRS_FLAG_ADD_WEATHER);
+				flags_changed = true;
+			}
+			break;
+
+		case APRS_CONFIG_ADV_ENTRY_IDX_STARTUP:
+			{
+				uint32_t aprs_flags = aprs_get_config_flags();
+
+				bool rx_on = aprs_flags & APRS_FLAG_STARTUP_RX_ON;
+				bool tx_on = aprs_flags & APRS_FLAG_STARTUP_TX_ON;
+
+				if((!rx_on && !tx_on) || (rx_on && tx_on)) {
+					// both off -> rx only
+					// both on -> tx only
+					aprs_toggle_config_flag(APRS_FLAG_STARTUP_RX_ON);
+				} else {
+					// rx only -> both on
+					// tx only -> both off
+					aprs_toggle_config_flag(APRS_FLAG_STARTUP_TX_ON);
+				}
+
 				flags_changed = true;
 			}
 			break;
@@ -585,6 +622,10 @@ void menusystem_init(menusystem_callback_t callback)
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_WEATHER].handler = menu_handler_aprs_config_adv;
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_WEATHER].text = "Weather report";
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_WEATHER].value[0] = '\0';
+
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_STARTUP].handler = menu_handler_aprs_config_adv;
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_STARTUP].text = "Startup state";
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_STARTUP].value[0] = '\0';
 
 	// prepare the symbol select menu
 	m_symbol_select_menu.n_entries = SYMBOL_SELECT_ENTRY_COUNT;

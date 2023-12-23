@@ -70,6 +70,8 @@ typedef enum {
 	APRS_FLAG_ADD_ALTITUDE      = (1 << 3),
 	APRS_FLAG_ADD_VBAT          = (1 << 4),
 	APRS_FLAG_ADD_WEATHER       = (1 << 5),
+	APRS_FLAG_STARTUP_RX_ON     = (1 << 6),
+	APRS_FLAG_STARTUP_TX_ON     = (1 << 7),
 } aprs_flag_t;
 
 typedef struct {

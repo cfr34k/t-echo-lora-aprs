@@ -824,7 +824,11 @@ static void cb_gps(gps_evt_t evt, const nmea_data_t *data)
 {
 	switch(evt) {
 		case GPS_EVT_RESET_COMPLETE:
-			APP_ERROR_CHECK(gps_power_off());
+			// tracker may have been activated by autostart, so we should not turn
+			// off in that case.
+			if(!m_tracker_active) {
+				APP_ERROR_CHECK(gps_power_off());
+			}
 			break;
 
 		case GPS_EVT_DATA_RECEIVED:
@@ -1541,6 +1545,25 @@ static void gpio_init(void)
 }
 
 
+/**@brief Load and apply the initial state of RX and TX.
+ */
+static void apply_startup_settings(void)
+{
+	uint32_t aprs_flags = aprs_get_config_flags();
+
+	// quick workaround: use the menusystem callback to enable RX or TX because
+	// it provides the exact functionality that is needed. This should probably
+	// be refactored at some point (see also cb_buttons).
+	if(aprs_flags & APRS_FLAG_STARTUP_RX_ON) {
+		cb_menusystem(MENUSYSTEM_EVT_RX_ENABLE, NULL);
+	}
+
+	if(aprs_flags & APRS_FLAG_STARTUP_TX_ON) {
+		cb_menusystem(MENUSYSTEM_EVT_TRACKER_ENABLE, NULL);
+	}
+}
+
+
 /**@brief Function for application main entry.
 */
 int main(void)
@@ -1595,6 +1618,9 @@ int main(void)
 	// Once the configured-idle state is reached, the module is powered off
 	// again.
 	APP_ERROR_CHECK(lora_power_on());
+
+	// load and apply the initial RX/TX state
+	apply_startup_settings();
 
 	aprs_clear_path();
 	aprs_add_path("WIDE1-1");
