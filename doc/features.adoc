@@ -32,6 +32,12 @@ completely. If you want to save your battery from being drained, open the case
 and disconnect the plug. It is not possible to stop the battery drain in
 software.
 
+You may notice that there is a “Shutdown” entry in the menu. This is a software
+shutdown that stops all activity and puts the hardware in the lowest power
+state possible. Also, the e-Paper display is cleared. I recommend to execute
+this function before unplugging the battery as it prevents the risk of the
+display burning in when it is not refreshed for a long time.
+
 == APRS Reception
 
 This firmware can receive and decode LoRa-APRS packets. For successfully
@@ -95,8 +101,16 @@ packet is received. The raw data is forwarded. This could be used to decode
 more complex information from the packet on a PC or smartphone app or even
 build an iGate with the T-Echo as receiver.
 
+Finally, a low-level settings interface is provided via BLE. This interface
+allows direct access to all settings stored in the internal flash and thus can
+be used to access settings that are not available through the menu (such as the
+RF frequency). It could also be used to clone the full configuration to a new
+device.
+
 == Other Features
 
 - Flicker-free refresh for the e-Paper display.
 - Full e-Paper refresh once per hour to prevent burn-in.
 - GNSS warmup mode to keep the GNSS in sync without transmitting packets.
+- Tracker and receiver state after firmware startup is configurable.
+

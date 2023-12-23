@@ -175,6 +175,15 @@ This menu allows to include extended information in the transmitted packets.
 - `Weather report` [Devices with BME280 only] +
   Periodically include the latest environmental sensor measurements in the
   packet. See <<_weather_reports>> for details.
+- `Startup state` +
+  Defines the initial state of the APRS receiver and tracker after the firmware
+  is restarted. Activating the menu item cycles through the combinations, as
+  follows:
+  - `RX+TX off`: no activity at all after startup. This is the lowest power state.
+  - `RX only`: Only the receiver is started automatically.
+  - `RX+TX on`: Automatically activate both the receiver and the tracker.
+  - `TX only`: Only the tracker is started automatically.
+
 
 [#aprs_symbol]
 ==== APRS Symbol Selection

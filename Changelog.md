@@ -5,11 +5,19 @@
 - Changed APRS TOCALL to _APLETK_, which is [officially
   registered](https://github.com/aprsorg/aprs-deviceid/blob/3ff2b5c907d8b85a83f9387195f282d14a6f8fb2/tocalls.yaml#L683)
   for this firmware.
+- Frequently requested and finally introduced: It is now possible to start RX and/or TX right after firmware startup (device reset). All combinations of RX and TX can be selected through the `APRS Config`→`Advanced`→`Startup state` menu item.
 - Allow to shut down the firmware via the menu. This stops all activity (including Bluetooth LE!), clears the display, switches off the peripherals as far as possible and puts the SoC into the lowest power mode. It is only possible to wake the SoC with a reset in this state. Note that even though it is the lowest possible power mode, current is still drawn from the battery. However, it still has some applications:
   - If you use your T-Echo periodically but not very often (once every few weeks), you can put it into shutdown mode to reduce the standby consumption.
   - When you plan not to use the T-Echo for a long time, you can activate this mode to clear the display before removing the battery. This avoids potential display burn-in effects.
   - Also, this mode can be considered the “Airplane mode”, as even BLE is disabled.
 - To fit the new shutdown menu entry, the TX power setting was moved to the APRS menu.
+- Added a new BLE interface which allows to read and write all settings that are stored in the internal flash.
+  - Two characteristics were added to the APRS service: one to write or select a setting, the other to read back the current value of the setting (which may be different to the attempted write).
+  - To prevent modification of settings without physical access to the device, the new characteristics require MITM access level. That means that the BLE client must have been paired using the passkey that is shown on the T-Echo’s display.
+  - Settings are accessible on the lowest possible level through this interface (warning: this may result in unexpected behaviour if conflicting or wrong values are written). Make sure you read the documentation!
+- The `ble_client.py` script has been massively extended to support all internal settings through the new interface.
+- The RF frequency can now be changed through the new settings interface. This allows the firmware to be used in the UK, for example, where LoRa APRS runs on a different frequency. The default frequency of 433.775 MHz is unchanged.
+
 
 ## Fixed Bugs
 
