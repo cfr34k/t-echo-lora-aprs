@@ -1,4 +1,4 @@
-# In Development
+# Version 1.0
 
 ## New and changed features
 
