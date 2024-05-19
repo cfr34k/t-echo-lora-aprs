@@ -183,7 +183,16 @@ This menu allows to include extended information in the transmitted packets.
   - `RX only`: Only the receiver is started automatically.
   - `RX+TX on`: Automatically activate both the receiver and the tracker.
   - `TX only`: Only the tracker is started automatically.
+- `Digipeating` +
+  Sets the method of digipeating to use
+  - `off`: digipeating is disabled and the digipeater path is empty. This
+           results in the shortest packets.
+  - `Dest. Call`: The number of hops is encoded in the destination call SSID
+                  (used up to version 1.0). Only adds two bytes to the packet.
+  - `WIDEn-n`: Add `WIDE1-1` to the digipeater path. This has the largest
+               overhead, but also the widest support in digipeaters.
 
+As of version 1.1, only one digipeater hop is supported (i.e. `WIDE1-1`).
 
 [#aprs_symbol]
 ==== APRS Symbol Selection
