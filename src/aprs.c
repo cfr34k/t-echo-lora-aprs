@@ -580,21 +580,21 @@ size_t aprs_build_frame(uint8_t *frame, const aprs_args_t *args, aprs_packet_typ
 	append_address(&frameptr, m_src, 1);
 	*(frameptr++) = '>';
 
-	/* use "destination call digipeating" (destination call with SSID -n) instead
-	 * of WIDEn-n if that appears in the path. This saves airtime. No digipeating
-	 * is ever used for WX packets. */
+	/* adjust path according to the current digipeating configuration. */
 
-	if((m_npath == 0) || (packet_type == APRS_PACKET_TYPE_WX)) {
-		// if no path is set, or in any case for weather reports, just append the
-		// destination (with SSID 0) and no further path
+	if((m_npath == 0) || (packet_type == APRS_PACKET_TYPE_WX) || !(m_config_flags & APRS_FLAG_USE_DIGIPEATING)) {
+		// if no path is set, digipeating is disabled or in any case for
+		// weather reports, just append the destination (with SSID 0) and no
+		// further path
 		append_address(&frameptr, m_dest, true);
 	} else {
-		// for packets with non-empty path, check that WIDEn-n digipeating is
-		// requested. If so, remove the WIDEn-n from the path and use n as the
-		// destination call SSID.
+		// If digipeating is enabled, but WIDEn-n is not, replace the WIDEn-n in
+		// the path with destination call digipeating (i.e. put the n in the
+		// destination call SSID).
 		uint8_t pathstart = 0;
 
-		if((strncmp(m_path[0], "WIDE", 4) == 0) && isdigit((int)m_path[0][4])) {
+		if(!(m_config_flags & APRS_FLAG_USE_WIDEN_N) &&
+				(strncmp(m_path[0], "WIDE", 4) == 0) && isdigit((int)m_path[0][4])) {
 			char dest_mod[sizeof(m_dest)+2];
 			strcpy(dest_mod, m_dest);
 

@@ -66,6 +66,7 @@ enum aprs_config_adv_entry_ids_t {
 	APRS_CONFIG_ADV_ENTRY_IDX_VBAT              = 2,
 	APRS_CONFIG_ADV_ENTRY_IDX_WEATHER           = 3,
 	APRS_CONFIG_ADV_ENTRY_IDX_STARTUP           = 4,
+	APRS_CONFIG_ADV_ENTRY_IDX_DIGIPEATING       = 5,
 
 	APRS_CONFIG_ADV_ENTRY_COUNT
 };
@@ -248,6 +249,21 @@ static void menusystem_update_values(void)
 		strncpy(entry->value,  "RX+TX on", sizeof(entry->value));
 	}
 
+	entry = &(m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_DIGIPEATING]);
+
+	bool use_digipeating = aprs_flags & APRS_FLAG_USE_DIGIPEATING;
+	bool use_widen_n = aprs_flags & APRS_FLAG_USE_WIDEN_N;
+
+	if(!use_digipeating) {
+		strncpy(entry->value,  "off", sizeof(entry->value));
+	} else {
+		if(use_widen_n) {
+			strncpy(entry->value,  "WIDEn-n", sizeof(entry->value));
+		} else {
+			strncpy(entry->value,  "Dest. Call", sizeof(entry->value));
+		}
+	}
+
 	// info menu
 	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_APRS_SOURCE]);
 	aprs_get_source(entry->value, sizeof(entry->value));
@@ -423,6 +439,29 @@ static void menu_handler_aprs_config_adv(menu_t *menu, menuentry_t *entry)
 					// rx only -> both on
 					// tx only -> both off
 					aprs_toggle_config_flag(APRS_FLAG_STARTUP_TX_ON);
+				}
+
+				flags_changed = true;
+			}
+			break;
+
+		case APRS_CONFIG_ADV_ENTRY_IDX_DIGIPEATING:
+			{
+				uint32_t aprs_flags = aprs_get_config_flags();
+
+				bool use_digipeating = aprs_flags & APRS_FLAG_USE_DIGIPEATING;
+				bool use_widen_n = aprs_flags & APRS_FLAG_USE_WIDEN_N;
+
+				if(!use_digipeating) {
+					// digipeating disabled -> enable with destination call
+					aprs_enable_config_flag(APRS_FLAG_USE_DIGIPEATING);
+					aprs_disable_config_flag(APRS_FLAG_USE_WIDEN_N);
+				} else if(!use_widen_n) {
+					// digipeating on + dest. call -> enable widen_n
+					aprs_enable_config_flag(APRS_FLAG_USE_WIDEN_N);
+				} else {
+					// digipeating on + widen_n -> disable
+					aprs_disable_config_flag(APRS_FLAG_USE_DIGIPEATING);
 				}
 
 				flags_changed = true;
@@ -626,6 +665,10 @@ void menusystem_init(menusystem_callback_t callback)
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_STARTUP].handler = menu_handler_aprs_config_adv;
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_STARTUP].text = "Startup state";
 	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_STARTUP].value[0] = '\0';
+
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_DIGIPEATING].handler = menu_handler_aprs_config_adv;
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_DIGIPEATING].text = "Digipeating";
+	m_aprs_config_adv_menu.entries[APRS_CONFIG_ADV_ENTRY_IDX_DIGIPEATING].value[0] = '\0';
 
 	// prepare the symbol select menu
 	m_symbol_select_menu.n_entries = SYMBOL_SELECT_ENTRY_COUNT;

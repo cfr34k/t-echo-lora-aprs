@@ -72,6 +72,8 @@ typedef enum {
 	APRS_FLAG_ADD_WEATHER       = (1 << 5),
 	APRS_FLAG_STARTUP_RX_ON     = (1 << 6),
 	APRS_FLAG_STARTUP_TX_ON     = (1 << 7),
+	APRS_FLAG_USE_DIGIPEATING   = (1 << 8), // enable digipeating (via WIDE-N or dest call)
+	APRS_FLAG_USE_WIDEN_N       = (1 << 9), // use full WIDEn-n digipeating; if not set, use destination call digipeating
 } aprs_flag_t;
 
 typedef struct {
