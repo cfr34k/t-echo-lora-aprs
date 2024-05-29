@@ -1,3 +1,14 @@
+# Version 1.1
+
+## New and changed features
+
+- The digipeating method is now configurable via the `APRS Config`→`Advanced`→`Digipeating` menu item. The following settings are available:
+  - `off`: Digipeating is not requested.
+  - `Dest. Call`: Destination call digipeating. This was used up to version 1.0.
+  - `WIDEn-n`: The “classic” digipeating mode, requested by putting `WIDE1-1` in the repeater path.
+
+Please note: due to the internal settings storage method, the digipeating will be `off` after the upgrade. Make sure you check this new setting if you want your packets to be digipeated.
+
 # Version 1.0
 
 ## New and changed features
