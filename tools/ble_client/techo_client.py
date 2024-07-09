@@ -62,7 +62,7 @@ async def main():
 
     techos = []
     for d in devices:
-        if d.name[:6] == "T-Echo":
+        if d.name != None and d.name[:6] == "T-Echo":
             techos.append(d)
 
     print("Found the following T-Echos:")
