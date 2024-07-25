@@ -320,7 +320,7 @@ static uint8_t  m_rx_packet_offset;
 
 static uint32_t m_tx_timeout = 600;
 
-static uint32_t m_rf_freq_sx1262 = 0x1b1c6666; // 433.775 MHz as fallback
+static uint32_t m_rf_freq_sx1262 = 0x1b2dae14; // 434.855 MHz as fallback
 
 static lora_evt_data_t m_evt_data;
 
@@ -555,7 +555,7 @@ static ret_code_t handle_state_entry(void)
 			//command[3] = 0x66;
 			//command[4] = 0x66;
 
-			// => value = 433.775 MHz * 2^25 / (32 MHz) = 0x1b1c6666
+			// => value = 434.855 MHz * 2^25 / (32 MHz) = 0x1b2dae14
 			command[1] = (m_rf_freq_sx1262 >> 24) & 0xFF;
 			command[2] = (m_rf_freq_sx1262 >> 16) & 0xFF;
 			command[3] = (m_rf_freq_sx1262 >>  8) & 0xFF;
@@ -606,10 +606,10 @@ static ret_code_t handle_state_entry(void)
 			//command[4] = SX1262_LORA_LDRO_OFF;
 
 			// Settings used by LoRa-APRS
-			command[1] = SX1262_LORA_SF_12;
+			command[1] = SX1262_LORA_SF_9;
 			command[2] = SX1262_LORA_BW_125;
-			command[3] = SX1262_LORA_CR_4_5;
-			command[4] = SX1262_LORA_LDRO_ON;
+			command[3] = SX1262_LORA_CR_4_7;
+			command[4] = SX1262_LORA_LDRO_OFF;
 
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
@@ -698,8 +698,8 @@ static ret_code_t handle_state_entry(void)
 		case LORA_STATE_START_TX:
 			{
 				float toa = calc_toa(
-						12,     // SF
-						1,      // CR=4/5
+						9,     // SF
+						3,      // CR=4/7
 						125.0f, // BW
 						16,     // preamble symbols
 						m_payload_length,
