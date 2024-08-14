@@ -2,6 +2,7 @@
 
 import asyncio
 from bleak import BleakScanner, BleakClient
+import traceback
 
 import settings
 import menu
@@ -156,7 +157,7 @@ async def main():
                 print("Command not understood.")
 
     except Exception as e:
-        print(e)
+        traceback.print_exception(e)
     finally:
         await client.disconnect()
         print("Disconnected.")
