@@ -39,6 +39,9 @@ class Setting:
         self.default = not data
 
     def format(self):
+        if self.data is None:
+            return '[None]'
+
         if self.name in ['SOURCE_CALL', 'COMMENT', 'SYMBOL_CODE', 'LAST_BLE_SYMBOL']:
             null_idx = self.data.index(0)
             return self.data[:null_idx].decode('utf-8')
