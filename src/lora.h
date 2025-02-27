@@ -86,8 +86,19 @@ void lora_loop(void);
 
 ret_code_t lora_set_power(lora_pwr_t power);
 lora_pwr_t lora_get_power(void);
+
 ret_code_t lora_set_rf_freq(uint32_t hz);
 uint32_t lora_get_rf_freq(void);
+
+ret_code_t lora_set_spreading_factor(uint8_t sf_id);
+uint8_t lora_get_spreading_factor(void);
+ret_code_t lora_set_bandwidth(uint8_t bw_id);
+uint8_t lora_get_bandwidth(void);
+ret_code_t lora_set_coding_rate(uint8_t cr_id);
+uint8_t lora_get_coding_rate(void);
+ret_code_t lora_set_ldro(uint8_t ldro_on);
+uint8_t lora_get_ldro(void);
+
 const char* lora_power_to_str(lora_pwr_t power);
 
 #endif // LORA_H

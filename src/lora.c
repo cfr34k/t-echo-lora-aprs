@@ -322,6 +322,12 @@ static uint32_t m_tx_timeout = 600;
 
 static uint32_t m_rf_freq_sx1262 = 0x1b1c6666; // 433.775 MHz as fallback
 
+// default settings used in most parts of Europe and also on other continents
+static uint8_t m_sf = SX1262_LORA_SF_12;
+static uint8_t m_bw = SX1262_LORA_BW_125;
+static uint8_t m_cr = SX1262_LORA_CR_4_5;
+static uint8_t m_ldro_on = SX1262_LORA_LDRO_ON;
+
 static lora_evt_data_t m_evt_data;
 
 static lora_callback_t m_callback;
@@ -600,16 +606,11 @@ static ret_code_t handle_state_entry(void)
 
 		case LORA_STATE_SET_MODULATION_PARAMS:
 			command[0] = SX1262_OPCODE_SET_MODULATION_PARAMS;
-			//command[1] = SX1262_LORA_SF_9;
-			//command[2] = SX1262_LORA_BW_20;
-			//command[3] = SX1262_LORA_CR_4_5;
-			//command[4] = SX1262_LORA_LDRO_OFF;
 
-			// Settings used by LoRa-APRS
-			command[1] = SX1262_LORA_SF_12;
-			command[2] = SX1262_LORA_BW_125;
-			command[3] = SX1262_LORA_CR_4_5;
-			command[4] = SX1262_LORA_LDRO_ON;
+			command[1] = m_sf;
+			command[2] = m_bw;
+			command[3] = m_cr;
+			command[4] = m_ldro_on;
 
 			APP_ERROR_CHECK(send_command(command, 5, &m_status));
 			break;
@@ -1241,6 +1242,12 @@ ret_code_t lora_set_power(lora_pwr_t power)
 }
 
 
+lora_pwr_t lora_get_power(void)
+{
+	return m_power;
+}
+
+
 ret_code_t lora_set_rf_freq(uint32_t hz)
 {
 	// SX1262 supports 150 to 960 MHz
@@ -1262,9 +1269,75 @@ uint32_t lora_get_rf_freq(void)
 }
 
 
-lora_pwr_t lora_get_power(void)
+ret_code_t lora_set_spreading_factor(uint8_t sf_id)
 {
-	return m_power;
+	if(sf_id < 0x05 || sf_id > 0x0C) {
+		return NRF_ERROR_INVALID_PARAM;
+	}
+
+	m_sf = sf_id;
+
+	return NRF_SUCCESS;
+}
+
+
+uint8_t lora_get_spreading_factor(void)
+{
+	return m_sf;
+}
+
+
+ret_code_t lora_set_bandwidth(uint8_t bw_id)
+{
+	if(bw_id == 0x07 || bw_id > 0x0A) {
+		return NRF_ERROR_INVALID_PARAM;
+	}
+
+	m_bw = bw_id;
+
+	return NRF_SUCCESS;
+}
+
+
+uint8_t lora_get_bandwidth(void)
+{
+	return m_bw;
+}
+
+
+ret_code_t lora_set_coding_rate(uint8_t cr_id)
+{
+	if(cr_id > 0x03) {
+		return NRF_ERROR_INVALID_PARAM;
+	}
+
+	m_cr = cr_id;
+
+	return NRF_SUCCESS;
+}
+
+
+uint8_t lora_get_coding_rate(void)
+{
+	return m_cr;
+}
+
+
+ret_code_t lora_set_ldro(uint8_t ldro_on)
+{
+	if(ldro_on > 0x01) {
+		return NRF_ERROR_INVALID_PARAM;
+	}
+
+	m_ldro_on = ldro_on;
+
+	return NRF_SUCCESS;
+}
+
+
+uint8_t lora_get_ldro(void)
+{
+	return m_ldro_on;
 }
 
 

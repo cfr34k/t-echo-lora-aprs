@@ -1185,6 +1185,19 @@ static void cb_settings(settings_evt_t evt, settings_id_t id)
 				NRF_LOG_WARNING("Error while loading LoRa RF frequency: 0x%08x", err_code);
 				// use default frequency set in aprs_init().
 			}
+
+			len = sizeof(buffer);
+			err_code = settings_query(SETTINGS_ID_LORA_MOD_CONFIG, buffer, &len);
+			if(err_code == NRF_SUCCESS) {
+				NRF_LOG_INFO("LoRa Modulation Config loaded: 0x%02x 0x%02x 0x%02x 0x%02x", buffer[0], buffer[1], buffer[2], buffer[3]);
+				lora_set_spreading_factor(buffer[0]);
+				lora_set_bandwidth(buffer[1]);
+				lora_set_coding_rate(buffer[2]);
+				lora_set_ldro(buffer[3]);
+			} else {
+				NRF_LOG_WARNING("Error while loading LoRa Modulation Config: 0x%08x", err_code);
+				// use default frequency set in aprs_init().
+			}
 			break;
 
 		case SETTINGS_EVT_UPDATE_COMPLETE:

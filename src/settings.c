@@ -54,6 +54,7 @@ ret_code_t check_data_for_setting(settings_id_t id, const uint8_t *data, size_t 
 		4, // SETTINGS_ID_APRS_FLAGS
 		2, // SETTINGS_ID_LAST_BLE_SYMBOL
 		4, // SETTINGS_ID_RF_FREQUENCY
+		4, // SETTINGS_ID_LORA_MOD_CONFIG
 	};
 
 	static const uint16_t LENGTH_MAX[SETTINGS_NUM_IDS] = {
@@ -65,6 +66,7 @@ ret_code_t check_data_for_setting(settings_id_t id, const uint8_t *data, size_t 
 		4, // SETTINGS_ID_APRS_FLAGS
 		2, // SETTINGS_ID_LAST_BLE_SYMBOL
 		4, // SETTINGS_ID_RF_FREQUENCY
+		4, // SETTINGS_ID_LORA_MOD_CONFIG
 	};
 
 	uint16_t len_min = LENGTH_MIN[id];
