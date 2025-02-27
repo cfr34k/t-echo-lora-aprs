@@ -494,6 +494,37 @@ static void cb_aprs_service(aprs_service_evt_t *evt)
 						}
 						break;
 
+					case SETTINGS_ID_LORA_MOD_CONFIG:
+						{
+							uint8_t *requested_settings = evt->params.setting.data;
+
+							err_code = lora_set_spreading_factor(requested_settings[0]);
+
+							ret_code_t tmp_err_code = lora_set_bandwidth(requested_settings[1]);
+							err_code = (tmp_err_code != NRF_SUCCESS) ? tmp_err_code : err_code;
+
+							tmp_err_code = lora_set_coding_rate(requested_settings[2]);
+							err_code = (tmp_err_code != NRF_SUCCESS) ? tmp_err_code : err_code;
+
+							tmp_err_code = lora_set_ldro(requested_settings[3]);
+							err_code = (tmp_err_code != NRF_SUCCESS) ? tmp_err_code : err_code;
+
+							if(err_code != NRF_SUCCESS) {
+								// at least one value could not be applied. Reload the stored value.
+
+								uint8_t buf[4];
+								size_t buf_len = sizeof(buf);
+
+								if(settings_query(SETTINGS_ID_LORA_MOD_CONFIG, buf, &buf_len) == NRF_SUCCESS) {
+									lora_set_spreading_factor(buf[0]);
+									lora_set_bandwidth(buf[1]);
+									lora_set_coding_rate(buf[2]);
+									lora_set_ldro(buf[3]);
+								}
+							}
+						}
+						break;
+
 					default:
 						// other settings are not so critical that they have to be checked
 						err_code = NRF_SUCCESS;

@@ -46,6 +46,7 @@ enum info_entry_ids_t {
 	INFO_ENTRY_IDX_APRS_DEST         = 3,
 	INFO_ENTRY_IDX_APRS_SYMBOL       = 4,
 	INFO_ENTRY_IDX_RF_FREQ           = 5,
+	INFO_ENTRY_IDX_MOD_PARAMS        = 6,
 
 	INFO_ENTRY_COUNT
 };
@@ -276,6 +277,13 @@ static void menusystem_update_values(void)
 
 	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_RF_FREQ]);
 	snprintf(entry->value, sizeof(entry->value), "%ld Hz", lora_get_rf_freq());
+
+	entry = &(m_info_menu.entries[INFO_ENTRY_IDX_MOD_PARAMS]);
+	snprintf(entry->value, sizeof(entry->value), "[%02x %02x %02x %02x]h",
+			lora_get_spreading_factor(),
+			lora_get_bandwidth(),
+			lora_get_coding_rate(),
+			lora_get_ldro());
 
 	// GNSS utility menu
 	entry = &(m_gnss_utils_menu.entries[GNSS_UTILS_ENTRY_IDX_KEEP_ACTIVE]);
@@ -729,6 +737,10 @@ void menusystem_init(menusystem_callback_t callback)
 	m_info_menu.entries[INFO_ENTRY_IDX_RF_FREQ].handler = menu_handler_info;
 	m_info_menu.entries[INFO_ENTRY_IDX_RF_FREQ].text = "RF Freq.";
 	m_info_menu.entries[INFO_ENTRY_IDX_RF_FREQ].value[0] = '\0';
+
+	m_info_menu.entries[INFO_ENTRY_IDX_MOD_PARAMS].handler = menu_handler_info;
+	m_info_menu.entries[INFO_ENTRY_IDX_MOD_PARAMS].text = "Mod.";
+	m_info_menu.entries[INFO_ENTRY_IDX_MOD_PARAMS].value[0] = '\0';
 
 	// prepare the GNSS utilities menu
 	m_gnss_utils_menu.n_entries = GNSS_UTILS_ENTRY_COUNT;
