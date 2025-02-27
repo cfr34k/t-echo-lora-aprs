@@ -711,6 +711,135 @@ A changed value becomes effective when the LoRa module is reconfigured. This
 happens after a firmware reset or after both receiver and tracker were turned
 off.
 
+[#lora_mod_config]
+=== _LoRa Modulation Configuration_ setting
+
+This setting allows to configure the LoRa modulation parameters used for
+sending and receiving APRS packets. Specifically, these parameters are:
+
+- Spreading Factor
+- Bandwidth
+- Coding Rate
+- Low Data Rate Optimization
+
+Each parameter is encoded as one byte, therefore this setting is four bytes long.
+
+The parameters are directly passed to the SX1262 modem chip and therefore are
+identical to the chip’s datasheet. The following tables list the possible
+values for each parameter. The default values are marked in bold.
+
+[cols=">1,4", options="header"]
+.Valid Spreading Factor values
+|===
+
+| Value
+| Description
+
+| 0x05
+| SF 5
+
+| 0x06
+| SF 6
+
+| 0x07
+| SF 7
+
+| 0x08
+| SF 8
+
+| 0x09
+| SF 9
+
+| 0x0A
+| SF 10
+
+| 0x0B
+| SF 11
+
+| **0x0C**
+| **SF 12**
+
+|===
+
+[cols=">1,4", options="header"]
+.Valid Bandwidth values
+|===
+
+| Value
+| Description
+
+| 0x00
+| 7.81 kHz
+
+| 0x08
+| 10.42 kHz
+
+| 0x01
+| 15.63 kHz
+
+| 0x09
+| 20.83 kHz
+
+| 0x02
+| 31.25 kHz
+
+| 0x0A
+| 41.67 kHz
+
+| 0x03
+| 62.50 kHz
+
+| **0x04**
+| **125 kHz**
+
+| 0x05
+| 250 kHz
+
+| 0x06
+| 500 kHz
+
+|===
+
+[cols=">1,4", options="header"]
+.Valid Coding Rate values
+|===
+
+| Value
+| Description
+
+| **0x01**
+| **CR 4/5**
+
+| 0x02
+| CR 4/6
+
+| 0x03
+| CR 4/7
+
+| 0x04
+| CR 4/8
+
+|===
+
+[cols=">1,4", options="header"]
+.Valid Low Data Rate Optimization values
+|===
+
+| Value
+| Description
+
+| 0x00
+| LDRO OFF
+
+| **0x01**
+| **LDRO ON**
+
+|===
+
+A changed value becomes effective when the LoRa module is reconfigured. This
+happens after a firmware reset or after both receiver and tracker were turned
+off.
+
 === Examples
 
 ==== Example 1: Setting the power to +14 dBm
@@ -742,3 +871,16 @@ The receiver state on startup is controlled by bit 6 of the <<_aprs_configuratio
 - To change the RF frequency to the above value, first represent it in Hertz: 439912500 Hz. Take this number and encode it as a little endian 32-bit integer: `439912500` decimal = `0x1a388834` hex → `0x34 0x88 0x38 0x1a`.
 - Prepend the setting ID 7 to build your complete write command: `0x07 0x34 0x88 0x38 0x1a`. Write these 5 bytes to the <<_setting_select_or_write_characteristic,_setting select or write_ characteristic>>.
 - Read the <<_setting_read_characteristic,_setting read_ characteristic>>. You should receive the exact same 5 bytes back. If the MSB of the first byte is set, the write access has failed.
+
+==== Example 4: Configuring LoRa Modulation Parameters
+
+Let’s say we want to configure the LoRa modulation as follows: Spreading Factor 12, Bandwidth 125 kHz, Coding Rate 4/5, Low Data Rate Optimization ON. From the tables in <<lora_mod_config>>, we obtain the following values:
+
+- SF 12: `0x0C`
+- BW 125 kHz: `0x04`
+- CR 4/5: `0x01`
+- LDRO ON: `0x01`
+
+We combine these into a byte string `0x0C 0x04 0x01 0x01` and prefix that with the setting ID 8: `0x08 0x0C 0x04 0x01 0x01`. Write these 5 bytes to the <<_setting_select_or_write_characteristic,_setting select or write_ characteristic>>.
+
+Read the <<_setting_read_characteristic,_setting read_ characteristic>>. You should receive the exact same 5 bytes back. If the MSB of the first byte is set, the write access has failed, probably because some individual parameter was invalid.
