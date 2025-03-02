@@ -698,11 +698,30 @@ static ret_code_t handle_state_entry(void)
 
 		case LORA_STATE_START_TX:
 			{
+				float bw_khz = 125.0f;
+
+				switch(m_bw) {
+					case SX1262_LORA_BW_7:   bw_khz =   7.81f; break;
+					case SX1262_LORA_BW_10:  bw_khz =  10.42f; break;
+					case SX1262_LORA_BW_15:  bw_khz =  15.63f; break;
+					case SX1262_LORA_BW_20:  bw_khz =  20.83f; break;
+					case SX1262_LORA_BW_31:  bw_khz =  31.25f; break;
+					case SX1262_LORA_BW_41:  bw_khz =  41.67f; break;
+					case SX1262_LORA_BW_62:  bw_khz =  62.50f; break;
+					case SX1262_LORA_BW_125: bw_khz = 125.00f; break;
+					case SX1262_LORA_BW_250: bw_khz = 250.00f; break;
+					case SX1262_LORA_BW_500: bw_khz = 500.00f; break;
+					default:
+						NRF_LOG_ERROR("Invalid bandwidth setting: 0x%02x", m_bw);
+						bw_khz = 125.0f;
+						break;
+				}
+
 				float toa = calc_toa(
-						12,     // SF
-						1,      // CR=4/5
-						125.0f, // BW
-						16,     // preamble symbols
+						m_sf,   // SF
+						m_cr,   // CR=4/5
+						bw_khz, // BW
+						8,      // preamble symbols
 						m_payload_length,
 						true,   // explicit header
 						true);  // use CRC
