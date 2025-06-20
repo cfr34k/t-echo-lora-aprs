@@ -1,3 +1,20 @@
+# Version 1.2
+
+## New and changed features
+
+- Make LoRa modulation parameters configurable via the BLE settings interface. The following parameters can now be configured:
+  - Spreading Factor
+  - Bandwidth
+  - Coding Rate
+  - Low Data Rate Optimization
+- Update Python Client to support the new parameters
+
+## Fixed Bugs
+
+- Python Client:
+  - handle unnamed devices correctly during scan
+  - Fixed crash when advanced setting were using the default value
+
 # Version 1.1
 
 ## New and changed features
