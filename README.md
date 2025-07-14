@@ -1,5 +1,8 @@
 # LoRa-APRS firmware for Lilygo T-Echo
 
+> [!WARNING]
+> DO NOT FLASH THIS FIRMWARE if you want to switch back to Meshtastic soon. There is currently an [open issue](https://github.com/cfr34k/t-echo-lora-aprs/issues/30) that trying to flash Meshtastic bricks the device after this firmware was installed. It can only be recovered by re-flashing the bootloader via SWD, which requires special debug hardware.
+
 This is a custom firmware for the T-Echo devices made by Lilygo.
 
 With this firmware the T-Echo becomes a LoRa-APRS tracker. The LoRa
