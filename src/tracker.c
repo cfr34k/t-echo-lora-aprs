@@ -36,15 +36,26 @@ NRF_LOG_MODULE_REGISTER();
 
 #include "tracker.h"
 
-#define HEADING_CHECK_MIN_SPEED   1.0f // m/s
-#define MAX_HEADING_DELTA_DEG    30.0f
+// ignore heading changes below this speed
+#define HEADING_CHECK_MIN_SPEED   1.0f // meters per second
 
-#define MIN_TX_INTERVAL_MS      15000
+// transmit a position report if heading has changed by more than this angle
+// (positive or negative)
+#define MAX_HEADING_DELTA_DEG    30.0f // degrees
 
-#define MAX_POS_INTERVAL_MS   1800000
-#define WX_INTERVAL_MS         300000
+// minimum time between two transmissions
+#define MIN_TX_INTERVAL_MS      15000 // milliseconds
 
-#define MAX_DISTANCE_M         2000
+// force the transmission of a position report after this amount of time after
+// the last position report, even if heading and location have not changed
+#define MAX_POS_INTERVAL_MS   1800000 // milliseconds
+
+// interval between two weather reports
+#define WX_INTERVAL_MS         300000 // milliseconds
+
+// transmit a position report when the distance from the last report’s location
+// is greater than this value
+#define MAX_DISTANCE_M         2000 // meters
 
 static float m_last_tx_heading = 0.0f;
 
